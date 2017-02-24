@@ -2,7 +2,7 @@ import kivy.app
 from kivy.uix.screenmanager import ScreenManager, Screen, WipeTransition
 import sqlite3
 import datetime
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, StringProperty
 
 
 class menu(Screen):
@@ -16,6 +16,8 @@ class menu(Screen):
 
 class IngressoMerce(Screen):
     txtinp = NumericProperty(0)
+    fornit = StringProperty()
+    articolo = StringProperty()
     # Connessione al database
     conn = sqlite3.connect('./data.db',
                            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
@@ -36,7 +38,7 @@ class IngressoMerce(Screen):
     data = datetime.date.today()
 
     def indietro(self):
-        print(self.ids.txtinp.text)
+        print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
         self.manager.current = 'menu'
 
 
