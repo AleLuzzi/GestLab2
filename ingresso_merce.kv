@@ -4,6 +4,7 @@
 
 <IngressoMerce>:
     BoxLayout:
+        txtinp: txtinp
         orientation: 'horizontal'
         BoxLayout:
             orientation: 'horizontal'
@@ -47,6 +48,12 @@
             Label:
                 text: str(root.prog_lotto_acq)
             Label:
+                canvas.before:
+                    Color:
+                        rgba: 0,0,1,1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
                 text: 'Data ingresso merce'
             Label:
                 text: str(root.data.strftime('%d/%m/%y'))
