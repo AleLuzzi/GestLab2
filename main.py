@@ -3,7 +3,7 @@ from kivy.uix.screenmanager import ScreenManager, Screen, WipeTransition
 import sqlite3
 import datetime
 from kivy.properties import NumericProperty, StringProperty
-from kivy.core.window import Window
+# from kivy.core.window import Window
 
 
 class menu(Screen):
@@ -45,7 +45,7 @@ class IngressoMerce(Screen):
 
 class main(kivy.app.App):
     def build(self):
-        Window.size = (800, 400)
+        # Window.size = (1024, 768)
         sm = ScreenManager(transition=WipeTransition())
         sm.add_widget(menu(name='menu',))
         sm.add_widget(IngressoMerce(name='IngressoMerce'))
