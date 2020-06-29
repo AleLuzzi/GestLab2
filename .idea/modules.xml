@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project version="4">
-  <component name="ProjectModuleManager">
-    <modules>
-      <module fileurl="file://$PROJECT_DIR$/../GestLabKV/.idea/GestLabKV.iml" filepath="$PROJECT_DIR$/../GestLabKV/.idea/GestLabKV.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/prova kivy.iml" filepath="$PROJECT_DIR$/.idea/prova kivy.iml" />
-    </modules>
-  </component>
-</project>
