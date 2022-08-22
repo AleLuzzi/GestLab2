@@ -26,7 +26,7 @@ class IngressoMerce(Screen):
     articolo = StringProperty()
 
     def indietro(self):
-        print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
+        # print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
         self.manager.current = 'menu'
 
     def leggi_file_ini():
@@ -34,30 +34,30 @@ class IngressoMerce(Screen):
         ini.read('config.ini')
         return ini
 
-    config_ini = leggi_file_ini()
+    # config_ini = leggi_file_ini()
 
-    conn = mysql.connector.connect(host=config_ini['DataBase']['host'],
-                                   database=config_ini['DataBase']['db'],
-                                   user=config_ini['DataBase']['user'],
-                                   password='')
+   # conn = mysql.connector.connect(host="192.168.0.100",
+   #                                database="data",
+   #                                user="root",
+   #                                password='')
 
-    c = conn.cursor()
+   # c = conn.cursor()
 
-    lista_tagli = []
-    lista_fornitori = []
+   # lista_tagli = []
+   # lista_fornitori = []
 
-    c.execute("SELECT taglio FROM tagli")
+   # c.execute("SELECT taglio FROM tagli")
 
-    for lista in c:
-        lista_tagli.extend(lista)
+   # for lista in c:
+   #     lista_tagli.extend(lista)
 
-    c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
+   # c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
 
-    for lista in c:
-        lista_fornitori.extend(lista)
+   # for lista in c:
+   #     lista_fornitori.extend(lista)
 
-    c.execute("SELECT prog_acq FROM progressivi")
-    prog_lotto_acq = c.fetchone()[0]
+   # c.execute("SELECT prog_acq FROM progressivi")
+   # prog_lotto_acq = c.fetchone()[0]
 
     data = datetime.date.today()
 
