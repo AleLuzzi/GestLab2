@@ -25,7 +25,7 @@
                                 size: self.size
                         text: 'Progressivo Lotto'
                     Label:
-                        text: ''
+                        text: str(root.prog_lotto_acq)
                     Label:
                         canvas.before:
                             Color:
@@ -35,7 +35,7 @@
                                 size: self.size
                         text: 'Data ingresso merce'
                     Label:
-                        text: ''
+                        text: str(root.data.strftime('%d/%m/%y'))
                     Label:
                         canvas.before:
                             Color:
@@ -58,6 +58,7 @@
                     Spinner:
                         id: fornit
                         text: 'Fornitori'
+                        values: root.lista_fornitori
             TabbedPanelItem:
                 text: 'Corpo Documento'
                 Label:

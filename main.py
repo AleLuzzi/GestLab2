@@ -36,28 +36,28 @@ class IngressoMerce(Screen):
 
     # config_ini = leggi_file_ini()
 
-   # conn = mysql.connector.connect(host="192.168.0.100",
-   #                                database="data",
-   #                                user="root",
-   #                                password='')
+    conn = mysql.connector.connect(host="192.168.0.100",
+                                   database="data",
+                                   user="root",
+                                   password='')
 
-   # c = conn.cursor()
+    c = conn.cursor()
 
    # lista_tagli = []
-   # lista_fornitori = []
+    lista_fornitori = []
 
    # c.execute("SELECT taglio FROM tagli")
 
    # for lista in c:
    #     lista_tagli.extend(lista)
 
-   # c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
+    c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
 
-   # for lista in c:
-   #     lista_fornitori.extend(lista)
+    for lista in c:
+        lista_fornitori.extend(lista)
 
-   # c.execute("SELECT prog_acq FROM progressivi")
-   # prog_lotto_acq = c.fetchone()[0]
+    c.execute("SELECT prog_acq FROM progressivi")
+    prog_lotto_acq = c.fetchone()[0]
 
     data = datetime.date.today()
 
