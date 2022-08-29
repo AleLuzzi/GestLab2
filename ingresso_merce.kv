@@ -4,7 +4,7 @@
         orientation: 'horizontal'
         TabbedPanel:
             do_default_tab: False
-            tab_width: 150
+            tab_width: 300
             TabbedPanelItem:
                 text: 'Intestazione'
                 BoxLayout:
@@ -23,7 +23,7 @@
                             Rectangle:
                                 pos: self.pos   
                                 size: self.size
-                        text: 'Progressivo Lotto'
+                        text: 'Progressivo Lotto Ingresso'
                     Label:
                         text: str(root.prog_lotto_acq)
                     Label:
@@ -47,6 +47,7 @@
                     TextInput:
                         id: txtinp
                         text: ''
+                        input_type: 'number'
                     Label:
                         canvas.before:
                             Color:
