@@ -62,5 +62,30 @@
                         values: root.lista_fornitori
             TabbedPanelItem:
                 text: 'Corpo Documento'
-                Label:
-                    text: 'Corpo Documento'
+                BoxLayout:
+                    orientation: 'vertical'
+                    Label:
+                        size_hint: 1,.1
+                        pos_hint: {"top":1}
+                        canvas.before:
+                            Color:
+                                rgba: 0,0,1,1
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                        text: 'Scegli articolo'
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        Button:
+                            text: 'AGNELLO'
+                            size_hint: .3,.1
+                            pos_hint: {"top":1}
+                        Button:
+                            text: 'BOVINO'
+                            size_hint: .3,.1
+                            pos_hint: {"top":1}
+                        Button:
+                            text: 'VITELLO'
+                            size_hint: .3,.1
+                            pos_hint: {"top":1}
+                        
