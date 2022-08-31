@@ -62,20 +62,10 @@
                         values: root.lista_fornitori
             TabbedPanelItem:
                 text: 'Corpo Documento'
-                BoxLayout:
-                    orientation: 'vertical'
-                    Label:
-                        size_hint: 1,.1
-                        pos_hint: {"top":1}
-                        canvas.before:
-                            Color:
-                                rgba: 0,0,1,1
-                            Rectangle:
-                                pos: self.pos
-                                size: self.size
-                        text: 'Scegli articolo'
+                AnchorLayout:
+                    anchor_x: 'center'
+                    anchor_y: 'top'
                     BoxLayout:
-                        orientation: 'horizontal'
                         Button:
                             text: 'AGNELLO'
                             size_hint: .3,.1
@@ -88,4 +78,15 @@
                             text: 'VITELLO'
                             size_hint: .3,.1
                             pos_hint: {"top":1}
-                        
+                    BoxLayout:
+                        RV:
+                            viewclass: 'Button'
+                            pos_hint: {'top': 0.9}
+                            RecycleBoxLayout:
+                                default_size: None, dp(56)
+                                default_size_hint: 1, None
+                                size_hint_y: None
+                                height: self.minimum_height
+                                orientation: 'vertical'
+                    
+                                                
