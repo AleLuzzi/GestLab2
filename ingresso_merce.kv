@@ -62,31 +62,47 @@
                         values: root.lista_fornitori
             TabbedPanelItem:
                 text: 'Corpo Documento'
-                AnchorLayout:
-                    anchor_x: 'center'
-                    anchor_y: 'top'
-                    BoxLayout:
-                        Button:
-                            text: 'AGNELLO'
-                            size_hint: .3,.1
-                            pos_hint: {"top":1}
-                        Button:
-                            text: 'BOVINO'
-                            size_hint: .3,.1
-                            pos_hint: {"top":1}
-                        Button:
-                            text: 'VITELLO'
-                            size_hint: .3,.1
-                            pos_hint: {"top":1}
-                    BoxLayout:
-                        RV:
-                            viewclass: 'Button'
-                            pos_hint: {'top': 0.9}
-                            RecycleBoxLayout:
-                                default_size: None, dp(56)
-                                default_size_hint: 1, None
-                                size_hint_y: None
-                                height: self.minimum_height
-                                orientation: 'vertical'
-                    
-                                                
+                BoxLayout:
+                    orientation:'horizontal'
+                    AnchorLayout:
+                        anchor_x: 'center'
+                        anchor_y: 'top'
+                        BoxLayout:
+                            Button:
+                                text: 'AGNELLO'
+                                size_hint: .25,.1
+                                pos_hint: {"top":1}
+                            Button:
+                                text: 'BOVINO'
+                                size_hint: .25,.1
+                                pos_hint: {"top":1}
+                            Button:
+                                text: 'VITELLO'
+                                size_hint: .25,.1
+                                pos_hint: {"top":1}
+                            Button:
+                                text: 'SUINO'
+                                size_hint: .25,.1
+                                pos_hint: {'top':1}
+                        BoxLayout:
+                            RV:
+                                viewclass: 'Button'
+                                pos_hint: {'top': 0.9}
+                                RecycleBoxLayout:
+                                    default_size: None, dp(56)
+                                    default_size_hint: 1, None
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    orientation: 'vertical'
+                    FloatLayout:
+                        BoxLayout:
+                            orientation:'vertical'
+                            pos_hint:{'right':1}
+                            Label:
+                                text:'Label'
+                            Button:
+                                text:'Button'
+                            Label:
+                                text:'Label2'
+                            Button:
+                                text:'Button2'

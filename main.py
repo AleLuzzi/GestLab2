@@ -1,6 +1,7 @@
 import kivy.app
 
 from kivy.uix.screenmanager import ScreenManager, Screen, WipeTransition
+from kivy.uix.recycleview import RecycleView
 import datetime
 from kivy.properties import NumericProperty, StringProperty
 from kivy import Config
@@ -9,6 +10,11 @@ import mysql.connector
 
 Config.set('graphics', 'multisamples', '0')
 # Config.set('graphics', 'fullscreen', 'auto')
+
+class RV(RecycleView):
+    def __init__(self, **kwargs):
+        super(RV, self).__init__(**kwargs)
+        self.data = [{'text': str(x)} for x in range(20)]
 
 
 class menu(Screen):
