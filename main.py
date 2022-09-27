@@ -69,6 +69,14 @@ class IngressoMerce(Screen):
     fornit = StringProperty()
     articolo = StringProperty()
 
+    def aggiorna_rv(self):
+        lista = []
+        self.c.execute('SELECT taglio FROM tagli WHERE Id_Merceologia=12')
+        for x in self.c:
+            lista.extend(x)
+        lista_rv = [{'text': x} for x in lista]          
+        return lista_rv
+
     def indietro(self):
         # print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
         self.manager.current = 'menu'

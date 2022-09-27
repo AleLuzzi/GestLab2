@@ -80,6 +80,7 @@
                                 text: 'AGNELLO'
                                 size_hint: .25,.1
                                 pos_hint: {"top":1}
+                                on_press: rv.data=root.aggiorna_rv()
                             Button:
                                 text: 'BOVINO'
                                 size_hint: .25,.1
@@ -94,6 +95,7 @@
                                 pos_hint: {'top':1}
                         BoxLayout:
                             RV:
+                                id: rv
                                 pos_hint: {'top': 0.9}
                                 viewclass: 'SelectableLabel'
                                 SelectableRecycleBoxLayout:
@@ -113,4 +115,5 @@
                             Label:
                                 text:'Label2'
                             Button:
-                                text:'Button2'
+                                text:'Indietro'
+                                on_press: root.indietro()
