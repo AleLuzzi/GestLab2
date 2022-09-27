@@ -65,7 +65,7 @@ class IngressoMerce(Screen):
     c.execute("SELECT prog_acq FROM progressivi")
     prog_lotto_acq = c.fetchone()[0]
 
-    data = datetime.date.today()
+    oggi = datetime.date.today()
 
 
 class main(kivy.app.App):
