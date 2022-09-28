@@ -52,7 +52,7 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
-        self.data = [{'text': str(x)} for x in range(20)]
+        self.data = [{'text': 'scegli una categoria merceologica'}]
 
 
 class menu(Screen):
@@ -69,9 +69,11 @@ class IngressoMerce(Screen):
     fornit = StringProperty()
     articolo = StringProperty()
 
-    def aggiorna_rv(self):
+    def aggiorna_rv(self, cat):
+        cat_merc = [cat,]
         lista = []
-        self.c.execute('SELECT taglio FROM tagli WHERE Id_Merceologia=12')
+        query = 'SELECT taglio FROM tagli WHERE Id_Merceologia=%s'
+        self.c.execute(query, cat_merc)
         for x in self.c:
             lista.extend(x)
         lista_rv = [{'text': x} for x in lista]          
