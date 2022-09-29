@@ -43,6 +43,8 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
     def apply_selection(self, rv, index, is_selected):
         ''' Respond to the selection of items in the view. '''
         self.selected = is_selected
+
+        rv.data[index]['selected'] = self.selected
         if is_selected:
             print("selection changed to {0}".format(rv.data[index]))
         else:
@@ -81,6 +83,7 @@ class IngressoMerce(Screen):
 
     def indietro(self):
         # print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
+        print(self.ids.rv.data)
         self.manager.current = 'menu'
 
     def leggi_file_ini():
@@ -97,13 +100,7 @@ class IngressoMerce(Screen):
 
     c = conn.cursor()
 
-   # lista_tagli = []
     lista_fornitori = []
-
-   # c.execute("SELECT taglio FROM tagli")
-
-   # for lista in c:
-   #     lista_tagli.extend(lista)
 
     c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
 

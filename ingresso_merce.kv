@@ -80,22 +80,22 @@
                                 text: 'AGNELLO'
                                 size_hint: .25,.1
                                 pos_hint: {"top":1}
-                                on_press: rv.data=root.aggiorna_rv(str(12))
+                                on_press: rv.data=root.aggiorna_rv('12')
                             Button:
                                 text: 'BOVINO'
                                 size_hint: .25,.1
                                 pos_hint: {"top":1}
-                                on_press: rv.data=root.aggiorna_rv(str(10))
+                                on_press: rv.data=root.aggiorna_rv('10')
                             Button:
                                 text: 'VITELLO'
                                 size_hint: .25,.1
                                 pos_hint: {"top":1}
-                                on_press: rv.data=root.aggiorna_rv(str(13))
+                                on_press: rv.data=root.aggiorna_rv('13')
                             Button:
                                 text: 'SUINO'
                                 size_hint: .25,.1
                                 pos_hint: {'top':1}
-                                on_press: rv.data=root.aggiorna_rv(str(11))
+                                on_press: rv.data=root.aggiorna_rv('11')
                         BoxLayout:
                             RV:
                                 id: rv
