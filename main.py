@@ -78,12 +78,11 @@ class IngressoMerce(Screen):
         self.c.execute(query, cat_merc)
         for x in self.c:
             lista.extend(x)
-        lista_rv = [{'text': x} for x in lista]          
+        lista_rv = [{'text': x, 'cat_merc': cat_merc[0]} for x in lista]          
         return lista_rv
 
     def indietro(self):
         # print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
-        print(self.ids.rv.data)
         self.manager.current = 'menu'
 
     def leggi_file_ini():
