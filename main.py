@@ -54,7 +54,7 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
-        self.data = [{'text': 'scegli una categoria merceologica'}]
+        self.data = [{'text': 'nessuna selezione'}]
 
 
 class menu(Screen):
@@ -80,6 +80,14 @@ class IngressoMerce(Screen):
             lista.extend(x)
         lista_rv = [{'text': x, 'cat_merc': cat_merc[0]} for x in lista]          
         return lista_rv
+
+    def confermato(self, dat, sli_val):
+        index = 0
+        while index < len(dat):
+            if dat[index]['selected']:
+                print(dat[index])
+            index += 1
+    
 
     def indietro(self):
         # print(self.ids.txtinp.text, self.ids.fornit.text, self.ids.articolo.text)
