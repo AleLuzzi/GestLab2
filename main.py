@@ -81,7 +81,7 @@ class IngressoMerce(Screen):
         lista_rv = [{'text': x, 'cat_merc': cat_merc[0]} for x in lista]          
         return lista_rv
 
-    def confermato(self, dat, sli_val):
+    def confermato(self, dat):
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
