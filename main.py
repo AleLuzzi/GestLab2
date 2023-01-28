@@ -1,4 +1,4 @@
-import kivy.app
+from kivy.app import App
 
 from kivy.uix.screenmanager import ScreenManager, Screen, WipeTransition
 from kivy.uix.recycleview import RecycleView
@@ -12,6 +12,8 @@ import datetime
 from kivy import Config
 import configparser
 import mysql.connector
+from chiudi_lotto import Chiudi_lotto
+from ingresso_merce import Ingresso_merce
 
 Config.set('graphics', 'multisamples', '0')
 # Config.set('graphics', 'fullscreen', 'auto')
@@ -61,9 +63,12 @@ class menu(Screen):
     def ingresso_merce(self):
         self.manager.current = 'IngressoMerce'
 
+    def chiudi_lotto(self):
+        self.manager.current = 'ChiudiLotto'
+
     @staticmethod
     def esci():
-        kivy.app.App.get_running_app().stop()
+        App.get_running_app().stop()
 
 
 class IngressoMerce(Screen):
@@ -120,11 +125,12 @@ class IngressoMerce(Screen):
     oggi = datetime.date.today()
 
 
-class main(kivy.app.App):
+class main(App):
     def build(self):
         sm = ScreenManager(transition=WipeTransition())
         sm.add_widget(menu(name='menu'))
-        sm.add_widget(IngressoMerce(name='IngressoMerce'))
+        sm.add_widget(Ingresso_merce(name='IngressoMerce'))
+        sm.add_widget(Chiudi_lotto(name='ChiudiLotto'))
         return sm
 
 main().run()
