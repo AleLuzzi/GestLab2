@@ -65,12 +65,12 @@ class Ingresso_merce(Screen):
 
         oggi = datetime.date.today()
 
-        conn = mysql.connector.connect(host="192.168.0.100",
+        self.conn = mysql.connector.connect(host="192.168.0.100",
                                    database="data",
                                    user="root",
                                    password='')
 
-        c = conn.cursor()
+        c = self.conn.cursor()
 
         c.execute("SELECT prog_acq FROM progressivi")
         prog_lotto_acq = c.fetchone()[0]
@@ -108,9 +108,13 @@ class Ingresso_merce(Screen):
         self.lbl_progressivo_lotto_ingresso_txt = Label(text='Progressivo Lotto ingresso')
         self.lbl_progressivo_ingresso = Label(text=str(prog_lotto_acq)+'V')
         self.tgl_btn1 = ToggleButton(text='Agnello', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
+        self.tgl_btn1.bind(on_press=lambda x:self.aggiorna_rv('12'))
         self.tgl_btn2 = ToggleButton(text='Bovino', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
+        self.tgl_btn2.bind(on_press=lambda x:self.aggiorna_rv('10'))
         self.tgl_btn3 = ToggleButton(text='Vitello', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
+        self.tgl_btn3.bind(on_press=lambda x:self.aggiorna_rv('13'))
         self.tgl_btn4 = ToggleButton(text='Suino', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
+        self.tgl_btn4.bind(on_press=lambda x:self.aggiorna_rv('11'))
 
         recycle_box_layout = SelectableRecycleBoxLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
                                                         size_hint=(1, None), orientation='vertical')
@@ -143,7 +147,16 @@ class Ingresso_merce(Screen):
         self.box_layout_tab2_sx.add_widget(self.tgl_btn3)
         self.box_layout_tab2_sx.add_widget(self.tgl_btn4)
         self.box_layout_tab2_sx_centro.add_widget(self.mostra_dati)
-
+        
+    def aggiorna_rv(self, cat):
+        self.c = self.conn.cursor()
+        cat_merc = [cat,]
+        lista = []
+        query = 'SELECT taglio FROM tagli WHERE Id_Merceologia=%s'
+        self.c.execute(query, cat_merc)
+        for x in self.c:
+            lista.extend(x)
+        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0]} for x in lista]
 
     def indietro(self, instance):
         self.manager.current = 'menu'
