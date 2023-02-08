@@ -56,7 +56,7 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
-        self.data = [{'text': str(x)} for x in range(20)]
+        self.data = [{'text': 'nessuna selezione'}]
 
 
 class Ingresso_merce(Screen):
@@ -82,9 +82,13 @@ class Ingresso_merce(Screen):
         for lista in c:
             lista_fornitori.extend(lista)
 
+        ''' DEFINIZIONE BTN INDIETRO COMUNE A TUTTI I TAB '''
 
         self.btn = Button(text='indietro', size_hint=(1,.1))        
         self.btn.bind(on_press=self.indietro)
+        self.add_widget(self.btn)
+        
+        ''' DEFINIZIONE TAB PANEL '''
         
         self.tab_panel = TabbedPanel(do_default_tab=(False), 
                                     size_hint=(1,.9), pos_hint={'top':1})
@@ -92,21 +96,48 @@ class Ingresso_merce(Screen):
         self.tab_panel_tab2 = TabbedPanelItem(text='Corpo \n Documento')
         self.tab_panel_tab3 = TabbedPanelItem(text='Riepilogo')
 
-        self.box_layout_tab1 = BoxLayout(orientation='vertical')
-        self.grid_layout_tab2 = GridLayout(rows=2, size_hint=(.5, 1))
-        self.box_layout_tab2_sx = BoxLayout(orientation='horizontal', size_hint=(1, .1))
-        self.box_layout_tab2_sx_centro = BoxLayout(orientation='vertical')
+        self.add_widget(self.tab_panel)
+        self.tab_panel.add_widget(self.tab_panel_tab1)
+        self.tab_panel.add_widget(self.tab_panel_tab2)
+        self.tab_panel.add_widget(self.tab_panel_tab3)
 
+        ''' DEFINIZIONE BOX E WIDGET CONTENUTI NEL TAB1 -INTESTAZIONE- '''
+        
+        self.box_layout_tab1 = BoxLayout(orientation='vertical')
+
+        self.lbl_progressivo_lotto_ingresso_txt = Label(text='Progressivo Lotto ingresso')
+        self.lbl_progressivo_ingresso = Label(text=str(prog_lotto_acq)+'V')
         self.lbl_fornitore_txt = Label(text='Fornitore')
-        
         self.spinner_fornitori = Spinner(values=lista_fornitori)
-        
         self.lbl_data_txt = Label(text='Data Documento')
         self.lbl_data = Label(text=str(oggi.strftime('%d/%m/%y')))
         self.lbl_num_documento = Label(text='Numero Documento')
         self.txtinput_num_documento = TextInput()
-        self.lbl_progressivo_lotto_ingresso_txt = Label(text='Progressivo Lotto ingresso')
-        self.lbl_progressivo_ingresso = Label(text=str(prog_lotto_acq)+'V')
+
+        self.box_layout_tab1.add_widget(self.lbl_progressivo_lotto_ingresso_txt)
+        self.box_layout_tab1.add_widget(self.lbl_progressivo_ingresso)
+        self.tab_panel_tab1.add_widget(self.box_layout_tab1)
+        self.box_layout_tab1.add_widget(self.lbl_fornitore_txt)
+        self.box_layout_tab1.add_widget(self.spinner_fornitori)
+        self.box_layout_tab1.add_widget(self.lbl_data_txt)
+        self.box_layout_tab1.add_widget(self.lbl_data)
+        self.box_layout_tab1.add_widget(self.lbl_num_documento)
+        self.box_layout_tab1.add_widget(self.txtinput_num_documento)
+
+        ''' DEFINIZIONE BOX ESTERNO TAB2 - CORPO DOCUMENTO '''
+        
+        self.box_esterno = BoxLayout(orientation='horizontal')
+        self.tab_panel_tab2.add_widget(self.box_esterno)
+
+        self.box_sinistra = BoxLayout(orientation='vertical')
+        self.box_destra = BoxLayout()
+        self.box_esterno.add_widget(self.box_sinistra)
+        self.box_esterno.add_widget(self.box_destra)
+
+        ''' DEFINIZIONE BOX E TOGGLE BUTTON PER SCELTA CAT MERCEOLOGICA '''
+        
+        self.box_layout_toggle_btn = BoxLayout(orientation='horizontal', size_hint=(1, .1))
+
         self.tgl_btn1 = ToggleButton(text='Agnello', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
         self.tgl_btn1.bind(on_press=lambda x:self.aggiorna_rv('12'))
         self.tgl_btn2 = ToggleButton(text='Bovino', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
@@ -115,6 +146,15 @@ class Ingresso_merce(Screen):
         self.tgl_btn3.bind(on_press=lambda x:self.aggiorna_rv('13'))
         self.tgl_btn4 = ToggleButton(text='Suino', group='merceologia', size_hint=(.25, 1), pos_hint={"top":1})
         self.tgl_btn4.bind(on_press=lambda x:self.aggiorna_rv('11'))
+        
+        self.box_layout_toggle_btn.add_widget(self.tgl_btn1)
+        self.box_layout_toggle_btn.add_widget(self.tgl_btn2)
+        self.box_layout_toggle_btn.add_widget(self.tgl_btn3)
+        self.box_layout_toggle_btn.add_widget(self.tgl_btn4)
+
+        ''' DEFINIZIONE BOX E RECYCLEVIEW '''
+        
+        self.box_layout_recicleview = BoxLayout(orientation='vertical')
 
         recycle_box_layout = SelectableRecycleBoxLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
                                                         size_hint=(1, None), orientation='vertical')
@@ -123,30 +163,18 @@ class Ingresso_merce(Screen):
         self.mostra_dati.add_widget(recycle_box_layout)
         self.mostra_dati.viewclass= 'SelectableLabel'
         
-        self.add_widget(self.btn)
-        self.add_widget(self.tab_panel)
-        self.tab_panel.add_widget(self.tab_panel_tab1)
-        self.tab_panel.add_widget(self.tab_panel_tab2)
-        self.tab_panel.add_widget(self.tab_panel_tab3)
-        
-        self.tab_panel_tab1.add_widget(self.box_layout_tab1)
-        self.box_layout_tab1.add_widget(self.lbl_fornitore_txt)
-        self.box_layout_tab1.add_widget(self.spinner_fornitori)
-        self.box_layout_tab1.add_widget(self.lbl_data_txt)
-        self.box_layout_tab1.add_widget(self.lbl_data)
-        self.box_layout_tab1.add_widget(self.lbl_num_documento)
-        self.box_layout_tab1.add_widget(self.txtinput_num_documento)
-        self.box_layout_tab1.add_widget(self.lbl_progressivo_lotto_ingresso_txt)
-        self.box_layout_tab1.add_widget(self.lbl_progressivo_ingresso)
+        self.box_layout_recicleview.add_widget(self.mostra_dati)
 
-        self.tab_panel_tab2.add_widget(self.grid_layout_tab2)
-        self.grid_layout_tab2.add_widget(self.box_layout_tab2_sx)
-        self.grid_layout_tab2.add_widget(self.box_layout_tab2_sx_centro)
-        self.box_layout_tab2_sx.add_widget(self.tgl_btn1)
-        self.box_layout_tab2_sx.add_widget(self.tgl_btn2)
-        self.box_layout_tab2_sx.add_widget(self.tgl_btn3)
-        self.box_layout_tab2_sx.add_widget(self.tgl_btn4)
-        self.box_layout_tab2_sx_centro.add_widget(self.mostra_dati)
+        ''' BOXLAYOUT SINISTRO CON TOGGLE BTN E RECYCLEVIEW'''
+
+        self.box_sinistra.add_widget(self.box_layout_toggle_btn)
+        self.box_sinistra.add_widget(self.box_layout_recicleview)
+
+        ''' BOXLAYOUT DESTRO '''
+
+        self.btn_quantita_richiesta = Button(text='Quantità richiesta', size_hint=(1, .1), pos_hint={"top":1})
+
+        self.box_destra.add_widget(self.btn_quantita_richiesta)
         
     def aggiorna_rv(self, cat):
         self.c = self.conn.cursor()
