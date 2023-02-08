@@ -6,6 +6,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button, Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
+from kivy.uix.slider import Slider
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 import datetime
 import mysql.connector
@@ -130,7 +131,7 @@ class Ingresso_merce(Screen):
         self.tab_panel_tab2.add_widget(self.box_esterno)
 
         self.box_sinistra = BoxLayout(orientation='vertical')
-        self.box_destra = BoxLayout()
+        self.box_destra = BoxLayout(orientation='vertical')
         self.box_esterno.add_widget(self.box_sinistra)
         self.box_esterno.add_widget(self.box_destra)
 
@@ -172,10 +173,56 @@ class Ingresso_merce(Screen):
 
         ''' BOXLAYOUT DESTRO '''
 
-        self.btn_quantita_richiesta = Button(text='Quantità richiesta', size_hint=(1, .1), pos_hint={"top":1})
-
+        self.btn_quantita_richiesta = Label(text='Quantità richiesta', size_hint=(1, .1), pos_hint={"top":1})
         self.box_destra.add_widget(self.btn_quantita_richiesta)
+
+        ''' DEFINIZIONE BOXLAYOUT E TOGGLE_BTN PER SELEZIONE KG/PZ'''
+
+        self.box_kg_pz = BoxLayout(orientation='horizontal', size_hint=(1, .1), pos_hint={'top':1})
+        self.tgl_btn_kg = ToggleButton(text='Kg', group='peso', state='down')
+        self.tgl_btn_pz = ToggleButton(text='Pz', group='peso')
         
+        self.box_destra.add_widget(self.box_kg_pz)
+        self.box_kg_pz.add_widget(self.tgl_btn_kg)
+        self.box_kg_pz.add_widget(self.tgl_btn_pz)
+
+        ''' DEFINIZIONE BOXLAYOUT E SLIDER PER INSERIMENTO PESO ORDINATO'''
+
+        self.box_slider = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
+        self.slider_peso = Slider(min=1, max=30, step=0.5)
+        self.slider_peso.bind(value=self.OnSliderValueChange)
+        self.lbl_slider = Label(text='0')
+        
+        self.box_destra.add_widget(self.box_slider)
+        self.box_slider.add_widget(self.slider_peso)
+        self.box_slider.add_widget(self.lbl_slider)
+
+        ''' DEFINIZIONE BOXLAYOUT E BOTTONI PER INSERIMENTO PESO VELOCE'''
+
+        self.box_btn_peso_veloce = BoxLayout(orientation='horizontal', size_hint=(1, .1), pos_hint={'top':1})
+        self.btn_peso_veloce_1 = Button(text='0.5')
+        self.btn_peso_veloce_1.bind(on_press=lambda x:self.pressione_btn_peso_veloce(value=0.5))
+        self.btn_peso_veloce_2 = Button(text='1')
+        self.btn_peso_veloce_2.bind(on_press=lambda x:self.pressione_btn_peso_veloce(value=1))
+        self.btn_peso_veloce_3 = Button(text='1.5')
+        self.btn_peso_veloce_3.bind(on_press=lambda x:self.pressione_btn_peso_veloce(value=1.5))
+        self.btn_peso_veloce_4 = Button(text='2')
+        self.btn_peso_veloce_4.bind(on_press=lambda x:self.pressione_btn_peso_veloce(value=2))
+
+        self.box_destra.add_widget(self.box_btn_peso_veloce)
+        self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_1)
+        self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_2)
+        self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_3)
+        self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_4)
+
+    def OnSliderValueChange(self, instance, value):
+        self.lbl_slider.text = str(value)
+    
+    def pressione_btn_peso_veloce(self, value):
+        self.lbl_slider.text = str(value)
+        self.slider_peso.value = str(value)
+
+
     def aggiorna_rv(self, cat):
         self.c = self.conn.cursor()
         cat_merc = [cat,]
