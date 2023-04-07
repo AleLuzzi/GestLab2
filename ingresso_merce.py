@@ -173,7 +173,7 @@ class Ingresso_merce(Screen):
 
         ''' BOXLAYOUT DESTRO '''
 
-        self.btn_quantita_richiesta = Label(text='Quantità richiesta', size_hint=(1, .1), pos_hint={"top":1})
+        self.btn_quantita_richiesta = Label(text='Quantità ricevuta', size_hint=(1, .1), pos_hint={"top":1})
         self.box_destra.add_widget(self.btn_quantita_richiesta)
 
         ''' DEFINIZIONE BOXLAYOUT E TOGGLE_BTN PER SELEZIONE KG/PZ'''
@@ -189,7 +189,7 @@ class Ingresso_merce(Screen):
         ''' DEFINIZIONE BOXLAYOUT E SLIDER PER INSERIMENTO PESO ORDINATO'''
 
         self.box_slider = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
-        self.slider_peso = Slider(min=1, max=30, step=0.5)
+        self.slider_peso = Slider(min=1, max=100, step=0.1)
         self.slider_peso.bind(value=self.OnSliderValueChange)
         self.lbl_slider = Label(text='0')
         
@@ -215,6 +215,20 @@ class Ingresso_merce(Screen):
         self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_3)
         self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_4)
 
+        ''' BOTTONE CONFERMA SELEZIONI TAB2 - CORPO DOCUMENTO'''
+
+        self.btn_conferma_selezioni = Button(text='Conferma', size_hint=(1, .1))
+        self.btn_conferma_selezioni.bind(on_press=lambda x:self.conferma_selezione(self.mostra_dati.data))
+        self.box_destra.add_widget(self.btn_conferma_selezioni)
+
+    def conferma_selezione(self, dat): 
+        index = 0
+        while index < len(dat):
+            if dat[index]['selected']:
+                dat[index]['peso'] = self.lbl_slider.text
+                print(dat[index])
+            index += 1
+
     def OnSliderValueChange(self, instance, value):
         self.lbl_slider.text = str(value)
     
@@ -223,7 +237,7 @@ class Ingresso_merce(Screen):
         self.slider_peso.value = str(value)
 
 
-    def aggiorna_rv(self, cat):
+    def aggiorna_rv(self, cat, peso=0):
         self.c = self.conn.cursor()
         cat_merc = [cat,]
         lista = []
@@ -231,7 +245,7 @@ class Ingresso_merce(Screen):
         self.c.execute(query, cat_merc)
         for x in self.c:
             lista.extend(x)
-        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0]} for x in lista]
+        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0], 'peso': 0} for x in lista]
 
     def indietro(self, instance):
         self.manager.current = 'menu'
