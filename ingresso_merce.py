@@ -14,6 +14,7 @@ from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
+from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.metrics import dp
@@ -21,6 +22,11 @@ from kivy.uix.togglebutton import ToggleButton
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
+    ''' Adds selection and focus behaviour to the view. '''
+
+
+class SelectableRecycleGridLayout(FocusBehavior, LayoutSelectionBehavior,
+                                 RecycleGridLayout):
     ''' Adds selection and focus behaviour to the view. '''
 
 
@@ -57,8 +63,7 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
-        self.data = [{'text': 'nessuna selezione'}]
-
+        
 
 class Ingresso_merce(Screen):
     def __init__(self, **kwargs):
@@ -72,6 +77,9 @@ class Ingresso_merce(Screen):
                                    password='')
 
         c = self.conn.cursor()
+
+        ''' INIZIALIZZO LISTA CHE CONTIENE LE SELEZIONI '''
+        self.lista_riepilogo = []
 
         c.execute("SELECT prog_acq FROM progressivi")
         prog_lotto_acq = c.fetchone()[0]
@@ -96,7 +104,8 @@ class Ingresso_merce(Screen):
         self.tab_panel_tab1 = TabbedPanelItem(text='Intestazione')
         self.tab_panel_tab2 = TabbedPanelItem(text='Corpo \n Documento')
         self.tab_panel_tab3 = TabbedPanelItem(text='Riepilogo')
-
+        self.tab_panel_tab3.bind(on_press=lambda x:self.tab3_premuto())
+        
         self.add_widget(self.tab_panel)
         self.tab_panel.add_widget(self.tab_panel_tab1)
         self.tab_panel.add_widget(self.tab_panel_tab2)
@@ -221,13 +230,36 @@ class Ingresso_merce(Screen):
         self.btn_conferma_selezioni.bind(on_press=lambda x:self.conferma_selezione(self.mostra_dati.data))
         self.box_destra.add_widget(self.btn_conferma_selezioni)
 
-    def conferma_selezione(self, dat): 
+        ''' DEFINIZIONE BOX ESTERNO TAB3 - RIEPILOGO '''
+        self.box_esterno_riepilogo = BoxLayout(orientation='horizontal')
+        self.tab_panel_tab3.add_widget(self.box_esterno_riepilogo)
+
+        self.box_sinistra_riepilogo = BoxLayout(orientation='vertical')
+        self.box_esterno_riepilogo.add_widget(self.box_sinistra_riepilogo)
+
+        '''BOX E RECYCLEVIEW TAB 3 PER RIEPILOGO '''
+
+        self.box_layout_recicleview_riepilogo = BoxLayout(orientation='vertical')
+
+        recycle_box_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
+                                                        size_hint=(1,None), orientation='lr-tb', cols=4)
+        recycle_box_layout_riepilogo.bind(minimum_height=recycle_box_layout.setter("height"))
+        self.mostra_dati_riepilogo = RV()
+        self.mostra_dati_riepilogo.add_widget(recycle_box_layout_riepilogo)
+        self.mostra_dati_riepilogo.viewclass= 'SelectableLabel'
+
+        self.box_layout_recicleview_riepilogo.add_widget(self.mostra_dati_riepilogo)
+        self.box_sinistra_riepilogo.add_widget(self.box_layout_recicleview_riepilogo)
+
+    def conferma_selezione(self, dat):
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
                 dat[index]['peso'] = self.lbl_slider.text
                 print(dat[index])
+                self.lista_riepilogo.append(dat[index])
             index += 1
+        print(self.lista_riepilogo)
 
     def OnSliderValueChange(self, instance, value):
         self.lbl_slider.text = str(value)
@@ -246,6 +278,11 @@ class Ingresso_merce(Screen):
         for x in self.c:
             lista.extend(x)
         self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0], 'peso': 0} for x in lista]
+
+    def tab3_premuto(self):
+        print(self.lista_riepilogo)
+        # self.mostra_dati_riepilogo.data = [{'text': val} for row in self.lista_riepilogo for val in row.values()]
+        self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
 
     def indietro(self, instance):
         self.manager.current = 'menu'
