@@ -5,6 +5,10 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 
+class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
+                                 RecycleBoxLayout):
+    ''' Adds selection and focus behaviour to the view. '''
+
 class Chiudi_lotto(Screen):
     def __init__(self, **kwargs):
         super(Chiudi_lotto, self).__init__(**kwargs)
