@@ -79,7 +79,8 @@ class Ingresso_merce(Screen):
         c = self.conn.cursor()
 
         ''' INIZIALIZZO LISTA CHE CONTIENE LE SELEZIONI '''
-        self.lista_riepilogo = []
+        self.lista_selezioni = []
+        self.lista_riepilogo = [{'text': 'Descrizione', 'cat_merc': 'Merceologia', 'peso':'Peso', 'selected': 'Stato'}]
 
         c.execute("SELECT prog_acq FROM progressivi")
         prog_lotto_acq = c.fetchone()[0]
@@ -122,7 +123,7 @@ class Ingresso_merce(Screen):
         self.lbl_data_txt = Label(text='Data Documento')
         self.lbl_data = Label(text=str(oggi.strftime('%d/%m/%y')))
         self.lbl_num_documento = Label(text='Numero Documento')
-        self.txtinput_num_documento = TextInput()
+        self.txtinput_num_documento = TextInput(font_size=40)
 
         self.box_layout_tab1.add_widget(self.lbl_progressivo_lotto_ingresso_txt)
         self.box_layout_tab1.add_widget(self.lbl_progressivo_ingresso)
@@ -167,7 +168,7 @@ class Ingresso_merce(Screen):
         self.box_layout_recicleview = BoxLayout(orientation='vertical')
 
         recycle_box_layout = SelectableRecycleBoxLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
-                                                        size_hint=(1, None), orientation='vertical')
+                                                        size_hint=(1, None), orientation='vertical', multiselect='False')
         recycle_box_layout.bind(minimum_height=recycle_box_layout.setter("height"))
         self.mostra_dati = RV()
         self.mostra_dati.add_widget(recycle_box_layout)
@@ -197,15 +198,12 @@ class Ingresso_merce(Screen):
 
         ''' DEFINIZIONE BOXLAYOUT E SLIDER PER INSERIMENTO PESO ORDINATO'''
 
-        self.box_slider = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
-        self.slider_peso = Slider(min=1, max=100, step=0.1)
-        self.slider_peso.bind(value=self.OnSliderValueChange)
-        self.lbl_slider = Label(text='0')
+        self.box_txtinp_peso_ricevuto = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
+        self.txtinp_peso_ricevuto = TextInput(font_size=40)
         
-        self.box_destra.add_widget(self.box_slider)
-        self.box_slider.add_widget(self.slider_peso)
-        self.box_slider.add_widget(self.lbl_slider)
-
+        self.box_destra.add_widget(self.box_txtinp_peso_ricevuto)
+        self.box_txtinp_peso_ricevuto.add_widget(self.txtinp_peso_ricevuto)
+        
         ''' DEFINIZIONE BOXLAYOUT E BOTTONI PER INSERIMENTO PESO VELOCE'''
 
         self.box_btn_peso_veloce = BoxLayout(orientation='horizontal', size_hint=(1, .1), pos_hint={'top':1})
@@ -235,18 +233,20 @@ class Ingresso_merce(Screen):
         self.tab_panel_tab3.add_widget(self.box_esterno_riepilogo)
 
         self.box_sinistra_riepilogo = BoxLayout(orientation='vertical')
+        self.box_destra_riepilogo = BoxLayout(orientation='vertical')
         self.box_esterno_riepilogo.add_widget(self.box_sinistra_riepilogo)
+        self.box_esterno_riepilogo.add_widget(self.box_destra_riepilogo)
 
         '''BOX E RECYCLEVIEW TAB 3 PER RIEPILOGO '''
 
         self.box_layout_recicleview_riepilogo = BoxLayout(orientation='vertical')
 
-        recycle_box_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
+        recycle_grid_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
                                                         size_hint=(1,None), orientation='lr-tb', cols=4)
-        recycle_box_layout_riepilogo.bind(minimum_height=recycle_box_layout.setter("height"))
+        recycle_grid_layout_riepilogo.bind(minimum_height=recycle_grid_layout_riepilogo.setter("height"))
         self.mostra_dati_riepilogo = RV()
-        self.mostra_dati_riepilogo.add_widget(recycle_box_layout_riepilogo)
-        self.mostra_dati_riepilogo.viewclass= 'SelectableLabel'
+        self.mostra_dati_riepilogo.add_widget(recycle_grid_layout_riepilogo)
+        self.mostra_dati_riepilogo.viewclass= 'Label'
 
         self.box_layout_recicleview_riepilogo.add_widget(self.mostra_dati_riepilogo)
         self.box_sinistra_riepilogo.add_widget(self.box_layout_recicleview_riepilogo)
@@ -255,34 +255,28 @@ class Ingresso_merce(Screen):
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
-                dat[index]['peso'] = self.lbl_slider.text
-                print(dat[index])
+                dat[index]['peso'] = self.txtinp_peso_ricevuto.text
                 self.lista_riepilogo.append(dat[index])
+                break
             index += 1
-        print(self.lista_riepilogo)
-
-    def OnSliderValueChange(self, instance, value):
-        self.lbl_slider.text = str(value)
-    
+        
     def pressione_btn_peso_veloce(self, value):
-        self.lbl_slider.text = str(value)
-        self.slider_peso.value = str(value)
-
-
-    def aggiorna_rv(self, cat, peso=0):
+        self.txtinp_peso_ricevuto.text = str(value)
+        
+    def aggiorna_rv(self, cat):
         self.c = self.conn.cursor()
         cat_merc = [cat,]
-        lista = []
+        self.lista_selezioni.clear()
         query = 'SELECT taglio FROM tagli WHERE Id_Merceologia=%s'
         self.c.execute(query, cat_merc)
         for x in self.c:
-            lista.extend(x)
-        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0], 'peso': 0} for x in lista]
+            self.lista_selezioni.extend(x)
+        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0], 'peso': 0} for x in self.lista_selezioni]
+        
 
     def tab3_premuto(self):
         print(self.lista_riepilogo)
-        # self.mostra_dati_riepilogo.data = [{'text': val} for row in self.lista_riepilogo for val in row.values()]
         self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
-
+        
     def indietro(self, instance):
         self.manager.current = 'menu'
