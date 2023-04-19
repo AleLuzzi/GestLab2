@@ -12,7 +12,7 @@ import datetime
 import mysql.connector
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
-from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.recyclegridlayout import RecycleGridLayout
 from kivy.uix.behaviors import FocusBehavior
@@ -55,9 +55,11 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 
         rv.data[index]['selected'] = self.selected
         if is_selected:
-            print("selection changed to {0}".format(rv.data[index]))
+            # print("selection changed to {0}".format(rv.data[index]))
+            pass
         else:
-            print("selection removed for {0}".format(rv.data[index]))
+            # print("selection removed for {0}".format(rv.data[index]))
+            pass
 
 
 class RV(RecycleView):
@@ -76,21 +78,17 @@ class Ingresso_merce(Screen):
                                    user="root",
                                    password='')
 
-        c = self.conn.cursor()
+        self.c = self.conn.cursor()
 
         ''' INIZIALIZZO LISTA CHE CONTIENE LE SELEZIONI '''
-        self.lista_selezioni = []
-        self.lista_riepilogo = [{'text': 'Descrizione', 'cat_merc': 'Merceologia', 'peso':'Peso', 'selected': 'Stato'}]
-
-        c.execute("SELECT prog_acq FROM progressivi")
-        prog_lotto_acq = c.fetchone()[0]
-
         lista_fornitori = []
+        self.lista_selezioni = []
+        self.lista_riepilogo = [{'text': 'Descrizione', 'cat_merc': 'Merceologia', 'peso':'Peso', 'selected': 'Riga'}]
+        self.tot_articoli = 0
 
-        c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
+        prog_lotto_acq = self._recupera_progressivo_ingresso()
 
-        for lista in c:
-            lista_fornitori.extend(lista)
+        lista_fornitori = self._recupera_lista_fornitori()
 
         ''' DEFINIZIONE BTN INDIETRO COMUNE A TUTTI I TAB '''
 
@@ -199,7 +197,7 @@ class Ingresso_merce(Screen):
         ''' DEFINIZIONE BOXLAYOUT E SLIDER PER INSERIMENTO PESO ORDINATO'''
 
         self.box_txtinp_peso_ricevuto = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
-        self.txtinp_peso_ricevuto = TextInput(font_size=40)
+        self.txtinp_peso_ricevuto = TextInput(font_size=40, text=str(0))
         
         self.box_destra.add_widget(self.box_txtinp_peso_ricevuto)
         self.box_txtinp_peso_ricevuto.add_widget(self.txtinp_peso_ricevuto)
@@ -222,11 +220,15 @@ class Ingresso_merce(Screen):
         self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_3)
         self.box_btn_peso_veloce.add_widget(self.btn_peso_veloce_4)
 
-        ''' BOTTONE CONFERMA SELEZIONI TAB2 - CORPO DOCUMENTO'''
+        ''' BOTTONE CONFERMA SELEZIONI  E CONTEGGIO ARTICOLI INSERITI TAB2 - CORPO DOCUMENTO'''
 
-        self.btn_conferma_selezioni = Button(text='Conferma', size_hint=(1, .1))
+        self.box_tot_e_conferma_selezioni = BoxLayout(orientation='horizontal', size_hint=(1, .1), pos_hint={'top':1})
+        self.btn_conferma_selezioni = Button(text='Conferma', size_hint=(.75, 1))
+        self.lbl_conteggio_selezioni = Label(text='Articoli \n Inseriti', size_hint=(.25, 1))
         self.btn_conferma_selezioni.bind(on_press=lambda x:self.conferma_selezione(self.mostra_dati.data))
-        self.box_destra.add_widget(self.btn_conferma_selezioni)
+        self.box_destra.add_widget(self.box_tot_e_conferma_selezioni)
+        self.box_tot_e_conferma_selezioni.add_widget(self.btn_conferma_selezioni)
+        self.box_tot_e_conferma_selezioni.add_widget(self.lbl_conteggio_selezioni)
 
         ''' DEFINIZIONE BOX ESTERNO TAB3 - RIEPILOGO '''
         self.box_esterno_riepilogo = BoxLayout(orientation='horizontal')
@@ -256,27 +258,41 @@ class Ingresso_merce(Screen):
         while index < len(dat):
             if dat[index]['selected']:
                 dat[index]['peso'] = self.txtinp_peso_ricevuto.text
+                dat[index]['selected'] = len(self.lista_riepilogo)
                 self.lista_riepilogo.append(dat[index])
                 break
             index += 1
-        
+        self.lbl_conteggio_selezioni.text = "Articoli \nInseriti:\n     {}".format(len(self.lista_riepilogo)-1)
+        self.txtinp_peso_ricevuto.text=str(0)
+
     def pressione_btn_peso_veloce(self, value):
         self.txtinp_peso_ricevuto.text = str(value)
         
     def aggiorna_rv(self, cat):
+        self.lista_selezioni.clear()
         self.c = self.conn.cursor()
         cat_merc = [cat,]
-        self.lista_selezioni.clear()
         query = 'SELECT taglio FROM tagli WHERE Id_Merceologia=%s'
         self.c.execute(query, cat_merc)
         for x in self.c:
             self.lista_selezioni.extend(x)
-        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0], 'peso': 0} for x in self.lista_selezioni]
+        self.mostra_dati.data = [{'text': x, 'id_cat_merc': cat_merc[0]} for x in self.lista_selezioni]
         
-
     def tab3_premuto(self):
         print(self.lista_riepilogo)
-        self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
+        # self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
+
+    def _recupera_progressivo_ingresso(self):
+        self.c.execute("SELECT prog_acq FROM progressivi")
+        prog_ingresso = self.c.fetchone()[0]
+        return prog_ingresso
+    
+    def _recupera_lista_fornitori(self):
+        self.c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
+        fornitori = []
+        for lista in self.c:
+            fornitori.extend(lista)
+        return fornitori
         
     def indietro(self, instance):
         self.manager.current = 'menu'
