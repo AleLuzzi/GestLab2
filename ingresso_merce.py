@@ -19,6 +19,7 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.metrics import dp
 from kivy.uix.togglebutton import ToggleButton
+from kivy.graphics import Color, Rectangle
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
@@ -65,8 +66,14 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
-        
 
+class MyLabel(Label):
+    def on_size(self, *args):
+        self.canvas.before.clear()
+        with self.canvas.before:
+            Color(0, 1, 0, 0.25)
+            Rectangle(pos=self.pos, size=self.size)
+        
 class Ingresso_merce(Screen):
     def __init__(self, **kwargs):
         super(Ingresso_merce, self).__init__(**kwargs)
@@ -83,7 +90,7 @@ class Ingresso_merce(Screen):
         ''' INIZIALIZZO LISTA CHE CONTIENE LE SELEZIONI '''
         lista_fornitori = []
         self.lista_selezioni = []
-        self.lista_riepilogo = [{'text': 'Descrizione', 'cat_merc': 'Merceologia', 'peso':'Peso', 'selected': 'Riga'}]
+        self.lista_riepilogo = []
         self.tot_articoli = 0
 
         prog_lotto_acq = self._recupera_progressivo_ingresso()
@@ -114,13 +121,13 @@ class Ingresso_merce(Screen):
         
         self.box_layout_tab1 = BoxLayout(orientation='vertical')
 
-        self.lbl_progressivo_lotto_ingresso_txt = Label(text='Progressivo Lotto ingresso')
+        self.lbl_progressivo_lotto_ingresso_txt = MyLabel(text='Progressivo Lotto ingresso')
         self.lbl_progressivo_ingresso = Label(text=str(prog_lotto_acq)+'V')
-        self.lbl_fornitore_txt = Label(text='Fornitore')
+        self.lbl_fornitore_txt = MyLabel(text='Fornitore')
         self.spinner_fornitori = Spinner(values=lista_fornitori)
-        self.lbl_data_txt = Label(text='Data Documento')
+        self.lbl_data_txt = MyLabel(text='Data Documento')
         self.lbl_data = Label(text=str(oggi.strftime('%d/%m/%y')))
-        self.lbl_num_documento = Label(text='Numero Documento')
+        self.lbl_num_documento = MyLabel(text='Numero Documento')
         self.txtinput_num_documento = TextInput(font_size=40)
 
         self.box_layout_tab1.add_widget(self.lbl_progressivo_lotto_ingresso_txt)
@@ -165,7 +172,7 @@ class Ingresso_merce(Screen):
         
         self.box_layout_recicleview = BoxLayout(orientation='vertical')
 
-        recycle_box_layout = SelectableRecycleBoxLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
+        recycle_box_layout = SelectableRecycleBoxLayout(default_size=(None, dp(50)), default_size_hint=(1, None),
                                                         size_hint=(1, None), orientation='vertical', multiselect='False')
         recycle_box_layout.bind(minimum_height=recycle_box_layout.setter("height"))
         self.mostra_dati = RV()
@@ -243,10 +250,11 @@ class Ingresso_merce(Screen):
 
         self.box_layout_recicleview_riepilogo = BoxLayout(orientation='vertical')
 
-        recycle_grid_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(56)), default_size_hint=(1, None),
+        recycle_grid_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(20)), default_size_hint=(1, None),
                                                         size_hint=(1,None), orientation='lr-tb', cols=4)
         recycle_grid_layout_riepilogo.bind(minimum_height=recycle_grid_layout_riepilogo.setter("height"))
         self.mostra_dati_riepilogo = RV()
+        self.mostra_dati_riepilogo.data = [{'riga':"", 'descrizione': "", 'cat_merc':"", 'peso':""}]
         self.mostra_dati_riepilogo.add_widget(recycle_grid_layout_riepilogo)
         self.mostra_dati_riepilogo.viewclass= 'Label'
 
@@ -262,7 +270,7 @@ class Ingresso_merce(Screen):
                 self.lista_riepilogo.append(dat[index])
                 break
             index += 1
-        self.lbl_conteggio_selezioni.text = "Articoli \nInseriti:\n     {}".format(len(self.lista_riepilogo)-1)
+        self.lbl_conteggio_selezioni.text = "Articoli \nInseriti:\n     {}".format(len(self.lista_riepilogo))
         self.txtinp_peso_ricevuto.text=str(0)
 
     def pressione_btn_peso_veloce(self, value):
@@ -281,6 +289,7 @@ class Ingresso_merce(Screen):
     def tab3_premuto(self):
         print(self.lista_riepilogo)
         # self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
+        # self.mostra_dati_riepilogo.data = [{'text': str(val['selected']), 'text': str(val['text']), 'text': str(val['id_cat_merc']), 'text': str(val['peso'])} for row in self.lista_riepilogo for val in row.values()]
 
     def _recupera_progressivo_ingresso(self):
         self.c.execute("SELECT prog_acq FROM progressivi")
