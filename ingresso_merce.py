@@ -20,6 +20,19 @@ from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.metrics import dp
 from kivy.uix.togglebutton import ToggleButton
 from kivy.graphics import Color, Rectangle
+from kivy.lang import Builder
+
+Builder.load_string("""
+
+<SelectableLabel>:
+    # Draw a background to indicate selection
+    canvas.before:
+        Color:
+            rgba: (.05, 0.5, .9, .8) if self.selected else (.5, .5, .5, 1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+""")
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
@@ -80,7 +93,7 @@ class Ingresso_merce(Screen):
 
         oggi = datetime.date.today()
 
-        self.conn = mysql.connector.connect(host="192.168.0.100",
+        self.conn = mysql.connector.connect(host="127.0.0.1",
                                    database="data",
                                    user="root",
                                    password='')

@@ -3,10 +3,8 @@ from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen, WipeTransition
 from kivy.uix.label import Label
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
-import datetime
 from kivy import Config
 import configparser
-import mysql.connector
 from chiudi_lotto import Chiudi_lotto
 from ingresso_merce import Ingresso_merce
 
@@ -24,15 +22,6 @@ class menu(Screen):
     def esci():
         App.get_running_app().stop()
 
-
-class IngressoMerce(Screen):
-    
-    def confermato(self, dat):
-        index = 0
-        while index < len(dat):
-            if dat[index]['selected']:
-                print(dat[index])
-            index += 1
     
 class main(App):
     def build(self):
