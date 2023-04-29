@@ -6,7 +6,6 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.button import Button, Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.spinner import Spinner
-from kivy.uix.slider import Slider
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
 import datetime
 import mysql.connector
@@ -32,6 +31,21 @@ Builder.load_string("""
         Rectangle:
             pos: self.pos
             size: self.size
+
+<RvMultiCampo>:
+    orientation: 'horizontal'
+    lbl_1: ''
+    lbl_2: ''
+    lbl_3: ''
+    lbl_4: ''
+    Label:
+        text: root.lbl_1
+    Label:
+        text: root.lbl_2
+    Label:
+        text: root.lbl_3
+    Label:
+        text: root.lbl_4
 """)
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
@@ -76,6 +90,10 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
             pass
 
 
+class RvMultiCampo(BoxLayout):
+    pass
+
+
 class RV(RecycleView):
     def __init__(self, **kwargs):
         super(RV, self).__init__(**kwargs)
@@ -93,7 +111,7 @@ class Ingresso_merce(Screen):
 
         oggi = datetime.date.today()
 
-        self.conn = mysql.connector.connect(host="127.0.0.1",
+        self.conn = mysql.connector.connect(host="192.168.0.100",
                                    database="data",
                                    user="root",
                                    password='')
@@ -261,17 +279,29 @@ class Ingresso_merce(Screen):
 
         '''BOX E RECYCLEVIEW TAB 3 PER RIEPILOGO '''
 
+        self.grid_intestazione_colonne = GridLayout(cols=4, size_hint=(1, 0.04))
+        self.lbl1 = Label(text='ARTICOLO')
+        self.lbl2 = Label(text='MERCEOLOGIA')
+        self.lbl3 = Label(text='PESO')
+        self.lbl4 = Label(text='RIGA')
+
+        self.grid_intestazione_colonne.add_widget(self.lbl1)
+        self.grid_intestazione_colonne.add_widget(self.lbl2)
+        self.grid_intestazione_colonne.add_widget(self.lbl3)
+        self.grid_intestazione_colonne.add_widget(self.lbl4)
+
+
         self.box_layout_recicleview_riepilogo = BoxLayout(orientation='vertical')
 
-        recycle_grid_layout_riepilogo = SelectableRecycleGridLayout(default_size=(None, dp(20)), default_size_hint=(1, None),
-                                                        size_hint=(1,None), orientation='lr-tb', cols=4)
-        recycle_grid_layout_riepilogo.bind(minimum_height=recycle_grid_layout_riepilogo.setter("height"))
+        recycle_box_layout_riepilogo = RecycleBoxLayout(default_size=(None, dp(20)), default_size_hint=(1, None),
+                                                        size_hint=(1,None), orientation='vertical')
+        recycle_box_layout_riepilogo.bind(minimum_height=recycle_box_layout_riepilogo.setter("height"))
         self.mostra_dati_riepilogo = RV()
-        self.mostra_dati_riepilogo.data = [{'riga':"", 'descrizione': "", 'cat_merc':"", 'peso':""}]
-        self.mostra_dati_riepilogo.add_widget(recycle_grid_layout_riepilogo)
-        self.mostra_dati_riepilogo.viewclass= 'Label'
+        self.mostra_dati_riepilogo.add_widget(recycle_box_layout_riepilogo)
+        self.mostra_dati_riepilogo.viewclass= 'RvMultiCampo'
 
         self.box_layout_recicleview_riepilogo.add_widget(self.mostra_dati_riepilogo)
+        self.box_sinistra_riepilogo.add_widget(self.grid_intestazione_colonne)
         self.box_sinistra_riepilogo.add_widget(self.box_layout_recicleview_riepilogo)
 
     def conferma_selezione(self, dat):
@@ -279,7 +309,7 @@ class Ingresso_merce(Screen):
         while index < len(dat):
             if dat[index]['selected']:
                 dat[index]['peso'] = self.txtinp_peso_ricevuto.text
-                dat[index]['selected'] = len(self.lista_riepilogo)
+                dat[index]['riga'] = len(self.lista_riepilogo)+1
                 self.lista_riepilogo.append(dat[index])
                 break
             index += 1
@@ -297,12 +327,11 @@ class Ingresso_merce(Screen):
         self.c.execute(query, cat_merc)
         for x in self.c:
             self.lista_selezioni.extend(x)
-        self.mostra_dati.data = [{'text': x, 'id_cat_merc': cat_merc[0]} for x in self.lista_selezioni]
+        self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0]} for x in self.lista_selezioni]
         
     def tab3_premuto(self):
         print(self.lista_riepilogo)
-        # self.mostra_dati_riepilogo.data = [{'text': str(val)} for row in self.lista_riepilogo for val in row.values()]
-        # self.mostra_dati_riepilogo.data = [{'text': str(val['selected']), 'text': str(val['text']), 'text': str(val['id_cat_merc']), 'text': str(val['peso'])} for row in self.lista_riepilogo for val in row.values()]
+        self.mostra_dati_riepilogo.data = [{'lbl_1': str(x['text']), 'lbl_2': str(x['cat_merc']), 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in self.lista_riepilogo]
 
     def _recupera_progressivo_ingresso(self):
         self.c.execute("SELECT prog_acq FROM progressivi")
