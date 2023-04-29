@@ -308,6 +308,7 @@ class Ingresso_merce(Screen):
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
+                dat[index]['merc'] = self._recupera_merceologia(dat[index]['cat_merc'])
                 dat[index]['peso'] = self.txtinp_peso_ricevuto.text
                 dat[index]['riga'] = len(self.lista_riepilogo)+1
                 self.lista_riepilogo.append(dat[index])
@@ -331,7 +332,7 @@ class Ingresso_merce(Screen):
         
     def tab3_premuto(self):
         print(self.lista_riepilogo)
-        self.mostra_dati_riepilogo.data = [{'lbl_1': str(x['text']), 'lbl_2': str(x['cat_merc']), 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in self.lista_riepilogo]
+        self.mostra_dati_riepilogo.data = [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in self.lista_riepilogo]
 
     def _recupera_progressivo_ingresso(self):
         self.c.execute("SELECT prog_acq FROM progressivi")
@@ -344,6 +345,11 @@ class Ingresso_merce(Screen):
         for lista in self.c:
             fornitori.extend(lista)
         return fornitori
+    
+    def _recupera_merceologia(self, cat):
+        self.c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
+        merc = self.c.fetchone()[0]
+        return merc
         
     def indietro(self, instance):
         self.manager.current = 'menu'
