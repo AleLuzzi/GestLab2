@@ -235,7 +235,7 @@ class Ingresso_merce(Screen):
         ''' DEFINIZIONE BOXLAYOUT E SLIDER PER INSERIMENTO PESO ORDINATO'''
 
         self.box_txtinp_peso_ricevuto = BoxLayout(orientation='vertical', size_hint=(1, .1), pos_hint={'top':1})
-        self.txtinp_peso_ricevuto = TextInput(font_size=40, text=str(0))
+        self.txtinp_peso_ricevuto = TextInput(font_size=40, text='', multiline=False, hint_text='inserisci il peso qui', input_type='number')
         
         self.box_destra.add_widget(self.box_txtinp_peso_ricevuto)
         self.box_txtinp_peso_ricevuto.add_widget(self.txtinp_peso_ricevuto)
@@ -279,7 +279,7 @@ class Ingresso_merce(Screen):
 
         '''BOX E RECYCLEVIEW TAB 3 PER RIEPILOGO '''
 
-        self.grid_intestazione_colonne = GridLayout(cols=4, size_hint=(1, 0.04))
+        self.grid_intestazione_colonne = GridLayout(cols=4, size_hint=(1, 0.1))
         self.lbl1 = Label(text='ARTICOLO')
         self.lbl2 = Label(text='MERCEOLOGIA')
         self.lbl3 = Label(text='PESO')
@@ -315,7 +315,7 @@ class Ingresso_merce(Screen):
                 break
             index += 1
         self.lbl_conteggio_selezioni.text = "Articoli \nInseriti:\n     {}".format(len(self.lista_riepilogo))
-        self.txtinp_peso_ricevuto.text=str(0)
+        self.txtinp_peso_ricevuto.text=str('')
 
     def pressione_btn_peso_veloce(self, value):
         self.txtinp_peso_ricevuto.text = str(value)
