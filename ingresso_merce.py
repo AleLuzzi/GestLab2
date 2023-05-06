@@ -274,16 +274,17 @@ class Ingresso_merce(Screen):
 
         self.box_sinistra_riepilogo = BoxLayout(orientation='vertical')
         self.box_destra_riepilogo = BoxLayout(orientation='vertical')
+
         self.box_esterno_riepilogo.add_widget(self.box_sinistra_riepilogo)
         self.box_esterno_riepilogo.add_widget(self.box_destra_riepilogo)
 
         '''BOX E RECYCLEVIEW TAB 3 PER RIEPILOGO '''
 
         self.grid_intestazione_colonne = GridLayout(cols=4, size_hint=(1, 0.1))
-        self.lbl1 = Label(text='ARTICOLO')
-        self.lbl2 = Label(text='MERCEOLOGIA')
-        self.lbl3 = Label(text='PESO')
-        self.lbl4 = Label(text='RIGA')
+        self.lbl1 = MyLabel(text='ARTICOLO')
+        self.lbl2 = MyLabel(text='MERCEOLOGIA')
+        self.lbl3 = MyLabel(text='PESO')
+        self.lbl4 = MyLabel(text='RIGA')
 
         self.grid_intestazione_colonne.add_widget(self.lbl1)
         self.grid_intestazione_colonne.add_widget(self.lbl2)
@@ -303,6 +304,21 @@ class Ingresso_merce(Screen):
         self.box_layout_recicleview_riepilogo.add_widget(self.mostra_dati_riepilogo)
         self.box_sinistra_riepilogo.add_widget(self.grid_intestazione_colonne)
         self.box_sinistra_riepilogo.add_widget(self.box_layout_recicleview_riepilogo)
+
+        ''' BTN PER MODIFICA RIEPILOGO TAB3'''
+        self.box_cancella_riga = BoxLayout(orientation='vertical', size_hint=(1, 0.1))
+        self.lbl_cancella_riga = Label(text='cancella riga')
+
+        self.grid_riga_da_cancellare = GridLayout(cols = 2)
+        self.spinner_riga_da_cancellare = Spinner(size_hint=(0.3, None))
+        self.btn_conferma_cancella = Button(text='conferma', size_hint=(0.3, None))
+        
+        self.box_cancella_riga.add_widget(self.lbl_cancella_riga)
+        self.grid_riga_da_cancellare.add_widget(self.spinner_riga_da_cancellare)
+        self.grid_riga_da_cancellare.add_widget(self.btn_conferma_cancella)
+
+        self.box_destra_riepilogo.add_widget(self.box_cancella_riga)
+        self.box_destra_riepilogo.add_widget(self.grid_riga_da_cancellare)
 
     def conferma_selezione(self, dat):
         index = 0
