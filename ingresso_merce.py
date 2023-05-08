@@ -124,6 +124,7 @@ class Ingresso_merce(Screen):
         self.lista_selezioni = []
         self.lista_riepilogo = []
         self.tot_articoli = 0
+        #TODO: aggiungere contatore per articoli inseriti
 
         prog_lotto_acq = self._recupera_progressivo_ingresso()
 
@@ -326,13 +327,14 @@ class Ingresso_merce(Screen):
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
+                self.tot_articoli += 1
                 dat[index]['merc'] = self._recupera_merceologia(dat[index]['cat_merc'])
                 dat[index]['peso'] = self.txtinp_peso_ricevuto.text
-                dat[index]['riga'] = len(self.lista_riepilogo)+1
+                dat[index]['riga'] = self.tot_articoli
                 self.lista_riepilogo.append(dat[index])
                 break
             index += 1
-        self.lbl_conteggio_selezioni.text = "Articoli \nInseriti:\n     {}".format(len(self.lista_riepilogo))
+        self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
         self.txtinp_peso_ricevuto.text=str('')
 
     def pressione_btn_peso_veloce(self, value):
@@ -351,6 +353,9 @@ class Ingresso_merce(Screen):
     def _aggiorna_rv_riepilogo(self, dat):
         return [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 
                  'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in dat]
+    
+    def _conta_articoli_inseriti(self, dat):
+        return len(dat)
         
     def tab3_premuto(self):
         self.lista_righe_riepilogo = self._recupera_righe_selezionate()
@@ -393,7 +398,7 @@ class Ingresso_merce(Screen):
         self.mostra_dati_riepilogo.data.clear()
         self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
         self.spinner_riga_da_cancellare.values = self._recupera_righe_selezionate()
-
+        self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
         
     def indietro(self, instance):
         self.manager.current = 'menu'
