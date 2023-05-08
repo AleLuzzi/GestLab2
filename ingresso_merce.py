@@ -118,8 +118,9 @@ class Ingresso_merce(Screen):
 
         self.c = self.conn.cursor()
 
-        ''' INIZIALIZZO LISTA CHE CONTIENE LE SELEZIONI '''
+        ''' INIZIALIZZO LISTE CHE CONTIENGONO LE SELEZIONI '''
         lista_fornitori = []
+        self.lista_righe_riepilogo = []
         self.lista_selezioni = []
         self.lista_riepilogo = []
         self.tot_articoli = 0
@@ -310,8 +311,9 @@ class Ingresso_merce(Screen):
         self.lbl_cancella_riga = Label(text='cancella riga')
 
         self.grid_riga_da_cancellare = GridLayout(cols = 2)
-        self.spinner_riga_da_cancellare = Spinner(size_hint=(0.3, None))
+        self.spinner_riga_da_cancellare = Spinner(text='seleziona riga', values = self.lista_righe_riepilogo, size_hint=(0.3, None))
         self.btn_conferma_cancella = Button(text='conferma', size_hint=(0.3, None))
+        self.btn_conferma_cancella.bind(on_press=lambda x:self._cancella_riga_da_spinner(self.spinner_riga_da_cancellare.text))
         
         self.box_cancella_riga.add_widget(self.lbl_cancella_riga)
         self.grid_riga_da_cancellare.add_widget(self.spinner_riga_da_cancellare)
@@ -345,10 +347,15 @@ class Ingresso_merce(Screen):
         for x in self.c:
             self.lista_selezioni.extend(x)
         self.mostra_dati.data = [{'text': x, 'cat_merc': cat_merc[0]} for x in self.lista_selezioni]
+
+    def _aggiorna_rv_riepilogo(self, dat):
+        return [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 
+                 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in dat]
         
     def tab3_premuto(self):
-        print(self.lista_riepilogo)
-        self.mostra_dati_riepilogo.data = [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in self.lista_riepilogo]
+        self.lista_righe_riepilogo = self._recupera_righe_selezionate()
+        self.spinner_riga_da_cancellare.values = self.lista_righe_riepilogo
+        self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
 
     def _recupera_progressivo_ingresso(self):
         self.c.execute("SELECT prog_acq FROM progressivi")
@@ -366,6 +373,27 @@ class Ingresso_merce(Screen):
         self.c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
         merc = self.c.fetchone()[0]
         return merc
+    
+    def _recupera_righe_selezionate(self): 
+        righe = []
+        if self.lista_riepilogo:
+            for dic in self.lista_riepilogo:
+                righe.append(str(dic['riga']))
+        else:
+            return '0'
+        return righe
+    
+    def _cancella_riga_da_spinner(self, val):
+        if self.lista_riepilogo:
+            i = 0
+            for i in range(len(self.lista_riepilogo)):
+                if str(self.lista_riepilogo[i]['riga']) == self.spinner_riga_da_cancellare.text:
+                    del self.lista_riepilogo[i]
+                    break
+        self.mostra_dati_riepilogo.data.clear()
+        self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
+        self.spinner_riga_da_cancellare.values = self._recupera_righe_selezionate()
+
         
     def indietro(self, instance):
         self.manager.current = 'menu'
