@@ -5,7 +5,8 @@
     rv2: rv2
     BoxLayout:
         orientation: 'vertical'
-        size_hint: 0.5, 1
+        size_hint: 0.5, 0.9
+        pos_hint:{'top':1}
         RecycleView:
             id:rv
             viewclass: 'SelectableLabel'
@@ -17,8 +18,8 @@
                 orientation: 'vertical'
     BoxLayout:
         orientation: 'horizontal'
-        size_hint: 0.5, 1
-        pos_hint: {'right':1}
+        size_hint: 0.5, 0.9
+        pos_hint: {'right':1, 'top':1}
         RecycleView:
             id:rv2
             viewclass: 'SelectableLabel'
@@ -28,3 +29,8 @@
                 size_hint_y: None
                 height: self.minimum_height
                 orientation: 'vertical'
+    BoxLayout:
+        Button:
+            text: 'Indietro'
+            size_hint: 1, 0.1
+            on_press: root.indietro()
