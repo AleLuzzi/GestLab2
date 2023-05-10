@@ -1,0 +1,30 @@
+#:kivy 2.1.0
+
+<Lotti_vendita>:
+    rv: rv
+    rv2: rv2
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 0.5, 1
+        RecycleView:
+            id:rv
+            viewclass: 'SelectableLabel'
+            SelectableRecycleBoxLayout:
+                default_size: None, dp(56)
+                default_size_hint: 1, None
+                size_hint_y: None
+                height: self.minimum_height
+                orientation: 'vertical'
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: 0.5, 1
+        pos_hint: {'right':1}
+        RecycleView:
+            id:rv2
+            viewclass: 'SelectableLabel'
+            SelectableRecycleBoxLayout:
+                default_size: None, dp(56)
+                default_size_hint: 1, None
+                size_hint_y: None
+                height: self.minimum_height
+                orientation: 'vertical'
