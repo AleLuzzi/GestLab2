@@ -1,0 +1,72 @@
+#:kivy 2.1.0
+
+<Multicampo>:
+    orientation: 'horizontal'
+    label_1: ''
+    label_2: ''
+    label_3: ''
+    checkbox_1: False
+    Label:
+        size_hint_x: 0.1
+        text: root.label_1
+    Label:
+        size_hint_x: 0.7
+        text: root.label_2
+    Label:
+        size_hint_x: 0.1
+        text: root.label_3
+    CheckBox:
+        size_hint_x: 0.1
+        active: root.checkbox_1
+
+<Chiudi_lotto>:
+    rv: rv
+    GridLayout:
+        cols: 1
+        rows: 2
+        GridLayout:
+            canvas.before:
+                Color:
+                    rgba: (.05, 0.5, .9, .8)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            cols: 4
+            rows: 1
+            size_hint_y: 0.1
+            Label:
+                size_hint_x: 0.1
+                text: 'Lotto'
+            Label:
+                size_hint_x: 0.7
+                text: 'Articolo'
+            Label:
+                size_hint_x: 0.1
+                text: 'Peso Residuo'
+            Label
+                size_hint_x: 0.1
+                text: 'In stock'
+        GridLayout:
+            canvas.before:
+                Color:
+                    rgba: (.5, .5, .5, .5)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            cols: 1
+            rows: 1
+            size_hint_y: 0.90
+            RecycleView:
+                id:rv
+                viewclass: 'Multicampo'
+                SelectableRecycleBoxLayout:
+                    default_size: None, dp(20)
+                    default_size_hint: 1, None
+                    size_hint_y: None
+                    height: self.minimum_height
+                    orientation: 'vertical'
+    BoxLayout:
+        Button:
+            text: 'Indietro'
+            size_hint: 1, 0.1
+            on_press: root.indietro()

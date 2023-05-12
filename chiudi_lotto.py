@@ -1,12 +1,13 @@
-import kivy.app
-
+from kivy.app import App
 from kivy.uix.screenmanager import Screen
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.recycleview import RecycleView
+import datetime
+import mysql.connector
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
-from kivy.properties import BooleanProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
@@ -41,41 +42,34 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
         self.selected = is_selected
 
         rv.data[index]['selected'] = self.selected
-        if is_selected:
-            print("selection changed to {0}".format(rv.data[index]))
-        else:
-            print("selection removed for {0}".format(rv.data[index]))
 
-class RV(RecycleView):
-    def __init__(self, **kwargs):
-        super(RV, self).__init__(**kwargs)
+class Multicampo(BoxLayout):
+    pass
+
+items = [{'number': '510001', 'name': 'Big Pump', 'size': '1.50 L', 'in_stock': True},
+         {'number': '523001', 'name': 'Leonie Still', 'size': '1.60 L', 'in_stock': False},
+         {'number': '641301', 'name': 'Apple Mix', 'size': '1.30 L', 'in_stock': True},
+         {'number': '681301', 'name': 'Orange Mix', 'size': '1.40 L', 'in_stock': True}
+        ]
 
 class Chiudi_lotto(Screen):
     def __init__(self, **kwargs):
         super(Chiudi_lotto, self).__init__(**kwargs)
 
-        ''' DEFINIZIONE BOX ESTERNO E BASSO'''
+        oggi = datetime.date.today()
         
-        self.box_esterno = BoxLayout(orientation='horizontal', size_hint=(1, .9), pos_hint={'top':1})
-        self.box_basso = BoxLayout(size_hint=(1, .1))
-        self.add_widget(self.box_esterno)
-        self.add_widget(self.box_basso)
+        self.conn = mysql.connector.connect(host="127.0.0.1",
+                                   database="data",
+                                   user="root",
+                                   password='')
 
-        self.box_sinistra = BoxLayout(orientation='vertical')
-        self.box_destra = BoxLayout(orientation='vertical')
-        self.box_esterno.add_widget(self.box_sinistra)
-        self.box_esterno.add_widget(self.box_destra)
+        self.c = self.conn.cursor()
 
-        ''' DEFINIZIONE BTN INDIETRO '''
+        # self.rv.data = [{'text': str(x)} for x in range(10)]
+        self.rv.data = [{'label_1': str(x['number']), 
+                         'label_2': str(x['name']), 
+                         'label_3': str(x['size']), 
+                         'checkbox_1': x['in_stock']} for x in items]
 
-        self.btn = Button(text='indietro')
-        self.box_basso.add_widget(self.btn)
-        self.btn.bind(on_press=self.indietro)
-
-        ''' DEFINIZIONE LABEL E RECYCLEVIEW BOX SINISTRA'''
-
-        self.lbl_lista_lotti = Button(text='Lotti aperti')
-        self.box_sinistra.add_widget(self.lbl_lista_lotti)
-
-    def indietro(self, instance):
+    def indietro(self):
         self.manager.current = 'menu'

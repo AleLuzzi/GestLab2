@@ -111,7 +111,7 @@ class Ingresso_merce(Screen):
 
         oggi = datetime.date.today()
 
-        self.conn = mysql.connector.connect(host="192.168.0.100",
+        self.conn = mysql.connector.connect(host="127.0.0.1",
                                    database="data",
                                    user="root",
                                    password='')

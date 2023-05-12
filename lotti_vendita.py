@@ -45,14 +45,6 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
         self.selected = is_selected
 
         rv.data[index]['selected'] = self.selected
-        '''
-        if is_selected:
-            # print("selection changed to {0}".format(rv.data[index]))
-            pass
-        else:
-            # print("selection removed for {0}".format(rv.data[index]))
-            pass
-        '''
         
 class Lotti_vendita(Screen):
     def __init__(self, **kwargs):
@@ -69,8 +61,6 @@ class Lotti_vendita(Screen):
 
         self.rv.data = [{'text': str(x)} for x in range(10)]
         self.rv2.data = [{'text': str(x)} for x in range(10)]
-        print(self.ids)
-
 
     def indietro(self):
         self.manager.current = 'menu'
