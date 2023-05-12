@@ -46,10 +46,10 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class Multicampo(BoxLayout):
     pass
 
-items = [{'number': '510001', 'name': 'Big Pump', 'size': '1.50 L', 'in_stock': True},
-         {'number': '523001', 'name': 'Leonie Still', 'size': '1.60 L', 'in_stock': False},
-         {'number': '641301', 'name': 'Apple Mix', 'size': '1.30 L', 'in_stock': True},
-         {'number': '681301', 'name': 'Orange Mix', 'size': '1.40 L', 'in_stock': True}
+items = [{'number': '20230V', 'name': 'Spalla', 'size': '1.50 ', 'in_stock': True},
+         {'number': '20240V', 'name': 'Costine', 'size': '1.60 ', 'in_stock': False},
+         {'number': '20250V', 'name': 'Guanciali', 'size': '1.30 ', 'in_stock': True},
+         {'number': '20260V', 'name': 'Busto', 'size': '1.40 ', 'in_stock': True}
         ]
 
 class Chiudi_lotto(Screen):
