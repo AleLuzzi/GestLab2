@@ -43,14 +43,10 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 
         rv.data[index]['selected'] = self.selected
 
+
 class Multicampo(BoxLayout):
     pass
 
-items = [{'number': '20230V', 'name': 'Spalla', 'size': '1.50 ', 'in_stock': True},
-         {'number': '20240V', 'name': 'Costine', 'size': '1.60 ', 'in_stock': False},
-         {'number': '20250V', 'name': 'Guanciali', 'size': '1.30 ', 'in_stock': True},
-         {'number': '20260V', 'name': 'Busto', 'size': '1.40 ', 'in_stock': True}
-        ]
 
 class Chiudi_lotto(Screen):
     def __init__(self, **kwargs):
@@ -65,11 +61,16 @@ class Chiudi_lotto(Screen):
 
         self.c = self.conn.cursor()
 
-        # self.rv.data = [{'text': str(x)} for x in range(10)]
+        dati = self._recupera_lotti_aperti()
+
         self.rv.data = [{'label_1': str(x['number']), 
                          'label_2': str(x['name']), 
                          'label_3': str(x['size']), 
-                         'checkbox_1': x['in_stock']} for x in items]
-
+                         'checkbox_1': x['in_stock']} for x in dati]
+        
+    def _recupera_lotti_aperti(self):
+        self.c.execute("SELECT progressivo_acq, prodotto, residuo, lotto_chiuso FROM ingresso_merce WHERE lotto_chiuso = 'no'")
+        return [{'number': str(x[0]), 'name': str(x[1]), 'size':str(x[2]), 'in_stock': str(x[3])} for x in self.c]
+        
     def indietro(self):
         self.manager.current = 'menu'
