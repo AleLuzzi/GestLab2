@@ -66,11 +66,11 @@ class Chiudi_lotto(Screen):
         self.rv.data = [{'label_1': str(x['number']), 
                          'label_2': str(x['name']), 
                          'label_3': str(x['size']), 
-                         'checkbox_1': x['in_stock']} for x in dati]
+                         'checkbox_1': False} for x in dati]
         
     def _recupera_lotti_aperti(self):
-        self.c.execute("SELECT progressivo_acq, prodotto, residuo, lotto_chiuso FROM ingresso_merce WHERE lotto_chiuso = 'no'")
-        return [{'number': str(x[0]), 'name': str(x[1]), 'size':str(x[2]), 'in_stock': str(x[3])} for x in self.c]
+        self.c.execute("SELECT progressivo_acq, prodotto, residuo FROM ingresso_merce WHERE lotto_chiuso = 'no'")
+        return [{'number': str(x[0]), 'name': str(x[1]), 'size':str(x[2])} for x in self.c]
         
     def indietro(self):
         self.manager.current = 'menu'
