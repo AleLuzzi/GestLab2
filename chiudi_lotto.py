@@ -54,7 +54,7 @@ class Chiudi_lotto(Screen):
 
         oggi = datetime.date.today()
         
-        self.conn = mysql.connector.connect(host="127.0.0.1",
+        self.conn = mysql.connector.connect(host="192.168.0.100",
                                    database="data",
                                    user="root",
                                    password='')
@@ -64,13 +64,14 @@ class Chiudi_lotto(Screen):
         dati = self._recupera_lotti_aperti()
 
         self.rv.data = [{'label_1': str(x['number']), 
-                         'label_2': str(x['name']), 
-                         'label_3': str(x['size']), 
+                         'label_2': str(x['fornit']), 
+                         'label_3': str(x['name']), 
+                         'label_4': str(x['peso']),
                          'checkbox_1': False} for x in dati]
         
     def _recupera_lotti_aperti(self):
-        self.c.execute("SELECT progressivo_acq, prodotto, residuo FROM ingresso_merce WHERE lotto_chiuso = 'no'")
-        return [{'number': str(x[0]), 'name': str(x[1]), 'size':str(x[2])} for x in self.c]
+        self.c.execute("SELECT progressivo_acq, fornitore, prodotto, residuo FROM ingresso_merce WHERE lotto_chiuso = 'no'")
+        return [{'number': str(x[0]), 'fornit': str(x[1]), 'name':str(x[2]), 'peso':str(x[3])} for x in self.c]
         
     def indietro(self):
         self.manager.current = 'menu'

@@ -5,16 +5,20 @@
     label_1: ''
     label_2: ''
     label_3: ''
+    label_4: ''
     checkbox_1: False
     Label:
         size_hint_x: 0.1
         text: root.label_1
     Label:
-        size_hint_x: 0.5
+        size_hint_x: 0.1
         text: root.label_2
     Label:
-        size_hint_x: 0.3
+        size_hint_x: 0.1
         text: root.label_3
+    Label:
+        size_hint_x: 0.1
+        text: root.label_4
     CheckBox:
         size_hint_x: 0.1
         active: root.checkbox_1
@@ -31,19 +35,22 @@
                 Rectangle:
                     pos: self.pos
                     size: self.size
-            cols: 4
+            cols: 5
             rows: 1
             size_hint_y: 0.1
             Label:
                 size_hint_x: 0.1
                 text: 'Lotto'
             Label:
-                size_hint_x: 0.5
+                size_hint_x: 0.1
+                text: 'Fornitore'
+            Label:
+                size_hint_x: 0.1
                 text: 'Articolo'
             Label:
-                size_hint_x: 0.3
+                size_hint_x: 0.1
                 text: 'Peso Residuo'
-            Label
+            Label:
                 size_hint_x: 0.1
                 text: 'In stock'
         GridLayout:
