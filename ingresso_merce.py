@@ -102,7 +102,7 @@ class MyLabel(Label):
     def on_size(self, *args):
         self.canvas.before.clear()
         with self.canvas.before:
-            Color(0, 1, 0, 0.25)
+            Color(.05, .05, .9, .8)
             Rectangle(pos=self.pos, size=self.size)
         
 class Ingresso_merce(Screen):
@@ -111,7 +111,7 @@ class Ingresso_merce(Screen):
 
         oggi = datetime.date.today()
 
-        self.conn = mysql.connector.connect(host="127.0.0.1",
+        self.conn = mysql.connector.connect(host="192.168.0.100",
                                    database="data",
                                    user="root",
                                    password='')
@@ -315,13 +315,18 @@ class Ingresso_merce(Screen):
         self.spinner_riga_da_cancellare = Spinner(text='seleziona riga', values = self.lista_righe_riepilogo, size_hint=(0.3, None))
         self.btn_conferma_cancella = Button(text='conferma', size_hint=(0.3, None))
         self.btn_conferma_cancella.bind(on_press=lambda x:self._cancella_riga_da_spinner(self.spinner_riga_da_cancellare.text))
+
+        self.box_salva_dati = BoxLayout(size_hint_y=(.3) )
+        self.btn_salva_dati = Button(text='Salva dati')
         
         self.box_cancella_riga.add_widget(self.lbl_cancella_riga)
         self.grid_riga_da_cancellare.add_widget(self.spinner_riga_da_cancellare)
         self.grid_riga_da_cancellare.add_widget(self.btn_conferma_cancella)
-
+        self.box_salva_dati.add_widget(self.btn_salva_dati)
+        
         self.box_destra_riepilogo.add_widget(self.box_cancella_riga)
         self.box_destra_riepilogo.add_widget(self.grid_riga_da_cancellare)
+        self.box_destra_riepilogo.add_widget(self.box_salva_dati)
 
     def conferma_selezione(self, dat):
         index = 0
