@@ -7,21 +7,31 @@
     label_3: ''
     label_4: ''
     checkbox_1: False
-    Label:
-        size_hint_x: 0.1
-        text: root.label_1
-    Label:
-        size_hint_x: 0.1
-        text: root.label_2
-    Label:
-        size_hint_x: 0.1
-        text: root.label_3
-    Label:
-        size_hint_x: 0.1
-        text: root.label_4
-    CheckBox:
-        size_hint_x: 0.1
-        active: root.checkbox_1
+    BoxLayout:
+        orientation: 'vertical'
+        BoxLayout:
+            canvas.before:
+                Color:
+                    rgba: (0, 1, .9, .8)
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+            Label:
+                text: root.label_1
+        GridLayout:
+            cols:4
+            Label:
+                size_hint_x: 0.1
+                text: root.label_2
+            Label:
+                size_hint_x: 0.1
+                text: root.label_3
+            Label:
+                size_hint_x: 0.1
+                text: root.label_4
+            CheckBox:
+                size_hint_x: 0.1
+                active: root.checkbox_1
 
 <Chiudi_lotto>:
     rv: rv
@@ -67,13 +77,16 @@
                 id:rv
                 viewclass: 'Multicampo'
                 SelectableRecycleBoxLayout:
-                    default_size: None, dp(20)
+                    default_size: None, dp(40)
                     default_size_hint: 1, None
                     size_hint_y: None
                     height: self.minimum_height
                     orientation: 'vertical'
     BoxLayout:
         Button:
+            text: 'Cancella Selezionati'
+            size_hint: 0.5, 0.1
+        Button:
             text: 'Indietro'
-            size_hint: 1, 0.1
+            size_hint: 0.5, 0.1
             on_press: root.indietro()
