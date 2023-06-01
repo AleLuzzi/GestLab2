@@ -109,11 +109,11 @@ class Ingresso_merce(Screen):
     def __init__(self, **kwargs):
         super(Ingresso_merce, self).__init__(**kwargs)
 
-        oggi = datetime.date.today()
+        self.oggi = datetime.date.today()
 
         self.conn = mysql.connector.connect(host="192.168.0.100",
-                                   database="data",
-                                   user="root",
+                                   database="db_prova",
+                                   user="prova",
                                    password='')
 
         self.c = self.conn.cursor()
@@ -124,9 +124,8 @@ class Ingresso_merce(Screen):
         self.lista_selezioni = []
         self.lista_riepilogo = []
         self.tot_articoli = 0
-        #TODO: aggiungere contatore per articoli inseriti
-
-        prog_lotto_acq = self._recupera_progressivo_ingresso()
+        
+        self.prog_lotto_acq = self._recupera_progressivo_ingresso()
 
         lista_fornitori = self._recupera_lista_fornitori()
 
@@ -155,11 +154,11 @@ class Ingresso_merce(Screen):
         self.box_layout_tab1 = BoxLayout(orientation='vertical')
 
         self.lbl_progressivo_lotto_ingresso_txt = MyLabel(text='Progressivo Lotto ingresso')
-        self.lbl_progressivo_ingresso = Label(text=str(prog_lotto_acq)+'V')
+        self.lbl_progressivo_ingresso = Label(text=str(self.prog_lotto_acq)+'V')
         self.lbl_fornitore_txt = MyLabel(text='Fornitore')
         self.spinner_fornitori = Spinner(values=lista_fornitori)
         self.lbl_data_txt = MyLabel(text='Data Documento')
-        self.lbl_data = Label(text=str(oggi.strftime('%d/%m/%y')))
+        self.lbl_data = Label(text=str(self.oggi.strftime('%d/%m/%y')))
         self.lbl_num_documento = MyLabel(text='Numero Documento')
         self.txtinput_num_documento = TextInput(font_size=40)
 
@@ -318,6 +317,7 @@ class Ingresso_merce(Screen):
 
         self.box_salva_dati = BoxLayout(size_hint_y=(.3) )
         self.btn_salva_dati = Button(text='Salva dati')
+        self.btn_salva_dati.bind(on_press=lambda x:self._salva_dati(self.lista_riepilogo))
         
         self.box_cancella_riga.add_widget(self.lbl_cancella_riga)
         self.grid_riga_da_cancellare.add_widget(self.spinner_riga_da_cancellare)
@@ -366,7 +366,7 @@ class Ingresso_merce(Screen):
         self.lista_righe_riepilogo = self._recupera_righe_selezionate()
         self.spinner_riga_da_cancellare.values = self.lista_righe_riepilogo
         self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
-
+        
     def _recupera_progressivo_ingresso(self):
         self.c.execute("SELECT prog_acq FROM progressivi")
         prog_ingresso = self.c.fetchone()[0]
@@ -404,6 +404,28 @@ class Ingresso_merce(Screen):
         self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
         self.spinner_riga_da_cancellare.values = self._recupera_righe_selezionate()
         self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
+
+    def _salva_dati(self, arg):
+        data = arg
+        lista = []
+        for dic in data:
+            lista.append([str(self.prog_lotto_acq)+'A', 
+                          self.oggi, 
+                          self.txtinput_num_documento.text, 
+                          self.spinner_fornitori.text, 
+                          dic['text'], 
+                          dic['peso'], 
+                          dic['peso'], 
+                          'no'])
+        
+        print(lista)
+        sql_ins = "INSERT INTO ingresso_merce VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
+        self.c.executemany(sql_ins, lista)
+        self.conn.commit()
+        sql_update = "UPDATE progressivi SET prog_acq = %s"
+        self.c.execute(sql_update, (self.prog_lotto_acq + 1,))
+        self.conn.commit()
+        self.conn.close()
         
     def indietro(self, instance):
         self.manager.current = 'menu'
