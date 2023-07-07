@@ -1,6 +1,7 @@
 #:kivy 2.1.0
 #:include lotti_vendita.kv
 #:include chiudi_lotto.kv
+#:include nuovo_menu.kv
 <menu>:
     BoxLayout:
         orientation: 'vertical'
@@ -11,7 +12,8 @@
                 pos: self.pos
                 size: self.size
         GridLayout:
-            rows: 1
+            rows: 2
+            cols: 5
             size_hint: 1,.5
             Button:
                 text: 'Ingresso Merce'
@@ -26,6 +28,9 @@
                 on_press: root.lotti_vendita()
             Button:
                 text: 'Impostazioni'
+            Button:
+                text: 'Nuovo Menu'
+                on_press: root.nuovo_menu()
             Button:
                 text: 'Esci'
                 on_press: root.esci()
