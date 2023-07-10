@@ -1,6 +1,91 @@
 #:kivy 2.1.0
 
+<Multicampo_menu>:
+    orientation: 'horizontal'
+    label_1: ''
+    label_2: ''
+    checkbox_1: False
+    BoxLayout:
+        orientation: 'horizontal'
+        Label:
+            text: root.label_1
+        Label:
+            text: root.label_2
+        CheckBox:
+            active: root.checkbox_1
+
 <Nuovo_menu>:
+    rv_primi: rv_primi
+    rv_secondi: rv_secondi
+    rv_contorni: rv_contorni
+    BoxLayout:
+        TabbedPanel:
+            do_default_tab: False
+            TabbedPanelItem:
+                text: 'Primi'
+                GridLayout:
+                    canvas.before:
+                        Color:
+                            rgba: (.5, .5, .5, .5)
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    cols: 1
+                    rows: 1
+                    size_hint_y: 0.90
+                    RecycleView:
+                        id:rv_primi
+                        viewclass: 'Multicampo_menu'
+                        SelectableRecycleBoxLayout:
+                            default_size: None, dp(40)
+                            default_size_hint: 1, None
+                            size_hint_y: None
+                            height: self.minimum_height
+                            orientation: 'vertical'
+            TabbedPanelItem:
+                text: 'Secondi'
+                GridLayout:
+                    canvas.before:
+                        Color:
+                            rgba: (.5, .5, .5, .5)
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    cols: 1
+                    rows: 1
+                    size_hint_y: 0.90
+                    RecycleView:
+                        id:rv_secondi
+                        viewclass: 'Multicampo_menu'
+                        SelectableRecycleBoxLayout:
+                            default_size: None, dp(40)
+                            default_size_hint: 1, None
+                            size_hint_y: None
+                            height: self.minimum_height
+                            orientation: 'vertical'
+            TabbedPanelItem:
+                text: 'Contorni'
+                GridLayout:
+                    canvas.before:
+                        Color:
+                            rgba: (.5, .5, .5, .5)
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    cols: 1
+                    rows: 1
+                    size_hint_y: 0.90
+                    RecycleView:
+                        id:rv_contorni
+                        viewclass: 'Multicampo_menu'
+                        SelectableRecycleBoxLayout:
+                            default_size: None, dp(40)
+                            default_size_hint: 1, None
+                            size_hint_y: None
+                            height: self.minimum_height
+                            orientation: 'vertical'
+            TabbedPanelItem:
+                text: 'Riepilogo'
     BoxLayout:
         Button:
             text: 'Indietro'
