@@ -20,6 +20,7 @@ from kivy.metrics import dp
 from kivy.uix.togglebutton import ToggleButton
 from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
+from kivy.uix.popup import Popup
 
 Builder.load_string("""
 
@@ -141,8 +142,9 @@ class Ingresso_merce(Screen):
                                     size_hint=(1,.9), pos_hint={'top':1})
         self.tab_panel_tab1 = TabbedPanelItem(text='Intestazione')
         self.tab_panel_tab2 = TabbedPanelItem(text='Corpo \n Documento')
+        self.tab_panel_tab2.bind(on_press=lambda x:self._tab2_premuto())
         self.tab_panel_tab3 = TabbedPanelItem(text='Riepilogo')
-        self.tab_panel_tab3.bind(on_press=lambda x:self.tab3_premuto())
+        self.tab_panel_tab3.bind(on_press=lambda x:self._tab3_premuto())
         
         self.add_widget(self.tab_panel)
         self.tab_panel.add_widget(self.tab_panel_tab1)
@@ -329,6 +331,7 @@ class Ingresso_merce(Screen):
         self.box_destra_riepilogo.add_widget(self.box_salva_dati)
 
     def conferma_selezione(self, dat):
+        #TODO: aggiungere i controlli
         index = 0
         while index < len(dat):
             if dat[index]['selected']:
@@ -341,6 +344,16 @@ class Ingresso_merce(Screen):
             index += 1
         self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
         self.txtinp_peso_ricevuto.text=str('')
+        '''
+        else:
+            content= Button(text="Mancano dati \n CONTROLLA")
+            popup = Popup(title = 'ATTENZIONE !!!',
+                          content=content,
+                          auto_dismiss=False,
+                          size_hint=(None, None), size=(400, 400))
+            content.bind(on_press=popup.dismiss)
+            popup.open()
+        '''
 
     def pressione_btn_peso_veloce(self, value):
         self.txtinp_peso_ricevuto.text = str(value)
@@ -361,8 +374,20 @@ class Ingresso_merce(Screen):
     
     def _conta_articoli_inseriti(self, dat):
         return len(dat)
+    
+    def _tab2_premuto(self):
+        if self.txtinput_num_documento.text != '' and self.spinner_fornitori.text != '':
+            pass
+        else:
+            content= Button(text="Mancano dati nell'intestazione documento \n torna indietro")
+            popup = Popup(title = 'ATTENZIONE !!!',
+                          content=content,
+                          auto_dismiss=False,
+                          size_hint=(None, None), size=(400, 400))
+            content.bind(on_press=popup.dismiss)
+            popup.open()
         
-    def tab3_premuto(self):
+    def _tab3_premuto(self):
         self.lista_righe_riepilogo = self._recupera_righe_selezionate()
         self.spinner_riga_da_cancellare.values = self.lista_righe_riepilogo
         self.mostra_dati_riepilogo.data = self._aggiorna_rv_riepilogo(self.lista_riepilogo)
@@ -406,6 +431,7 @@ class Ingresso_merce(Screen):
         self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
 
     def _salva_dati(self, arg):
+        #TODO aggiungere controlli 
         data = arg
         lista = []
         for dic in data:
