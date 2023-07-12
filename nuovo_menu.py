@@ -11,6 +11,7 @@ from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.metrics import dp
+import controller_db as db
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
@@ -51,17 +52,10 @@ class Nuovo_menu(Screen):
         super(Nuovo_menu, self).__init__(**kwargs)
 
         oggi = datetime.date.today()
-
-        self.conn = mysql.connector.connect(host="192.168.0.100",
-                                   database="data",
-                                   user="root",
-                                   password='')
-
-        self.c = self.conn.cursor()
-
-        primi = self._recupera_primi()
-        secondi = self._recupera_secondi()
-        contorni = self._recupera_contorni()
+        
+        primi = db._recupera_primi()
+        secondi = db._recupera_secondi()
+        contorni = db._recupera_contorni()
 
         self.rv_primi.data = [{'label_1': str(x['prodotto']),
                                'label_2': str(x['plu']),
@@ -75,17 +69,5 @@ class Nuovo_menu(Screen):
                                   'label_2': str(x['plu']),
                                   'checkbox_1': False} for x in contorni]
 
-    def _recupera_primi(self):
-        self.c.execute("SELECT prodotto, plu FROM prodotti WHERE merceologia ='Primi piatti'")
-        return [{'prodotto': str(x[0]), 'plu': str(x[1])} for x in self.c]
-    
-    def _recupera_secondi(self):
-        self.c.execute("SELECT prodotto, plu FROM prodotti WHERE merceologia ='Secondi piatti'")
-        return [{'prodotto': str(x[0]), 'plu': str(x[1])} for x in self.c]
-    
-    def _recupera_contorni(self):
-        self.c.execute("SELECT prodotto, plu FROM prodotti WHERE merceologia ='Contorni'")
-        return [{'prodotto': str(x[0]), 'plu': str(x[1])} for x in self.c]
-    
     def indietro(self):
         self.manager.current = 'menu'
