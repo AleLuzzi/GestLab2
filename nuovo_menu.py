@@ -58,16 +58,13 @@ class Nuovo_menu(Screen):
         contorni = db._recupera_contorni()
 
         self.rv_primi.data = [{'label_1': str(x['prodotto']),
-                               'label_2': str(x['plu']),
-                               'checkbox_1': False} for x in primi]
+                               'label_2': str(x['plu'])} for x in primi]
         
         self.rv_secondi.data = [{'label_1': str(x['prodotto']),
-                               'label_2': str(x['plu']),
-                               'checkbox_1': False} for x in secondi]
+                               'label_2': str(x['plu'])} for x in secondi]
         
         self.rv_contorni.data = [{'label_1': str(x['prodotto']),
-                                  'label_2': str(x['plu']),
-                                  'checkbox_1': False} for x in contorni]
+                                  'label_2': str(x['plu'])} for x in contorni]
 
     def indietro(self):
         self.manager.current = 'menu'
