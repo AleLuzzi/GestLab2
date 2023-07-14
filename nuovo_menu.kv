@@ -1,6 +1,12 @@
 #:kivy 2.1.0
 
 <Multicampo_menu>:
+    canvas.before:
+        Color:
+            rgba: (.05, 0.5, .9, .8) if self.selected else (.5, .5, .5, 1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
     orientation: 'horizontal'
     label_1: ''
     label_2: ''
@@ -39,6 +45,8 @@
                             size_hint_y: None
                             height: self.minimum_height
                             orientation: 'vertical'
+                            multiselect: True
+                            touch_multiselect: True
             TabbedPanelItem:
                 text: 'Secondi'
                 GridLayout:
@@ -60,6 +68,8 @@
                             size_hint_y: None
                             height: self.minimum_height
                             orientation: 'vertical'
+                            multiselect: True
+                            touch_multiselect: True
             TabbedPanelItem:
                 text: 'Contorni'
                 GridLayout:
@@ -81,6 +91,8 @@
                             size_hint_y: None
                             height: self.minimum_height
                             orientation: 'vertical'
+                            multiselect: True
+                            touch_multiselect: True
             TabbedPanelItem:
                 text: 'Riepilogo'
     BoxLayout:
