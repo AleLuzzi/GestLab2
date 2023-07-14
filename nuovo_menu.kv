@@ -27,26 +27,45 @@
             TabbedPanelItem:
                 text: 'Primi'
                 GridLayout:
-                    canvas.before:
-                        Color:
-                            rgba: (.5, .5, .5, .5)
-                        Rectangle:
-                            pos: self.pos
-                            size: self.size
                     cols: 1
-                    rows: 1
-                    size_hint_y: 0.90
-                    RecycleView:
-                        id:rv_primi
-                        viewclass: 'Multicampo_menu'
-                        SelectableRecycleBoxLayout:
-                            default_size: None, dp(40)
-                            default_size_hint: 1, None
-                            size_hint_y: None
-                            height: self.minimum_height
-                            orientation: 'vertical'
-                            multiselect: True
-                            touch_multiselect: True
+                    rows: 2
+                    GridLayout:
+                        canvas.before:
+                            Color:
+                                rgba: (.05, 0.5, .9, .8)
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                        cols: 2
+                        rows: 1
+                        size_hint_y: 0.1
+                        Label:
+                            size_hint_x: 0.1
+                            text: 'ARTICOLO'
+                        Label:
+                            size_hint_x: 0.1
+                            text: 'PLU'
+                    GridLayout:
+                        canvas.before:
+                            Color:
+                                rgba: (.5, .5, .5, .5)
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                        cols: 1
+                        rows: 1
+                        size_hint_y: 0.90
+                        RecycleView:
+                            id:rv_primi
+                            viewclass: 'Multicampo_menu'
+                            SelectableRecycleBoxLayout:
+                                default_size: None, dp(40)
+                                default_size_hint: 1, None
+                                size_hint_y: None
+                                height: self.minimum_height
+                                orientation: 'vertical'
+                                multiselect: True
+                                touch_multiselect: True
             TabbedPanelItem:
                 text: 'Secondi'
                 GridLayout:
