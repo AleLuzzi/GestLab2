@@ -23,6 +23,8 @@
     rv_contorni: rv_contorni
     rv_riepilogo: rv_riepilogo
     BoxLayout:
+        size_hint: 1, 0.9
+        pos_hint:{'top':1}
         TabbedPanel:
             do_default_tab: False
             TabbedPanelItem:
@@ -55,7 +57,6 @@
                                 size: self.size
                         cols: 1
                         rows: 1
-                        size_hint_y: 0.90
                         RecycleView:
                             id:rv_primi
                             viewclass: 'Multicampo_menu'
@@ -153,6 +154,7 @@
                                 touch_multiselect: True
             TabbedPanelItem:
                 text: 'Riepilogo'
+                on_release: root._aggiorna_rv_riepilogo()
                 GridLayout:
                     cols: 1
                     rows: 2
@@ -181,7 +183,6 @@
                                 size: self.size
                         cols: 1
                         rows: 1
-                        size_hint_y: 0.90
                         RecycleView:
                             id:rv_riepilogo
                             viewclass: 'Multicampo_menu'
@@ -192,7 +193,7 @@
                                 height: self.minimum_height
                                 orientation: 'vertical'
     BoxLayout:
+        size_hint: 1, 0.1
         Button:
             text: 'Indietro'
-            size_hint: 1, 0.1
             on_press: root.indietro()

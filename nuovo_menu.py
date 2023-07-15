@@ -57,14 +57,28 @@ class Nuovo_menu(Screen):
         secondi = db._recupera_secondi()
         contorni = db._recupera_contorni()
 
-        self.rv_primi.data = [{'label_1': str(x['prodotto']),
+        self.rv_primi.data = [{'label_1': str(x['prodotto'].upper()),
                                'label_2': str(x['plu'])} for x in primi]
         
-        self.rv_secondi.data = [{'label_1': str(x['prodotto']),
+        self.rv_secondi.data = [{'label_1': str(x['prodotto'].upper()),
                                'label_2': str(x['plu'])} for x in secondi]
         
-        self.rv_contorni.data = [{'label_1': str(x['prodotto']),
+        self.rv_contorni.data = [{'label_1': str(x['prodotto'].upper()),
                                   'label_2': str(x['plu'])} for x in contorni]
+        
+    def _aggiorna_rv_riepilogo(self):
+        riepilogo = []
+        for i in self.ids.rv_primi.layout_manager.selected_nodes:
+            riepilogo.append(self.ids.rv_primi.data[i]['label_1'])
+
+        for i in self.ids.rv_secondi.layout_manager.selected_nodes:
+            riepilogo.append(self.ids.rv_secondi.data[i]['label_1'])
+
+        for i in self.ids.rv_contorni.layout_manager.selected_nodes:
+            riepilogo.append(self.ids.rv_contorni.data[i]['label_1'])
+
+        self.rv_riepilogo.data = [{'label_1': str(x).upper()} for x in riepilogo]
+
 
     def indietro(self):
         self.manager.current = 'menu'
