@@ -1,6 +1,6 @@
 import mysql.connector
 
-conn = mysql.connector.connect(host="127.0.0.1",
+conn = mysql.connector.connect(host="192.168.0.100",
                                    database="data",
                                    user="root",
                                    password='')
@@ -19,3 +19,15 @@ def _recupera_secondi():
 def _recupera_contorni():
     c.execute("SELECT prodotto, plu FROM prodotti WHERE merceologia ='Contorni'")
     return [{'prodotto': str(x[0]), 'plu': str(x[1])} for x in c]
+
+def _recupera_progressivo_ingresso():
+        c.execute("SELECT prog_acq FROM progressivi")
+        prog_ingresso = c.fetchone()[0]
+        return prog_ingresso
+
+def _recupera_lista_fornitori():
+        c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
+        fornitori = []
+        for lista in c:
+            fornitori.extend(lista)
+        return fornitori
