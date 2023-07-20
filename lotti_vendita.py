@@ -15,6 +15,7 @@ from kivy.metrics import dp
 from kivy.uix.togglebutton import ToggleButton
 from kivy.graphics import Color, Rectangle
 from kivy.lang import Builder
+import controller_db as db
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
@@ -51,13 +52,6 @@ class Lotti_vendita(Screen):
         super(Lotti_vendita, self).__init__(**kwargs)
 
         oggi = datetime.date.today()
-
-        self.conn = mysql.connector.connect(host="127.0.0.1",
-                                   database="data",
-                                   user="root",
-                                   password='')
-
-        self.c = self.conn.cursor()
 
         self.rv.data = [{'text': str(x)} for x in range(10)]
         self.rv2.data = [{'text': str(x)} for x in range(10)]
