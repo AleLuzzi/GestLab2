@@ -1,0 +1,58 @@
+#:kivy 2.1.0
+#:import utils kivy.utils
+
+<Ingresso_merce>:
+    canvas.before:
+        Color:
+            rgb: utils.get_color_from_hex('#BCBCBC')
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    BoxLayout:
+        size_hint: 1, 0.9
+        pos_hint:{'top':1}
+        TabbedPanel:
+            do_default_tab: False
+            TabbedPanelItem:
+                text: 'Intestazione'
+                GridLayout:
+                    cols:2
+                    canvas.before:
+                        Color:
+                            rgb: utils.get_color_from_hex('#F3F6F4')
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    Label:
+                        text:'DATA'
+                        color: utils.get_color_from_hex('#000000')
+                    Label:
+                        id: label_data
+                        color: utils.get_color_from_hex('#000000')
+                    Label:
+                        text: 'PROGRESSIVO INGRESSO'
+                        color: utils.get_color_from_hex('#000000')
+                    Label:
+                        id: label_prog_ingresso
+                        color: utils.get_color_from_hex('#000000')
+                    Label:
+                        text: 'FORNITORE'
+                        color: utils.get_color_from_hex('#000000')
+                    Spinner:
+                        id: spinner_fornitori
+                    Label:
+                        text: 'NUMERO DOCUMENTO'
+                        color: utils.get_color_from_hex('#000000')
+                    TextInput:
+                        hint_text:'inserisci numero \n documento qui'
+                        multiline: False
+                        font_size: 40
+            TabbedPanelItem:
+                text: 'Corpo \n Documento'
+            TabbedPanelItem:
+                text: 'Riepilogo'
+    BoxLayout:
+        size_hint: 1, 0.1
+        Button:
+            text:'Indietro'
+            on_press: root.indietro()
