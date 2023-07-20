@@ -49,6 +49,42 @@
                         font_size: 40
             TabbedPanelItem:
                 text: 'Corpo \n Documento'
+                BoxLayout:
+                    orientation: 'horizontal'
+                    canvas.before:
+                        Color:
+                            rgb: utils.get_color_from_hex('#F3F6F4')
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        ToggleButton:
+                            text:'AGNELLO'
+                            group: 'merceologia'
+                            size_hint: .1, None
+                            pos_hint: {'top':1}
+                        ToggleButton:
+                            text:'BOVINO'
+                            group: 'merceologia'
+                            size_hint: .1, None
+                            pos_hint: {'top':1}
+                        ToggleButton:
+                            text:'VITELLO'
+                            group: 'merceologia'
+                            size_hint: .1, None
+                            pos_hint: {'top':1}
+                        ToggleButton:
+                            text:'SUINO'
+                            group: 'merceologia'
+                            size_hint: .1, None
+                            pos_hint: {'top':1}
+                    BoxLayout:
+                        orientation: 'vertical'
+                        Label:
+                            text:'Box_dx'
+                            color: utils.get_color_from_hex('#000000')
+                            size_hint: 1 ,.5
             TabbedPanelItem:
                 text: 'Riepilogo'
     BoxLayout:
