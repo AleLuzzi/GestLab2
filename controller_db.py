@@ -31,3 +31,14 @@ def _recupera_lista_fornitori():
         for lista in c:
             fornitori.extend(lista)
         return fornitori
+
+def _lista_tagli(cat):
+       lista = []
+       lista.clear()
+       c = conn.cursor()
+       cat_merc = [cat,]
+       query = 'SELECT taglio FROM tagli WHERE Id_Merceologia=%s'
+       c.execute(query, cat_merc)
+       for x in c:
+               lista.extend(x)
+       return lista

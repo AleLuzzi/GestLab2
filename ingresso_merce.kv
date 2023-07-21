@@ -1,6 +1,18 @@
 #:kivy 2.1.0
 #:import utils kivy.utils
 
+<SelectableLabel>:
+    # Draw a background to indicate selection
+    canvas.before:
+        Color:
+            rgb: utils.get_color_from_hex('#8fce00') if self.selected else utils.get_color_from_hex('#999999')
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<MyLabel@Label>:
+    color: utils.get_color_from_hex('#000000')
+
 <Ingresso_merce>:
     canvas.before:
         Color:
@@ -23,28 +35,22 @@
                         Rectangle:
                             pos: self.pos
                             size: self.size
-                    Label:
+                    MyLabel:
                         text:'DATA'
-                        color: utils.get_color_from_hex('#000000')
-                    Label:
+                    MyLabel:
                         id: label_data
-                        color: utils.get_color_from_hex('#000000')
-                    Label:
+                    MyLabel:
                         text: 'PROGRESSIVO INGRESSO'
-                        color: utils.get_color_from_hex('#000000')
-                    Label:
+                    MyLabel:
                         id: label_prog_ingresso
-                        color: utils.get_color_from_hex('#000000')
-                    Label:
+                    MyLabel:
                         text: 'FORNITORE'
-                        color: utils.get_color_from_hex('#000000')
                     Spinner:
                         id: spinner_fornitori
-                    Label:
+                    MyLabel:
                         text: 'NUMERO DOCUMENTO'
-                        color: utils.get_color_from_hex('#000000')
                     TextInput:
-                        hint_text:'inserisci numero \n documento qui'
+                        hint_text:' Inserisci numero \n documento qui'
                         multiline: False
                         font_size: 40
             TabbedPanelItem:
@@ -58,33 +64,59 @@
                             pos: self.pos
                             size: self.size
                     BoxLayout:
-                        orientation: 'horizontal'
-                        ToggleButton:
-                            text:'AGNELLO'
-                            group: 'merceologia'
-                            size_hint: .1, None
-                            pos_hint: {'top':1}
-                        ToggleButton:
-                            text:'BOVINO'
-                            group: 'merceologia'
-                            size_hint: .1, None
-                            pos_hint: {'top':1}
-                        ToggleButton:
-                            text:'VITELLO'
-                            group: 'merceologia'
-                            size_hint: .1, None
-                            pos_hint: {'top':1}
-                        ToggleButton:
-                            text:'SUINO'
-                            group: 'merceologia'
-                            size_hint: .1, None
-                            pos_hint: {'top':1}
+                        orientation: 'vertical'
+                        BoxLayout:
+                            orientation: 'horizontal'
+                            size_hint_y: .27
+                            ToggleButton:
+                                text:'AGNELLO'
+                                group: 'merceologia'
+                                size_hint: .1, None
+                                pos_hint: {'top':1}
+                                on_press: root._aggiorna_rv_lista_tagli('12')
+                            ToggleButton:
+                                text:'BOVINO'
+                                group: 'merceologia'
+                                size_hint: .1, None
+                                pos_hint: {'top':1}
+                                on_press: root._aggiorna_rv_lista_tagli('10')
+                            ToggleButton:
+                                text:'VITELLO'
+                                group: 'merceologia'
+                                size_hint: .1, None
+                                pos_hint: {'top':1}
+                                on_press: root._aggiorna_rv_lista_tagli('13')
+                            ToggleButton:
+                                text:'SUINO'
+                                group: 'merceologia'
+                                size_hint: .1, None
+                                pos_hint: {'top':1}
+                                on_press: root._aggiorna_rv_lista_tagli('11')
+                        BoxLayout:
+                            canvas.before:
+                                Color:
+                                    rgb: utils.get_color_from_hex('#999999')
+                                Rectangle:
+                                    pos: self.pos
+                                    size: self.size
+                            RecycleView:
+                                id: rv_articoli
+                                viewclass: 'SelectableLabel'
+                                SelectableRecycleBoxLayout:
+                                    default_size: None, dp(56)
+                                    default_size_hint: 1, None
+                                    size_hint_y: None
+                                    height: self.minimum_height
+                                    orientation: 'vertical'
                     BoxLayout:
                         orientation: 'vertical'
                         Label:
                             text:'Box_dx'
                             color: utils.get_color_from_hex('#000000')
                             size_hint: 1 ,.5
+                        Button:
+                            text:'Selezione'
+                            on_press: root._selezione()
             TabbedPanelItem:
                 text: 'Riepilogo'
     BoxLayout:
