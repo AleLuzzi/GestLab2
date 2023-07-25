@@ -74,43 +74,12 @@ class Ingresso_merce(Screen):
         self.ids.rv_articoli.data = [{'text': str(x).upper()} for x in lista]
 
     def _selezione(self):
+        
         for i in self.ids.rv_articoli.layout_manager.selected_nodes:
-            print(self.ids.rv_articoli.data[i]['text'])
-        # print(self.cat_m)
-
+            self.ids.rv_riepilogo_ingresso_merce.data.append(self.ids.rv_articoli.data[i])
+        
     def indietro(self):
         self.manager.current = 'menu'
-
-        ''' INIZIALIZZO LISTE CHE CONTIENGONO LE SELEZIONI '''
-        self.lista_righe_riepilogo = []
-        self.lista_selezioni = []
-        self.lista_riepilogo = []
-        self.tot_articoli = 0
-        
-    def conferma_selezione(self, dat):
-        #TODO: aggiungere i controlli
-        index = 0
-        while index < len(dat):
-            if dat[index]['selected']:
-                self.tot_articoli += 1
-                dat[index]['merc'] = self._recupera_merceologia(dat[index]['cat_merc'])
-                dat[index]['peso'] = self.txtinp_peso_ricevuto.text
-                dat[index]['riga'] = self.tot_articoli
-                self.lista_riepilogo.append(dat[index])
-                break
-            index += 1
-        # self.lbl_conteggio_selezioni.text = f"Articoli \nInseriti:\n     {self._conta_articoli_inseriti(self.lista_riepilogo)}"
-        # self.txtinp_peso_ricevuto.text=str('')
-        '''
-        else:
-            content= Button(text="Mancano dati \n CONTROLLA")
-            popup = Popup(title = 'ATTENZIONE !!!',
-                          content=content,
-                          auto_dismiss=False,
-                          size_hint=(None, None), size=(400, 400))
-            content.bind(on_press=popup.dismiss)
-            popup.open()
-        '''
 
     def _aggiorna_rv_riepilogo(self, dat):
         return [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 
@@ -123,15 +92,6 @@ class Ingresso_merce(Screen):
         self.c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
         merc = self.c.fetchone()[0]
         return merc
-    
-    def _recupera_righe_selezionate(self): 
-        righe = []
-        if self.lista_riepilogo:
-            for dic in self.lista_riepilogo:
-                righe.append(str(dic['riga']))
-        else:
-            return '0'
-        return righe
     
     def _salva_dati(self, arg):
         #TODO aggiungere controlli

@@ -112,7 +112,7 @@
                         orientation: 'vertical'
                         Label:
                             text:'QUANTITA RICEVUTA'
-                            color: utils.get_color_from_hex('#000000')
+                            color: utils.get_color_from_hex('#999999')
                             size_hint: 1 ,.1
                         TextInput:
                             hint_text: 'Kgs'
@@ -126,6 +126,43 @@
                             on_press: root._selezione()
             TabbedPanelItem:
                 text: 'Riepilogo'
+                GridLayout:
+                    cols: 1
+                    rows: 2
+                    GridLayout:
+                        canvas.before:
+                            Color:
+                                rgb: utils.get_color_from_hex('#999999')
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                        cols: 2
+                        rows: 1
+                        size_hint_y: 0.1
+                        Label:
+                            size_hint_x: 0.1
+                            text: 'ARTICOLO'
+                        Label:
+                            size_hint_x: 0.1
+                            text: 'PLU'
+                    GridLayout:
+                        canvas.before:
+                            Color:
+                                rgb: utils.get_color_from_hex('#999999')
+                            Rectangle:
+                                pos: self.pos
+                                size: self.size
+                        cols: 1
+                        rows: 1
+                        RecycleView:
+                            id:rv_riepilogo_ingresso_merce
+                            viewclass: 'SelectableLabel'
+                            SelectableRecycleBoxLayout:
+                                default_size: None, dp(40)
+                                default_size_hint: 1, None
+                                size_hint_y: None
+                                height: self.minimum_height
+                                orientation: 'vertical'
     BoxLayout:
         size_hint: 1, 0.1
         Button:
