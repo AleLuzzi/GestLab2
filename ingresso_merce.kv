@@ -111,11 +111,18 @@
                     BoxLayout:
                         orientation: 'vertical'
                         Label:
-                            text:'Box_dx'
+                            text:'QUANTITA RICEVUTA'
                             color: utils.get_color_from_hex('#000000')
-                            size_hint: 1 ,.5
+                            size_hint: 1 ,.1
+                        TextInput:
+                            hint_text: 'Kgs'
+                            font_size: 40
+                            size_hint_y: .3
+                            input_filter: 'float'
+                            multiline: False
+                            write_tab: False
                         Button:
-                            text:'Selezione'
+                            text:'CONFERMA'
                             on_press: root._selezione()
             TabbedPanelItem:
                 text: 'Riepilogo'

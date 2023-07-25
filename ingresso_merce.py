@@ -69,11 +69,14 @@ class Ingresso_merce(Screen):
         self.ids.spinner_fornitori.values = lista_fornitori
 
     def _aggiorna_rv_lista_tagli(self, cat_m):
+        self.cat_m = cat_m
         lista = db._lista_tagli(cat_m)
         self.ids.rv_articoli.data = [{'text': str(x).upper()} for x in lista]
 
     def _selezione(self):
-        print(self.ids.rv_articoli.layout_manager.selected_nodes)
+        for i in self.ids.rv_articoli.layout_manager.selected_nodes:
+            print(self.ids.rv_articoli.data[i]['text'])
+        # print(self.cat_m)
 
     def indietro(self):
         self.manager.current = 'menu'
