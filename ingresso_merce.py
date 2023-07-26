@@ -78,43 +78,8 @@ class Ingresso_merce(Screen):
         for i in self.ids.rv_articoli.layout_manager.selected_nodes:
             self.ids.rv_riepilogo_ingresso_merce.data.append(self.ids.rv_articoli.data[i])
         
-    def indietro(self):
-        self.manager.current = 'menu'
-
-    def _aggiorna_rv_riepilogo(self, dat):
-        return [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 
-                 'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in dat]
-    
     def _conta_articoli_inseriti(self, numero):
         return str(len(numero))
     
-    def _recupera_merceologia(self, cat):
-        self.c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
-        merc = self.c.fetchone()[0]
-        return merc
-    
-    def _salva_dati(self, arg):
-        #TODO aggiungere controlli
-        lista = [] 
-        '''
-        data = arg
-        
-        for dic in data:
-            lista.append([str(self.prog_lotto_acq)+'A', 
-                          self.oggi, 
-                          self.txtinput_num_documento.text, 
-                          self.spinner_fornitori.text, 
-                          dic['text'], 
-                          dic['peso'], 
-                          dic['peso'], 
-                          'no'])
-        '''
-        sql_ins = "INSERT INTO ingresso_merce VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-        self.c.executemany(sql_ins, lista)
-        self.conn.commit()
-        sql_update = "UPDATE progressivi SET prog_acq = %s"
-        self.c.execute(sql_update, (self.prog_lotto_acq + 1,))
-        self.conn.commit()
-        self.conn.close()
-        
-    
+    def indietro(self):
+        self.manager.current = 'menu'
