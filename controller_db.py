@@ -42,3 +42,8 @@ def _lista_tagli(cat):
        for x in c:
                lista.extend(x)
        return lista
+
+def _recupera_merceologia_da_id(cat):
+        c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
+        merc = c.fetchone()[0]
+        return merc
