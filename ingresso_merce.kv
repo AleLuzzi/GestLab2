@@ -121,6 +121,10 @@
                             input_filter: 'float'
                             multiline: False
                             write_tab: False
+                        Label:
+                            text: 'Articoli inseriti '+ root._conta_articoli_inseriti(rv_riepilogo_ingresso_merce.data)
+                            color: utils.get_color_from_hex('#999999')
+                            size_hint_y: .3
                         Button:
                             text:'CONFERMA'
                             on_press: root._selezione()
@@ -132,7 +136,7 @@
                     GridLayout:
                         canvas.before:
                             Color:
-                                rgb: utils.get_color_from_hex('#999999')
+                                rgb: utils.get_color_from_hex('#5B5B5B')
                             Rectangle:
                                 pos: self.pos
                                 size: self.size

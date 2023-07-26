@@ -85,8 +85,8 @@ class Ingresso_merce(Screen):
         return [{'lbl_1': str(x['text']), 'lbl_2': str(x['merc']), 
                  'lbl_3': str(x['peso']), 'lbl_4': str(x['riga'])} for x in dat]
     
-    def _conta_articoli_inseriti(self, dat):
-        return len(dat)
+    def _conta_articoli_inseriti(self, numero):
+        return str(len(numero))
     
     def _recupera_merceologia(self, cat):
         self.c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
