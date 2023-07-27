@@ -4,7 +4,7 @@
 <Multicampo_riepilogo_ingresso_merce>:
     canvas.before:
         Color:
-            rgba: (.05, 0.5, .9, .8) if self.selected else (.5, .5, .5, 1)
+            rgb: utils.get_color_from_hex('#8fce00') if self.selected else utils.get_color_from_hex('#999999')
         Rectangle:
             pos: self.pos
             size: self.size

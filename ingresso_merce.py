@@ -104,9 +104,7 @@ class Ingresso_merce(Screen):
         self.ids.rv_articoli.data = [{'text': str(x).upper()} for x in lista]
 
     def _selezione(self):
-        
         for i in self.ids.rv_articoli.layout_manager.selected_nodes:
-            print(self.cat_m)
             self.ids.rv_riepilogo_ingresso_merce.data.extend([{'label_1': self.ids.rv_articoli.data[i]['text'], 
                                                                'label_2': self.cat_m.upper()}])
         
