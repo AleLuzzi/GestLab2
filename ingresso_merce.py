@@ -106,7 +106,9 @@ class Ingresso_merce(Screen):
     def _selezione(self):
         for i in self.ids.rv_articoli.layout_manager.selected_nodes:
             self.ids.rv_riepilogo_ingresso_merce.data.extend([{'label_1': self.ids.rv_articoli.data[i]['text'], 
-                                                               'label_2': self.cat_m.upper()}])
+                                                               'label_2': self.cat_m.upper(),
+                                                               'label_3': self.ids.txtinp_peso.text}])
+        self.ids.txtinp_peso.text = ''
         
     def _conta_articoli_inseriti(self, numero):
         return str(len(numero))

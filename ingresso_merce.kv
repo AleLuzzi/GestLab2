@@ -11,12 +11,15 @@
     orientation: 'horizontal'
     label_1: ''
     label_2: ''
+    label_3: ''
     BoxLayout:
         orientation: 'horizontal'
         Label:
             text: root.label_1
         Label:
             text: root.label_2
+        Label:
+            text: root.label_3
 
 
 <SelectableLabel>:
@@ -133,6 +136,7 @@
                             color: utils.get_color_from_hex('#999999')
                             size_hint: 1 ,.1
                         TextInput:
+                            id: txtinp_peso
                             hint_text: 'Kgs'
                             font_size: 40
                             size_hint_y: .3
@@ -158,7 +162,7 @@
                             Rectangle:
                                 pos: self.pos
                                 size: self.size
-                        cols: 2
+                        cols: 3
                         rows: 1
                         size_hint_y: 0.1
                         Label:
@@ -167,6 +171,9 @@
                         Label:
                             size_hint_x: 0.1
                             text: 'MERCEOLOGIA'
+                        Label:
+                            size_hint_x: 0.1
+                            text: 'PESO'
                     GridLayout:
                         canvas.before:
                             Color:
