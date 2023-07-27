@@ -1,6 +1,24 @@
 #:kivy 2.1.0
 #:import utils kivy.utils
 
+<Multicampo_riepilogo_ingresso_merce>:
+    canvas.before:
+        Color:
+            rgba: (.05, 0.5, .9, .8) if self.selected else (.5, .5, .5, 1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    orientation: 'horizontal'
+    label_1: ''
+    label_2: ''
+    BoxLayout:
+        orientation: 'horizontal'
+        Label:
+            text: root.label_1
+        Label:
+            text: root.label_2
+
+
 <SelectableLabel>:
     # Draw a background to indicate selection
     canvas.before:
@@ -148,7 +166,7 @@
                             text: 'ARTICOLO'
                         Label:
                             size_hint_x: 0.1
-                            text: 'PLU'
+                            text: 'MERCEOLOGIA'
                     GridLayout:
                         canvas.before:
                             Color:
@@ -160,7 +178,7 @@
                         rows: 1
                         RecycleView:
                             id:rv_riepilogo_ingresso_merce
-                            viewclass: 'SelectableLabel'
+                            viewclass: 'Multicampo_riepilogo_ingresso_merce'
                             SelectableRecycleBoxLayout:
                                 default_size: None, dp(40)
                                 default_size_hint: 1, None

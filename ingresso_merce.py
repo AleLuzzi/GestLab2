@@ -27,6 +27,36 @@ class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
     ''' Adds selection and focus behaviour to the view. '''
 
+class Multicampo_riepilogo_ingresso_merce(RecycleDataViewBehavior, BoxLayout):
+    ''' Add selection support to the Label '''
+    index = None
+    selected = BooleanProperty(False)
+    selectable = BooleanProperty(True)
+
+    def refresh_view_attrs(self, rv, index, data):
+        ''' Catch and handle the view changes '''
+        self.index = index
+        return super(Multicampo_riepilogo_ingresso_merce, self).refresh_view_attrs(
+            rv, index, data)
+
+    def on_touch_down(self, touch):
+        ''' Add selection on touch down '''
+        if super(Multicampo_riepilogo_ingresso_merce, self).on_touch_down(touch):
+            return True
+        if self.collide_point(*touch.pos) and self.selectable:
+            return self.parent.select_with_touch(self.index, touch)
+
+    def apply_selection(self, rv, index, is_selected):
+        ''' Respond to the selection of items in the view. '''
+        self.selected = is_selected
+
+        rv.data[index]['selected'] = self.selected
+        if is_selected:
+            print("selection changed to {0}".format(rv.data[index]))
+        else:
+            print("selection removed for {0}".format(rv.data[index]))
+
+
 class SelectableLabel(RecycleDataViewBehavior, Label):
     ''' Add selection support to the Label '''
     index = None
@@ -69,14 +99,16 @@ class Ingresso_merce(Screen):
         self.ids.spinner_fornitori.values = lista_fornitori
 
     def _aggiorna_rv_lista_tagli(self, cat_m):
-        self.cat_m = cat_m
+        self.cat_m = db._recupera_merceologia_da_id(cat_m)
         lista = db._lista_tagli(cat_m)
         self.ids.rv_articoli.data = [{'text': str(x).upper()} for x in lista]
 
     def _selezione(self):
         
         for i in self.ids.rv_articoli.layout_manager.selected_nodes:
-            self.ids.rv_riepilogo_ingresso_merce.data.append(self.ids.rv_articoli.data[i])
+            print(self.cat_m)
+            self.ids.rv_riepilogo_ingresso_merce.data.extend([{'label_1': self.ids.rv_articoli.data[i]['text'], 
+                                                               'label_2': self.cat_m.upper()}])
         
     def _conta_articoli_inseriti(self, numero):
         return str(len(numero))
