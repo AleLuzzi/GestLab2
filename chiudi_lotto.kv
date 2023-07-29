@@ -1,4 +1,5 @@
 #:kivy 2.1.0
+#:import utils kivy.utils
 
 <Multicampo>:
     orientation: 'horizontal'
@@ -6,7 +7,6 @@
     label_2: ''
     label_3: ''
     label_4: ''
-    checkbox_1: False
     BoxLayout:
         orientation: 'vertical'
         BoxLayout:
@@ -29,15 +29,19 @@
             Label:
                 size_hint_x: 0.1
                 text: root.label_4
-            CheckBox:
-                size_hint_x: 0.1
-                active: root.checkbox_1
 
 <Chiudi_lotto>:
-    rv: rv
+    canvas.before:
+        Color:
+            rgb: utils.get_color_from_hex('#BCBCBC')
+        Rectangle:
+            pos: self.pos
+            size: self.size
     GridLayout:
         cols: 1
         rows: 2
+        size_hint_y: 0.9
+        pos_hint:{'top':1}
         GridLayout:
             canvas.before:
                 Color:
@@ -57,9 +61,6 @@
             Label:
                 size_hint_x: 0.1
                 text: 'Peso Residuo'
-            Label:
-                size_hint_x: 0.1
-                text: 'In stock'
         GridLayout:
             canvas.before:
                 Color:
@@ -69,7 +70,7 @@
                     size: self.size
             cols: 1
             rows: 1
-            size_hint_y: 0.9
+            size_hint_y: 0.8
             RecycleView:
                 id:rv
                 viewclass: 'Multicampo'

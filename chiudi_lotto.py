@@ -59,8 +59,7 @@ class Chiudi_lotto(Screen):
         self.ids.rv.data = [{'label_1': str(x['number']), 
                              'label_2': str(x['fornit']), 
                              'label_3': str(x['name']), 
-                             'label_4': str(x['peso']),
-                             'checkbox_1': False} for x in dati]
+                             'label_4': str(x['peso'])} for x in dati]
         
     def indietro(self):
         self.manager.current = 'menu'
