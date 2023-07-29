@@ -1,8 +1,8 @@
 import mysql.connector
 
 conn = mysql.connector.connect(host="192.168.0.100",
-                                   database="data",
-                                   user="root",
+                                   database="db_prova",
+                                   user="prova",
                                    password='')
 
 c = conn.cursor()
@@ -47,3 +47,7 @@ def _recupera_merceologia_da_id(cat):
         c.execute("SELECT merceologia FROM merceologie WHERE Id = %s", [cat,])
         merc = c.fetchone()[0]
         return merc
+
+def _recupera_lotti_aperti():
+        c.execute("SELECT progressivo_acq, fornitore, prodotto, residuo FROM ingresso_merce WHERE lotto_chiuso = 'no'")
+        return [{'number': str(x[0]), 'fornit': str(x[1]), 'name':str(x[2]), 'peso':str(x[3])} for x in c]

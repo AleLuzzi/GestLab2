@@ -12,6 +12,7 @@ from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.metrics import dp
+import controller_db as db
 
 
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
@@ -47,31 +48,19 @@ class SelectableLabel(RecycleDataViewBehavior, Label):
 class Multicampo(BoxLayout):
     pass
 
-
 class Chiudi_lotto(Screen):
     def __init__(self, **kwargs):
         super(Chiudi_lotto, self).__init__(**kwargs)
 
         oggi = datetime.date.today()
-        
-        self.conn = mysql.connector.connect(host="192.168.0.100",
-                                   database="data",
-                                   user="root",
-                                   password='')
 
-        self.c = self.conn.cursor()
+        dati = db._recupera_lotti_aperti()
 
-        dati = self._recupera_lotti_aperti()
-
-        self.rv.data = [{'label_1': str(x['number']), 
-                         'label_2': str(x['fornit']), 
-                         'label_3': str(x['name']), 
-                         'label_4': str(x['peso']),
-                         'checkbox_1': False} for x in dati]
-        
-    def _recupera_lotti_aperti(self):
-        self.c.execute("SELECT progressivo_acq, fornitore, prodotto, residuo FROM ingresso_merce WHERE lotto_chiuso = 'no'")
-        return [{'number': str(x[0]), 'fornit': str(x[1]), 'name':str(x[2]), 'peso':str(x[3])} for x in self.c]
+        self.ids.rv.data = [{'label_1': str(x['number']), 
+                             'label_2': str(x['fornit']), 
+                             'label_3': str(x['name']), 
+                             'label_4': str(x['peso']),
+                             'checkbox_1': False} for x in dati]
         
     def indietro(self):
         self.manager.current = 'menu'
