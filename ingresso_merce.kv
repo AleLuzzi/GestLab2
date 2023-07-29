@@ -137,6 +137,7 @@
                             size_hint: 1 ,.1
                         TextInput:
                             id: txtinp_peso
+                            input_type: 'number'
                             hint_text: 'Kgs'
                             font_size: 40
                             size_hint_y: .3
@@ -154,7 +155,7 @@
                 text: 'Riepilogo'
                 GridLayout:
                     cols: 1
-                    rows: 2
+                    rows: 3
                     GridLayout:
                         canvas.before:
                             Color:
@@ -164,7 +165,7 @@
                                 size: self.size
                         cols: 3
                         rows: 1
-                        size_hint_y: 0.1
+                        size_hint: 1, 0.1
                         Label:
                             size_hint_x: 0.1
                             text: 'ARTICOLO'
@@ -183,6 +184,7 @@
                                 size: self.size
                         cols: 1
                         rows: 1
+                        size_hint: 1, 0.8
                         RecycleView:
                             id:rv_riepilogo_ingresso_merce
                             viewclass: 'Multicampo_riepilogo_ingresso_merce'
@@ -192,6 +194,11 @@
                                 size_hint_y: None
                                 height: self.minimum_height
                                 orientation: 'vertical'
+                                multiselect: 'False'
+                    Button:
+                        text: 'CANCELLA RIGA SELEZIONATA'
+                        size_hint: 1, 0.1
+                        on_press: root._cancella_riga_da_riepilogo()
     BoxLayout:
         size_hint: 1, 0.1
         Button:

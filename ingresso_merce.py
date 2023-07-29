@@ -109,9 +109,12 @@ class Ingresso_merce(Screen):
                                                                'label_2': self.cat_m.upper(),
                                                                'label_3': self.ids.txtinp_peso.text}])
         self.ids.txtinp_peso.text = ''
-        
+
     def _conta_articoli_inseriti(self, numero):
         return str(len(numero))
     
+    def _cancella_riga_da_riepilogo(self):
+        del self.ids.rv_riepilogo_ingresso_merce.data[self.ids.rv_riepilogo_ingresso_merce.layout_manager.selected_nodes[0]]
+        
     def indietro(self):
         self.manager.current = 'menu'
