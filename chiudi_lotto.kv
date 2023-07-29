@@ -2,6 +2,12 @@
 #:import utils kivy.utils
 
 <Multicampo>:
+    canvas.before:
+        Color:
+            rgb: utils.get_color_from_hex('#8fce00') if self.selected else utils.get_color_from_hex('#999999')
+        Rectangle:
+            pos: self.pos
+            size: self.size
     orientation: 'horizontal'
     label_1: ''
     label_2: ''
@@ -45,7 +51,7 @@
         GridLayout:
             canvas.before:
                 Color:
-                    rgba: (.05, 0.5, .9, .8)
+                    rgb: utils.get_color_from_hex('#5B5B5B')
                 Rectangle:
                     pos: self.pos
                     size: self.size
@@ -64,7 +70,7 @@
         GridLayout:
             canvas.before:
                 Color:
-                    rgba: (.5, .5, .5, .5)
+                    rgb: utils.get_color_from_hex('#999999')
                 Rectangle:
                     pos: self.pos
                     size: self.size
@@ -80,6 +86,8 @@
                     size_hint_y: None
                     height: self.minimum_height
                     orientation: 'vertical'
+                    multiselect: 'True'
+                    touch_multiselect: True
     BoxLayout:
         Button:
             text: 'Cancella Selezionati'
