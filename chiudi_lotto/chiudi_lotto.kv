@@ -1,0 +1,92 @@
+#:kivy 2.3.1
+
+<Multicampo>:
+    orientation: 'vertical'
+    padding: dp(8)
+    spacing: dp(4)
+    md_bg_color: app.theme_cls.primaryContainerColor if self.selected else (0.62, 0.62, 0.62, 1)
+    label_1: ''
+    label_2: ''
+    label_3: ''
+    label_4: ''
+    MDLabel:
+        text: root.label_1
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+    MDBoxLayout:
+        adaptive_height: True
+        MDLabel:
+            size_hint_x: 0.1
+            text: root.label_2
+            theme_text_color: 'Custom'
+            text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+        MDLabel:
+            size_hint_x: 0.1
+            text: root.label_3
+            theme_text_color: 'Custom'
+            text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+        MDLabel:
+            size_hint_x: 0.1
+            text: root.label_4
+            theme_text_color: 'Custom'
+            text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+
+
+<Chiudi_lotto>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Chiudi Lotti'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDBoxLayout:
+            size_hint_y: 0.1
+            md_bg_color: app.theme_cls.primaryColor
+            MDLabel:
+                size_hint_x: 0.1
+                text: 'Fornitore'
+                halign: 'center'
+                theme_text_color: 'Custom'
+                text_color: 1, 1, 1, 1
+            MDLabel:
+                size_hint_x: 0.1
+                text: 'Articolo'
+                halign: 'center'
+                theme_text_color: 'Custom'
+                text_color: 1, 1, 1, 1
+            MDLabel:
+                size_hint_x: 0.1
+                text: 'Peso Residuo'
+                halign: 'center'
+                theme_text_color: 'Custom'
+                text_color: 1, 1, 1, 1
+        RecycleView:
+            id: rv
+            viewclass: 'Multicampo'
+            SelectableRecycleBoxLayout:
+                default_size: None, dp(40)
+                default_size_hint: 1, None
+                size_hint_y: None
+                height: self.minimum_height
+                orientation: 'vertical'
+                multiselect: 'True'
+                touch_multiselect: True
+        MDBoxLayout:
+            size_hint_y: 0.12
+            MDButton:
+                style: "text"
+                MDButtonText:
+                    text: 'Cancella Selezionati'
+            MDButton:
+                style: "text"
+                on_release: root.indietro()
+                MDButtonIcon:
+                    icon: 'arrow-left'
+                MDButtonText:
+                    text: 'Indietro'
+

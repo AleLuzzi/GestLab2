@@ -1,0 +1,50 @@
+#:kivy 2.3.1
+
+<Lotti_vendita>:
+    rv: rv
+    rv2: rv2
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Vendita Lotti'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDBoxLayout:
+            orientation: 'horizontal'
+            MDBoxLayout:
+                orientation: 'vertical'
+                RecycleView:
+                    id: rv
+                    viewclass: 'SelectableLabel'
+                    SelectableRecycleBoxLayout:
+                        default_size: None, dp(56)
+                        default_size_hint: 1, None
+                        size_hint_y: None
+                        height: self.minimum_height
+                        orientation: 'vertical'
+            MDBoxLayout:
+                orientation: 'vertical'
+                RecycleView:
+                    id: rv2
+                    viewclass: 'SelectableLabel'
+                    SelectableRecycleBoxLayout:
+                        default_size: None, dp(56)
+                        default_size_hint: 1, None
+                        size_hint_y: None
+                        height: self.minimum_height
+                        orientation: 'vertical'
+        MDBoxLayout:
+            size_hint_y: 0.12
+            MDButton:
+                style: "text"
+                on_release: root.indietro()
+                MDButtonIcon:
+                    icon: 'arrow-left'
+                MDButtonText:
+                    text: 'Indietro'
+

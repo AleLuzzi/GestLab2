@@ -1,40 +1,80 @@
-#:kivy 2.1.0
-#:include lotti_vendita.kv
-#:include chiudi_lotto.kv
-#:include nuovo_menu.kv
-#:include ingresso_merce.kv
+#:kivy 2.3.1
+#:import FitImage kivymd.uix.fitimage.FitImage
+#:include lotti_vendita/lotti_vendita.kv
+#:include chiudi_lotto/chiudi_lotto.kv
+#:include nuovo_menu/nuovo_menu.kv
+#:include ingresso_merce/ingresso_merce.kv
 
 <menu>:
-    BoxLayout:
+    MDBoxLayout:
         orientation: 'vertical'
-        canvas.before:
-            Color:
-                rgba: 211,211,211,1
-            Rectangle:
-                pos: self.pos
-                size: self.size
-        GridLayout:
-            rows: 2
-            cols: 5
-            size_hint: 1,.5
-            Button:
-                text: 'Ingresso Merce'
-                on_press: root.ingresso_merce()
-            Button:
-                text: 'Nuovo Lotto'
-            Button:
-                text: 'Chiudi Lotti'
-                on_press: root.chiudi_lotto()
-            Button:
-                text: 'Vendita'
-                on_press: root.lotti_vendita()
-            Button:
-                text: 'Impostazioni'
-            Button:
-                text: 'Nuovo Menu'
-                on_press: root.nuovo_menu()
-            Button:
-                text: 'Esci'
-                on_press: root.esci()
-        Image:
-            source: './/immagini//dlogo.png'
+        md_bg_color: app.theme_cls.backgroundColor
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Gestione Laboratorio'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDGridLayout:
+            cols: 2
+            padding: dp(24)
+            spacing: dp(16)
+            size_hint_y: 0.8
+            MDButton:
+                style: "filled"
+                on_release: root.ingresso_merce()
+                MDButtonIcon:
+                    icon: 'truck-delivery-outline'
+                MDButtonText:
+                    text: 'Ingresso Merce'
+            MDButton:
+                style: "filled"
+                on_release: root.nuovo_lotto()
+                MDButtonIcon:
+                    icon: 'plus-box-outline'
+                MDButtonText:
+                    text: 'Nuovo Lotto'
+            MDButton:
+                style: "filled"
+                on_release: root.chiudi_lotto()
+                MDButtonIcon:
+                    icon: 'archive-arrow-down-outline'
+                MDButtonText:
+                    text: 'Chiudi Lotti'
+            MDButton:
+                style: "filled"
+                on_release: root.lotti_vendita()
+                MDButtonIcon:
+                    icon: 'point-of-sale'
+                MDButtonText:
+                    text: 'Vendita'
+            MDButton:
+                style: "filled"
+                MDButtonIcon:
+                    icon: 'cog-outline'
+                MDButtonText:
+                    text: 'Impostazioni'
+            MDButton:
+                style: "filled"
+                on_release: root.nuovo_menu()
+                MDButtonIcon:
+                    icon: 'silverware-fork-knife'
+                MDButtonText:
+                    text: 'Nuovo Menu'
+            MDButton:
+                style: "filled"
+                on_release: root.esci()
+                MDButtonIcon:
+                    icon: 'exit-to-app'
+                MDButtonText:
+                    text: 'Esci'
+        MDBoxLayout:
+            size_hint_y: 0.2
+            FitImage:
+                source: './/immagini//dlogo.png'
+                size_hint: None, None
+                size: dp(180), dp(140)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+

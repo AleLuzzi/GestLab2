@@ -1,0 +1,210 @@
+#:kivy 2.3.1
+#:import utils kivy.utils
+
+<Multicampo_riepilogo_ingresso_merce>:
+    orientation: 'horizontal'
+    padding: dp(12)
+    spacing: dp(12)
+    md_bg_color: app.theme_cls.primaryContainerColor if self.selected else (0.62, 0.62, 0.62, 1)
+    label_1: ''
+    label_2: ''
+    label_3: ''
+    MDLabel:
+        text: root.label_1
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+    MDLabel:
+        text: root.label_2
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+    MDLabel:
+        text: root.label_3
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+
+
+<SelectableLabel>:
+    # Draw a background to indicate selection
+    canvas.before:
+        Color:
+            rgb: utils.get_color_from_hex('#8fce00') if self.selected else utils.get_color_from_hex('#999999')
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+<MyLabel@MDLabel>:
+    theme_text_color: 'Custom'
+    text_color: utils.get_color_from_hex('#000000')
+
+<Ingresso_merce>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Ingresso Merce'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDTabsPrimary:
+            id: tabs
+            size_hint_y: 1
+            MDDivider:
+            MDTabsCarousel:
+                id: carousel
+        MDBoxLayout:
+            size_hint_y: 0.08
+            MDButton:
+                style: "text"
+                on_release: root.indietro()
+                MDButtonIcon:
+                    icon: 'arrow-left'
+                MDButtonText:
+                    text: 'Indietro'
+
+
+<TabIntestazione>:
+    orientation: 'vertical'
+    padding: dp(16)
+    spacing: dp(8)
+    MDGridLayout:
+        cols: 2
+        spacing: dp(12)
+        adaptive_height: True
+        MDLabel:
+            text: 'DATA'
+            bold: True
+        MDLabel:
+            id: label_data
+        MDLabel:
+            text: 'PROGRESSIVO INGRESSO'
+            bold: True
+        MDLabel:
+            id: label_prog_ingresso
+        MDLabel:
+            text: 'FORNITORE'
+            bold: True
+        MDTextField:
+            id: spinner_fornitori
+            mode: 'outlined'
+            readonly: True
+            MDTextFieldHintText:
+                text: 'Seleziona fornitore'
+        MDLabel:
+            text: 'NUMERO DOCUMENTO'
+            bold: True
+        MDTextField:
+            mode: 'outlined'
+            MDTextFieldHintText:
+                text: 'Inserisci numero documento qui'
+
+
+<TabCorpo>:
+    orientation: 'horizontal'
+    MDBoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.7
+        MDBoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: 0.2
+            ToggleButton:
+                text: 'AGNELLO'
+                group: 'merceologia'
+                on_press: root.aggiorna_tagli('12')
+            ToggleButton:
+                text: 'BOVINO'
+                group: 'merceologia'
+                on_press: root.aggiorna_tagli('10')
+            ToggleButton:
+                text: 'VITELLO'
+                group: 'merceologia'
+                on_press: root.aggiorna_tagli('13')
+            ToggleButton:
+                text: 'SUINO'
+                group: 'merceologia'
+                on_press: root.aggiorna_tagli('11')
+        MDBoxLayout:
+            orientation: 'vertical'
+            MDLabel:
+                text: 'TAGLI DISPONIBILI'
+                size_hint_y: 0.1
+                bold: True
+            RecycleView:
+                id: rv_articoli
+                viewclass: 'SelectableLabel'
+                SelectableRecycleBoxLayout:
+                    default_size: None, dp(56)
+                    default_size_hint: 1, None
+                    size_hint_y: None
+                    height: self.minimum_height
+                    orientation: 'vertical'
+    MDBoxLayout:
+        orientation: 'vertical'
+        size_hint_x: 0.3
+        padding: dp(16)
+        MDLabel:
+            text: 'QUANTITA RICEVUTA'
+            bold: True
+            size_hint_y: 0.15
+        MDTextField:
+            id: txtinp_peso
+            hint_text: 'Kgs'
+            mode: 'outlined'
+            size_hint_y: 0.35
+            input_filter: 'float'
+            multiline: False
+            write_tab: False
+        MDLabel:
+            id: label_conteggio
+            text: 'Articoli inseriti 0'
+            size_hint_y: 0.25
+        MDButton:
+            style: 'filled'
+            size_hint_y: 0.15
+            on_release: root.conferma()
+            MDButtonText:
+                text: 'CONFERMA'
+
+
+<TabRiepilogo>:
+    orientation: 'vertical'
+    MDBoxLayout:
+        size_hint_y: 0.1
+        md_bg_color: app.theme_cls.primaryColor
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'ARTICOLO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'MERCEOLOGIA'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'PESO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+    RecycleView:
+        id: rv_riepilogo_ingresso_merce
+        viewclass: 'Multicampo_riepilogo_ingresso_merce'
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(40)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+            multiselect: 'False'
+    MDButton:
+        style: 'text'
+        size_hint_y: 0.12
+        on_release: root.cancella_riga()
+        MDButtonText:
+            text: 'CANCELLA RIGA SELEZIONATA'
+

@@ -1,0 +1,169 @@
+#:kivy 2.3.1
+
+<Multicampo_menu>:
+    orientation: 'horizontal'
+    padding: dp(12)
+    spacing: dp(12)
+    md_bg_color: app.theme_cls.primaryContainerColor if self.selected else (0.62, 0.62, 0.62, 1)
+    label_1: ''
+    label_2: ''
+    MDLabel:
+        text: root.label_1
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+    MDLabel:
+        text: root.label_2
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+
+
+<Nuovo_menu>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Nuovo Menu'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDTabsPrimary:
+            id: tabs
+            on_tab_switch: root._aggiorna_rv_riepilogo()
+            MDDivider:
+            MDTabsCarousel:
+                id: carousel
+        MDBoxLayout:
+            size_hint_y: 0.08
+            MDButton:
+                style: "text"
+                on_release: root.indietro()
+                MDButtonIcon:
+                    icon: 'arrow-left'
+                MDButtonText:
+                    text: 'Indietro'
+
+
+<TabPrimi>:
+    orientation: 'vertical'
+    padding: dp(8)
+    MDBoxLayout:
+        size_hint_y: 0.1
+        md_bg_color: app.theme_cls.primaryColor
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'ARTICOLO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'PLU'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+    RecycleView:
+        id: rv_primi
+        viewclass: 'Multicampo_menu'
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(40)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+            multiselect: True
+            touch_multiselect: True
+
+
+<TabSecondi>:
+    orientation: 'vertical'
+    padding: dp(8)
+    MDBoxLayout:
+        size_hint_y: 0.1
+        md_bg_color: app.theme_cls.primaryColor
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'ARTICOLO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'PLU'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+    RecycleView:
+        id: rv_secondi
+        viewclass: 'Multicampo_menu'
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(40)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+            multiselect: True
+            touch_multiselect: True
+
+
+<TabContorni>:
+    orientation: 'vertical'
+    padding: dp(8)
+    MDBoxLayout:
+        size_hint_y: 0.1
+        md_bg_color: app.theme_cls.primaryColor
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'ARTICOLO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'PLU'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+    RecycleView:
+        id: rv_contorni
+        viewclass: 'Multicampo_menu'
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(40)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+            multiselect: True
+            touch_multiselect: True
+
+
+<TabRiepilogoMenu>:
+    orientation: 'vertical'
+    padding: dp(8)
+    MDBoxLayout:
+        size_hint_y: 0.1
+        md_bg_color: app.theme_cls.primaryColor
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'ARTICOLO'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+        MDLabel:
+            size_hint_x: 0.1
+            text: 'PLU'
+            halign: 'center'
+            theme_text_color: 'Custom'
+            text_color: 1, 1, 1, 1
+    RecycleView:
+        id: rv_riepilogo
+        viewclass: 'Multicampo_menu'
+        SelectableRecycleBoxLayout:
+            default_size: None, dp(40)
+            default_size_hint: 1, None
+            size_hint_y: None
+            height: self.minimum_height
+            orientation: 'vertical'
+

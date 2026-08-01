@@ -1,17 +1,13 @@
-from kivy.app import App
-from kivy.uix.screenmanager import Screen
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.recycleview import RecycleView
 import datetime
-import mysql.connector
-from kivy.uix.recycleview.views import RecycleDataViewBehavior
+
 from kivy.properties import BooleanProperty
-from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
+from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
-from kivy.metrics import dp
+from kivy.uix.recycleview.views import RecycleDataViewBehavior
+from kivymd.uix.label import MDLabel
+from kivymd.uix.screen import MDScreen
+
 import controller_db as db
 
 
@@ -19,7 +15,8 @@ class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
     ''' Adds selection and focus behaviour to the view. '''
 
-class Multicampo(RecycleDataViewBehavior, BoxLayout):
+
+class SelectableLabel(RecycleDataViewBehavior, MDLabel):
     ''' Add selection support to the Label '''
     index = None
     selected = BooleanProperty(False)
@@ -28,12 +25,12 @@ class Multicampo(RecycleDataViewBehavior, BoxLayout):
     def refresh_view_attrs(self, rv, index, data):
         ''' Catch and handle the view changes '''
         self.index = index
-        return super(Multicampo, self).refresh_view_attrs(
+        return super(SelectableLabel, self).refresh_view_attrs(
             rv, index, data)
 
     def on_touch_down(self, touch):
         ''' Add selection on touch down '''
-        if super(Multicampo, self).on_touch_down(touch):
+        if super(SelectableLabel, self).on_touch_down(touch):
             return True
         if self.collide_point(*touch.pos) and self.selectable:
             return self.parent.select_with_touch(self.index, touch)
@@ -41,26 +38,18 @@ class Multicampo(RecycleDataViewBehavior, BoxLayout):
     def apply_selection(self, rv, index, is_selected):
         ''' Respond to the selection of items in the view. '''
         self.selected = is_selected
-
         rv.data[index]['selected'] = self.selected
-        if is_selected:
-            print("selection changed to {0}".format(rv.data[index]))
-        else:
-            print("selection removed for {0}".format(rv.data[index]))
 
 
-class Chiudi_lotto(Screen):
+class Lotti_vendita(MDScreen):
     def __init__(self, **kwargs):
-        super(Chiudi_lotto, self).__init__(**kwargs)
+        super(Lotti_vendita, self).__init__(**kwargs)
 
         oggi = datetime.date.today()
 
-        dati = db._recupera_lotti_aperti()
+        self.rv.data = [{'text': str(x)} for x in range(10)]
+        self.rv2.data = [{'text': str(x)} for x in range(10)]
 
-        self.ids.rv.data = [{'label_1': str(x['number']), 
-                             'label_2': str(x['fornit']), 
-                             'label_3': str(x['name']), 
-                             'label_4': str(x['peso'])} for x in dati]
-        
     def indietro(self):
         self.manager.current = 'menu'
+
