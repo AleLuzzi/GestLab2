@@ -4,6 +4,7 @@
 #:include chiudi_lotto/chiudi_lotto.kv
 #:include nuovo_menu/nuovo_menu.kv
 #:include ingresso_merce/ingresso_merce.kv
+#:include anag_dipendenti/anag_dipendenti.kv
 
 <menu>:
     MDBoxLayout:
@@ -56,6 +57,13 @@
                     icon: 'cog-outline'
                 MDButtonText:
                     text: 'Impostazioni'
+            MDButton:
+                style: "filled"
+                on_release: root.anag_dipendenti()
+                MDButtonIcon:
+                    icon: 'account-group-outline'
+                MDButtonText:
+                    text: 'Dipendenti'
             MDButton:
                 style: "filled"
                 on_release: root.nuovo_menu()

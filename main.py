@@ -3,6 +3,7 @@ from kivy.uix.screenmanager import ScreenManager, WipeTransition
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 
+from anag_dipendenti import Anag_dipendenti
 from chiudi_lotto import Chiudi_lotto
 from ingresso_merce import Ingresso_merce
 from lotti_vendita import Lotti_vendita
@@ -27,6 +28,9 @@ class menu(MDScreen):
     def nuovo_menu(self):
         self.manager.current = 'NuovoMenu'
 
+    def anag_dipendenti(self):
+        self.manager.current = 'AnagDipendenti'
+
     @staticmethod
     def esci():
         MDApp.get_running_app().stop()
@@ -43,6 +47,7 @@ class main(MDApp):
         sm.add_widget(Chiudi_lotto(name='ChiudiLotto'))
         sm.add_widget(Lotti_vendita(name='LottiVendita'))
         sm.add_widget(Nuovo_menu(name='NuovoMenu'))
+        sm.add_widget(Anag_dipendenti(name='AnagDipendenti'))
         return sm
 
 
