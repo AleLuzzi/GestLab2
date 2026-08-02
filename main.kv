@@ -26,7 +26,7 @@
             cols: 2
             padding: dp(24)
             spacing: dp(16)
-            size_hint_y: 0.8
+            size_hint_y: 0.7
             MenuButton:
                 on_release: root.ingresso_merce()
                 MDButtonIcon:
@@ -77,10 +77,11 @@
                 MDButtonText:
                     text: 'Esci'
         MDBoxLayout:
-            size_hint_y: 0.2
+            size_hint_y: 0.3
             FitImage:
                 source: 'immagini/dlogo.png'
-                size_hint: None, None
-                size: dp(180), dp(140)
+                fit_mode: 'contain'
+                size_hint_y: None
+                height: dp(140)
                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
 
