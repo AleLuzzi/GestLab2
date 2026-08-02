@@ -1,26 +1,30 @@
-# TODO - Implementazione anag_dipendenti in GestLab2
+# TODO - Miglioramenti code quality GestLab2
 
 ## Obiettivo
-Portare il modulo `anag_dipendenti` dal progetto `GestioneLaboratorio`
-(C:\Users\Ale\Documents\GestioneLaboratorio\Laboratorio\anag_dipendenti)
-in GestLab2 in stile KivyMD 2.x coerente con gli altri moduli.
+Migliorare chiarezza, manutenibilità e performance di `main.py` e `main.kv`,
+con alcuni interventi mirati su `controller_db.py` e deduplicazione delle
+classi RecycleView selezionabili.
 
-## Passi
+## Passi main.py
+- [x] Guard `if __name__ == '__main__':`
+- [x] Naming PEP 8: `menu` -> `Menu`, `main` -> `MainApp`
+- [x] Costanti per i nomi delle schermate
+- [x] Docstring sui metodi di navigazione
+- [x] `Config.set` spostato e commentato
+- [x] `esci()` usa `App.get_running_app().stop()`
 
-- [x] `controller_db.py`: aggiungere funzioni CRUD per dipendenti e reparti
-- [x] `anag_dipendenti/__init__.py`: export classe
-- [x] `anag_dipendenti/anag_dipendenti.py`: classe `Anag_dipendenti(MDScreen)` con CRUD
-- [x] `anag_dipendenti/anag_dipendenti.kv`: UI KivyMD 2.x
-- [x] `main.py`: registrazione schermata + metodo menu
-- [x] `main.kv`: include del .kv + bottone "Dipendenti"
-- [x] Verifica: `python -m py_compile` su tutti i file
-- [x] Test avvio `python main.py`
+## Passi main.kv
+- [x] Path immagine con forward slash
+- [x] Template `<MenuButton@MDButton>` per ridurre ripetizione
+- [x] Gestione esplicita bottone "Impostazioni"
+- [x] Uso template nei bottoni del menu
 
-## Aggiunta MDDialog di conferma eliminazione dipendente
-
-- [x] `anag_dipendenti/anag_dipendenti.py`: import dialog/button KivyMD 2.x
-- [x] `anag_dipendenti/anag_dipendenti.py`: `_elimina()` apre dialog di conferma
-- [x] `anag_dipendenti/anag_dipendenti.py`: metodi `_conferma_elimina()` e `_annulla_elimina()`
-- [x] Verifica: `python -m py_compile` su `anag_dipendenti/anag_dipendenti.py`
-- [x] Test runtime costruzione/apertura MDDialog (test isolato)
+## Passi aggiuntivi
+- [x] `controller_db.py`: lettura credenziali da `config.ini`
+- [x] `controller_db.py`: helper per riuso cursore / connessione
+- [x] Modulo condiviso `recycleviews.py` con classi selezionabili
+- [x] Deduplicazione classi nei moduli (anag_dipendenti, chiudi_lotto, ingresso_merce, lotti_vendita, nuovo_menu)
+- [x] Rimozione print di debug nei gestori di selezione
+- [x] Verifica `python -m py_compile` su tutti i file
+- [x] Verifica runtime: `BUILD_OK` (app.build() riuscito con KV caricato)
 

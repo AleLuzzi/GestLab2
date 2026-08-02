@@ -6,7 +6,11 @@
 #:include ingresso_merce/ingresso_merce.kv
 #:include anag_dipendenti/anag_dipendenti.kv
 
-<menu>:
+# Pulsante standard del menu principale (stile "filled" condiviso).
+<MenuButton@MDButton>:
+    style: "filled"
+
+<Menu>:
     MDBoxLayout:
         orientation: 'vertical'
         md_bg_color: app.theme_cls.backgroundColor
@@ -23,56 +27,50 @@
             padding: dp(24)
             spacing: dp(16)
             size_hint_y: 0.8
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.ingresso_merce()
                 MDButtonIcon:
                     icon: 'truck-delivery-outline'
                 MDButtonText:
                     text: 'Ingresso Merce'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.nuovo_lotto()
                 MDButtonIcon:
                     icon: 'plus-box-outline'
                 MDButtonText:
                     text: 'Nuovo Lotto'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.chiudi_lotto()
                 MDButtonIcon:
                     icon: 'archive-arrow-down-outline'
                 MDButtonText:
                     text: 'Chiudi Lotti'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.lotti_vendita()
                 MDButtonIcon:
                     icon: 'point-of-sale'
                 MDButtonText:
                     text: 'Vendita'
-            MDButton:
-                style: "filled"
+            MenuButton:
+                # TODO: implementare la schermata Impostazioni.
+                # attualmente il pulsante non esegue alcuna azione.
                 MDButtonIcon:
                     icon: 'cog-outline'
                 MDButtonText:
                     text: 'Impostazioni'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.anag_dipendenti()
                 MDButtonIcon:
                     icon: 'account-group-outline'
                 MDButtonText:
                     text: 'Dipendenti'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.nuovo_menu()
                 MDButtonIcon:
                     icon: 'silverware-fork-knife'
                 MDButtonText:
                     text: 'Nuovo Menu'
-            MDButton:
-                style: "filled"
+            MenuButton:
                 on_release: root.esci()
                 MDButtonIcon:
                     icon: 'exit-to-app'
@@ -81,7 +79,7 @@
         MDBoxLayout:
             size_hint_y: 0.2
             FitImage:
-                source: './/immagini//dlogo.png'
+                source: 'immagini/dlogo.png'
                 size_hint: None, None
                 size: dp(180), dp(140)
                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
