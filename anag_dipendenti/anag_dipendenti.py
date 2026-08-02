@@ -5,6 +5,13 @@ from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDButton, MDButtonText
+from kivymd.uix.dialog import (
+    MDDialog,
+    MDDialogButtonContainer,
+    MDDialogHeadlineText,
+    MDDialogSupportingText,
+)
 from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.screen import MDScreen
@@ -169,6 +176,8 @@ class Anag_dipendenti(MDScreen):
         self.ids.campo_reparto.text = nome_reparto
 
         self._disabilita_campi()
+        # Con un dipendente selezionato è possibile modificarlo o eliminarlo
+        self.ids.btn_elimina.disabled = False
 
     # ------------------------------------------------------------------ #
     #  Azioni
@@ -249,7 +258,49 @@ class Anag_dipendenti(MDScreen):
         self._disabilita_campi()
 
     def _elimina(self):
-        """Elimina il dipendente selezionato previa conferma."""
+        """Apre un dialog di conferma prima di eliminare il dipendente."""
+        if not self.dipendente_selezionato:
+            self.ids.label_errore.text = 'Nessun record selezionato per l\'eliminazione.'
+            return
+
+        dipendente = self.dipendente_selezionato
+        self.dialog_conferma_elimina = MDDialog(
+            MDDialogHeadlineText(
+                text='Eliminare il dipendente?',
+                halign='left',
+            ),
+            MDDialogSupportingText(
+                text='Il dipendente "{}" (ID {}) sarà eliminato definitivamente '
+                     'dal database. L\'operazione non può essere annullata.'.format(
+                         dipendente.nome, dipendente.id),
+                halign='left',
+            ),
+            MDDialogButtonContainer(
+                MDButton(
+                    MDButtonText(text='Annulla'),
+                    style='text',
+                    on_release=self._annulla_elimina,
+                ),
+                MDButton(
+                    MDButtonText(text='Elimina'),
+                    style='filled',
+                    theme_bg_color='Custom',
+                    md_bg_color='#B71C1C',
+                    on_release=self._conferma_elimina,
+                ),
+                spacing='8dp',
+            ),
+        )
+        self.dialog_conferma_elimina.open()
+
+    def _annulla_elimina(self, *args):
+        """Chiude il dialog di conferma senza eliminare nulla."""
+        if hasattr(self, 'dialog_conferma_elimina'):
+            self.dialog_conferma_elimina.dismiss()
+
+    def _conferma_elimina(self, *args):
+        """Elimina definitivamente il dipendente selezionato."""
+        self._annulla_elimina()
         if not self.dipendente_selezionato:
             self.ids.label_errore.text = 'Nessun record selezionato per l\'eliminazione.'
             return

@@ -16,3 +16,11 @@ in GestLab2 in stile KivyMD 2.x coerente con gli altri moduli.
 - [x] Verifica: `python -m py_compile` su tutti i file
 - [x] Test avvio `python main.py`
 
+## Aggiunta MDDialog di conferma eliminazione dipendente
+
+- [x] `anag_dipendenti/anag_dipendenti.py`: import dialog/button KivyMD 2.x
+- [x] `anag_dipendenti/anag_dipendenti.py`: `_elimina()` apre dialog di conferma
+- [x] `anag_dipendenti/anag_dipendenti.py`: metodi `_conferma_elimina()` e `_annulla_elimina()`
+- [x] Verifica: `python -m py_compile` su `anag_dipendenti/anag_dipendenti.py`
+- [x] Test runtime costruzione/apertura MDDialog (test isolato)
+
