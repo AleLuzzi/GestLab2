@@ -9,6 +9,7 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.screen import MDScreen
 
+from .dipendente import Dipendente
 import controller_db as db
 
 
@@ -108,14 +109,14 @@ class Anag_dipendenti(MDScreen):
     def _aggiorna(self):
         """Ricarica i dipendenti dal DB e popola la RecycleView."""
         try:
-            self.dati_dipendenti = db._recupera_dipendenti()
+            self.dati_dipendenti = Dipendente.fetch_all(db.c)
         except Exception:
             self.dati_dipendenti = []
 
         self.ids.rv_elenco.data = [
             {
-                'label_1': str(x['id']),
-                'label_2': str(x['nome']),
+                'label_1': str(x.id),
+                'label_2': str(x.nome),
             }
             for x in self.dati_dipendenti
         ]
@@ -126,11 +127,11 @@ class Anag_dipendenti(MDScreen):
         testo_ricerca = text.lower()
         self.ids.rv_elenco.data = [
             {
-                'label_1': str(x['id']),
-                'label_2': str(x['nome']),
+                'label_1': str(x.id),
+                'label_2': str(x.nome),
             }
             for x in self.dati_dipendenti
-            if testo_ricerca in str(x['nome']).lower() or testo_ricerca in str(x['id'])
+            if testo_ricerca in str(x.nome).lower() or testo_ricerca in str(x.id)
         ]
 
     def _reset_ricerca(self):
@@ -152,17 +153,17 @@ class Anag_dipendenti(MDScreen):
         id_selezionato = int(self.ids.rv_elenco.data[idx]['label_1'])
 
         dipendente = next(
-            (d for d in self.dati_dipendenti if int(d['id']) == id_selezionato), None
+            (d for d in self.dati_dipendenti if int(d.id) == id_selezionato), None
         )
         if not dipendente:
             return
 
         self.dipendente_selezionato = dipendente
 
-        self.ids.campo_nome.text = str(dipendente['nome'])
-        self.ids.campo_email.text = str(dipendente['email'])
+        self.ids.campo_nome.text = str(dipendente.nome)
+        self.ids.campo_email.text = str(dipendente.email)
 
-        reparto_id = dipendente['reparto']
+        reparto_id = dipendente.reparto
         nome_reparto = self.reparti_map_id_nome.get(
             str(reparto_id), '') if reparto_id is not None else ''
         self.ids.campo_reparto.text = nome_reparto
@@ -220,16 +221,15 @@ class Anag_dipendenti(MDScreen):
 
         try:
             if self.modalita_inserimento:
-                db._inserisci_dipendente(nome_dipendente, email_dipendente, reparto_id)
+                Dipendente(nome=nome_dipendente, email=email_dipendente,
+                           reparto=reparto_id).insert(db.c, db.conn)
             else:
                 if not self.dipendente_selezionato:
                     return
-                db._modifica_dipendente(
-                    int(self.dipendente_selezionato['id']),
-                    nome_dipendente,
-                    email_dipendente,
-                    reparto_id,
-                )
+                self.dipendente_selezionato.nome = nome_dipendente
+                self.dipendente_selezionato.email = email_dipendente
+                self.dipendente_selezionato.reparto = reparto_id
+                self.dipendente_selezionato.save(db.c, db.conn)
 
             self.modalita_inserimento = False
             self.modalita_modifica = False
@@ -255,7 +255,7 @@ class Anag_dipendenti(MDScreen):
             return
 
         try:
-            db._elimina_dipendente(int(self.dipendente_selezionato['id']))
+            self.dipendente_selezionato.delete(db.c, db.conn)
         except Exception as e:
             self.ids.label_errore.text = 'Impossibile eliminare il dipendente: {}'.format(e)
             return
