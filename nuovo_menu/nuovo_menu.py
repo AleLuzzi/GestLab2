@@ -7,7 +7,7 @@ from kivymd.uix.tab import MDTabsItem, MDTabsItemText
 
 from recycleviews import SelectableBox
 
-import controller_db as db
+from core.repositories import prodotti as prodotti_repo
 
 
 class Multicampo_menu(SelectableBox):
@@ -51,9 +51,9 @@ class Nuovo_menu(MDScreen):
 
         oggi = datetime.date.today()
 
-        primi = db._recupera_primi()
-        secondi = db._recupera_secondi()
-        contorni = db._recupera_contorni()
+        primi = prodotti_repo.recupera_primi()
+        secondi = prodotti_repo.recupera_secondi()
+        contorni = prodotti_repo.recupera_contorni()
 
         self.tab_primi.ids.rv_primi.data = [{'label_1': str(x['prodotto'].upper()),
                                              'label_2': str(x['plu'])} for x in primi]
@@ -81,4 +81,3 @@ class Nuovo_menu(MDScreen):
 
     def indietro(self):
         self.manager.current = 'menu'
-

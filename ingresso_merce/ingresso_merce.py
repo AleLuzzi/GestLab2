@@ -8,7 +8,8 @@ from kivymd.uix.tab import MDTabsItem, MDTabsItemText
 
 from recycleviews import SelectableBox, SelectableLabel
 
-import controller_db as db
+from core.repositories import lotti as lotti_repo
+from core.repositories import prodotti as prodotti_repo
 
 
 class Multicampo_riepilogo_ingresso_merce(SelectableBox):
@@ -59,10 +60,10 @@ class Ingresso_merce(MDScreen):
 
         self.tab_intestazione.ids.label_data.text = str(oggi.strftime('%d/%m/%y'))
 
-        prog_lotto_acq = db._recupera_progressivo_ingresso()
+        prog_lotto_acq = lotti_repo.recupera_progressivo_ingresso()
         self.tab_intestazione.ids.label_prog_ingresso.text = str(prog_lotto_acq) + 'A'
 
-        lista_fornitori = db._recupera_lista_fornitori()
+        lista_fornitori = lotti_repo.recupera_lista_fornitori()
         self.menu_fornitori = MDDropdownMenu(
             caller=self.tab_intestazione.ids.spinner_fornitori,
             items=[
@@ -85,8 +86,8 @@ class Ingresso_merce(MDScreen):
         self.menu_fornitori.dismiss()
 
     def _aggiorna_rv_lista_tagli(self, cat_m):
-        self.cat_m = db._recupera_merceologia_da_id(cat_m)
-        lista = db._lista_tagli(cat_m)
+        self.cat_m = prodotti_repo.recupera_merceologia_da_id(cat_m)
+        lista = prodotti_repo.lista_tagli(cat_m)
         self.tab_corpo.ids.rv_articoli.data = [{'text': str(x).upper()} for x in lista]
 
     def _selezione(self):
@@ -108,4 +109,3 @@ class Ingresso_merce(MDScreen):
 
     def indietro(self):
         self.manager.current = 'menu'
-

@@ -1,5 +1,23 @@
+# UI desktop (KivyMD)
 kivy==2.3.1
 kivymd==2.0.1.dev0
+
+# Database
 mysql-connector-python
 pillow
 
+# Segreti / env
+python-dotenv
+
+# Backend SaaS (FastAPI)
+fastapi
+uvicorn[standard]
+pydantic[email]
+python-multipart
+PyJWT
+bcrypt
+
+# Stampa e barcode (core.services.printing / core.services.barcode)
+reportlab
+qrcode
+python-escpos

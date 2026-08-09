@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GestLab SaaS — Console</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <!-- Login view -->
+  <div id="view-login" class="view centered">
+    <div class="card login-card">
+      <h1>GestLab SaaS</h1>
+      <p class="subtitle">Gestione Laboratorio — Console</p>
+      <form id="login-form">
+        <label>Email
+          <input type="email" id="login-email" required placeholder="admin@tenant.local" />
+        </label>
+        <label>Password
+          <input type="password" id="login-password" required placeholder="••••••••" />
+        </label>
+        <button type="submit" class="btn primary">Accedi</button>
+        <div id="login-error" class="error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main app view -->
+  <div id="view-app" class="view" style="display:none">
+    <header class="topbar">
+      <div class="brand">GestLab <span class="saas-badge">SaaS</span></div>
+      <div class="topbar-user">
+        <span id="user-email"></span>
+        <span id="user-role" class="role-badge"></span>
+        <button id="btn-logout" class="btn ghost">Esci</button>
+      </div>
+    </header>
+
+    <nav class="sidebar">
+      <button class="nav-item active" data-view="dashboard">Dashboard</button>
+      <button class="nav-item" data-view="dipendenti">Dipendenti</button>
+      <button class="nav-item" data-view="lotti">Lotti aperti</button>
+      <button class="nav-item" data-view="menu">Menu</button>
+      <button class="nav-item" data-view="stampa">Stampa</button>
+      <button class="nav-item" data-view="printjobs">Coda stampa</button>
+      <button class="nav-item admin-only" data-view="admin">Admin</button>
+    </nav>
+
+    <main class="content">
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="panel active">
+        <h2>Dashboard</h2>
+        <div class="cards">
+          <div class="stat-card"><h3>Dipendenti</h3><p id="stat-dip" class="stat">—</p></div>
+          <div class="stat-card"><h3>Lotti aperti</h3><p id="stat-lotti" class="stat">—</p></div>
+          <div class="stat-card"><h3>Job di stampa</h3><p id="stat-jobs" class="stat">—</p></div>
+        </div>
+        <div class="panel-box">
+          <h3>Lookup barcode (EAN)</h3>
+          <div class="row">
+            <input type="text" id="ean-input" placeholder="Scansiona o digita un EAN-13" />
+            <button id="btn-ean" class="btn primary">Cerca</button>
+          </div>
+          <pre id="ean-result" class="code-box"></pre>
+        </div>
+      </section>
+
+      <!-- Dipendenti -->
+      <section id="view-dipendenti" class="panel">
+        <div class="panel-head">
+          <h2>Dipendenti</h2>
+          <button id="btn-nuovo-dip" class="btn primary">Nuovo dipendente</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Reparto</th><th>Azioni</th></tr></thead>
+          <tbody id="dip-tbody"></tbody>
+        </table>
+        <div id="dip-form" class="form-card" style="display:none">
+          <h3 id="dip-form-title">Nuovo dipendente</h3>
+          <input type="hidden" id="dip-id" />
+          <label>Nome <input type="text" id="dip-nome" required /></label>
+          <label>Email <input type="email" id="dip-email" /></label>
+          <label>ID Reparto <input type="number" id="dip-reparto" /></label>
+          <div class="row">
+            <button id="btn-save-dip" class="btn primary">Salva</button>
+            <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
+          </div>
+          <div id="dip-error" class="error"></div>
+        </div>
+      </section>
+
+      <!-- Lotti -->
+      <section id="view-lotti" class="panel">
+        <h2>Lotti aperti</h2>
+        <table class="table">
+          <thead><tr><th>Progressivo</th><th>Fornitore</th><th>Prodotto</th><th>Residuo</th></tr></thead>
+          <tbody id="lotti-tbody"></tbody>
+        </table>
+      </section>
+
+      <!-- Menu -->
+      <section id="view-menu" class="panel">
+        <h2>Menu</h2>
+        <div id="menu-content"></div>
+      </section>
+
+      <!-- Stampa -->
+      <section id="view-stampa" class="panel">
+        <h2>Stampa documenti</h2>
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="ddt">DDT</button>
+          <button class="tab-btn" data-tab="scontrino">Scontrino</button>
+          <button class="tab-btn" data-tab="etichetta">Etichetta</button>
+        </div>
+
+        <!-- DDT -->
+        <div id="tab-ddt" class="tab-panel active">
+          <div class="row">
+            <label>Numero <input type="text" id="ddt-numero" /></label>
+            <label>Data <input type="text" id="ddt-data" placeholder="dd/mm/yy" /></label>
+            <label>Fornitore <input type="text" id="ddt-fornitore" /></label>
+          </div>
+          <div id="ddt-righe"></div>
+          <button id="btn-add-riga" class="btn ghost">+ Aggiungi riga</button>
+          <div class="row">
+            <button id="btn-gen-ddt" class="btn primary">Genera DDT (PDF)</button>
+          </div>
+        </div>
+
+        <!-- Scontrino -->
+        <div id="tab-scontrino" class="tab-panel">
+          <label>Testata <input type="text" id="sco-testata" /></label>
+          <label>IVA % <input type="text" id="sco-iva" value="22" /></label>
+          <div id="sco-righe"></div>
+          <button id="btn-add-sco" class="btn ghost">+ Aggiungi riga</button>
+          <label>Totale <input type="text" id="sco-totale" /></label>
+          <button id="btn-gen-sco" class="btn primary">Genera scontrino (ESC/POS)</button>
+        </div>
+
+        <!-- Etichetta -->
+        <div id="tab-etichetta" class="tab-panel">
+          <div class="row">
+            <label>PLU <input type="text" id="et-plu" /></label>
+            <label>Prodotto <input type="text" id="et-prodotto" /></label>
+            <label>Prezzo €/kg <input type="text" id="et-prezzo" /></label>
+          </div>
+          <label>Ingredienti <input type="text" id="et-ingredienti" /></label>
+          <label>Codice <input type="text" id="et-codice" /></label>
+          <button id="btn-gen-et" class="btn primary">Genera etichetta (PDF)</button>
+        </div>
+      </section>
+
+      <!-- Coda stampa -->
+      <section id="view-printjobs" class="panel">
+        <div class="panel-head">
+          <h2>Coda di stampa</h2>
+          <button id="btn-refresh-jobs" class="btn ghost">Aggiorna</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Tipo</th><th>Stato</th><th>Creato</th><th>Payload</th></tr></thead>
+          <tbody id="jobs-tbody"></tbody>
+        </table>
+      </section>
+
+      <!-- Admin -->
+      <section id="view-admin" class="panel">
+        <h2>Admin</h2>
+        <div class="form-card">
+          <h3>Crea utente nel tenant</h3>
+          <label>Email <input type="email" id="usr-email" /></label>
+          <label>Password <input type="password" id="usr-password" /></label>
+          <label>Ruolo
+            <select id="usr-ruolo">
+              <option value="operator" selected>operatore</option>
+              <option value="admin">admin</option>
+              <option value="viewer">viewer</option>
+            </select>
+          </label>
+          <button id="btn-crea-utente" class="btn primary">Crea utente</button>
+          <div id="admin-error" class="error"></div>
+        </div>
+        <div class="form-card">
+          <h3>Registra dispositivo di stampa</h3>
+          <label>Nome <input type="text" id="dev-nome" placeholder="Pdv 1" /></label>
+          <label>Stampante DYMO <input type="text" id="dev-dymo" /></label>
+          <label>Stampante termica <input type="text" id="dev-term" /></label>
+          <button id="btn-crea-dev" class="btn primary">Registra dispositivo</button>
+          <pre id="dev-result" class="code-box"></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script src="/static/app.js?v=20260801"></script>
+</body>
+</html>

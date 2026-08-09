@@ -11,8 +11,9 @@ from kivymd.uix.screen import MDScreen
 
 from recycleviews import SelectableBox
 
-from .dipendente import Dipendente
-import controller_db as db
+from core import Dipendente
+from core.repositories import reparti as reparti_repo
+from core.repositories import dipendenti as dipendenti_repo
 
 
 class RigaDipendente(SelectableBox):
@@ -43,7 +44,7 @@ class Anag_dipendenti(MDScreen):
         self.reparti_map_id_nome = {}
         self.reparti_map_nome_id = {}
         try:
-            reparti = db._recupera_reparti()
+            reparti = reparti_repo.reparti_abilitati()
         except Exception:
             reparti = []
 
@@ -79,7 +80,7 @@ class Anag_dipendenti(MDScreen):
     def _aggiorna(self):
         """Ricarica i dipendenti dal DB e popola la RecycleView."""
         try:
-            self.dati_dipendenti = Dipendente.fetch_all(db.c)
+            self.dati_dipendenti = dipendenti_repo.fetch_all()
         except Exception:
             self.dati_dipendenti = []
 
@@ -193,15 +194,15 @@ class Anag_dipendenti(MDScreen):
 
         try:
             if self.modalita_inserimento:
-                Dipendente(nome=nome_dipendente, email=email_dipendente,
-                           reparto=reparto_id).insert(db.c, db.conn)
+                dipendenti_repo.insert(Dipendente(
+                    nome=nome_dipendente, email=email_dipendente, reparto=reparto_id))
             else:
                 if not self.dipendente_selezionato:
                     return
                 self.dipendente_selezionato.nome = nome_dipendente
                 self.dipendente_selezionato.email = email_dipendente
                 self.dipendente_selezionato.reparto = reparto_id
-                self.dipendente_selezionato.save(db.c, db.conn)
+                dipendenti_repo.save(self.dipendente_selezionato)
 
             self.modalita_inserimento = False
             self.modalita_modifica = False
@@ -269,7 +270,7 @@ class Anag_dipendenti(MDScreen):
             return
 
         try:
-            self.dipendente_selezionato.delete(db.c, db.conn)
+            dipendenti_repo.delete(self.dipendente_selezionato)
         except Exception as e:
             self.ids.label_errore.text = 'Impossibile eliminare il dipendente: {}'.format(e)
             return
@@ -294,4 +295,3 @@ class Anag_dipendenti(MDScreen):
 
     def indietro(self):
         self.manager.current = 'menu'
-

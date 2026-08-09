@@ -4,8 +4,6 @@ from kivymd.uix.screen import MDScreen
 
 from recycleviews import SelectableLabel
 
-import controller_db as db
-
 
 class Lotti_vendita(MDScreen):
     def __init__(self, **kwargs):

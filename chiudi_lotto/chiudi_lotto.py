@@ -4,7 +4,7 @@ from kivymd.uix.screen import MDScreen
 
 from recycleviews import SelectableBox
 
-import controller_db as db
+from core.repositories import lotti as lotti_repo
 
 
 class Multicampo(SelectableBox):
@@ -17,7 +17,7 @@ class Chiudi_lotto(MDScreen):
 
         oggi = datetime.date.today()
 
-        dati = db._recupera_lotti_aperti()
+        dati = lotti_repo.lotti_aperti()
 
         self.ids.rv.data = [{'label_1': str(x['number']),
                              'label_2': str(x['fornit']),

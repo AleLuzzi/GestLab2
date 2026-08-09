@@ -110,10 +110,13 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 5. **Backup & Disaster Recovery** con RPO/RTO definiti.
 
 ### Fase 6 — Integrazioni esterne
-1. **Stampa DYMO**:
-   - Web App → browser printing (formati ZPL/Esc-POS) oppure
-     **client desktop sottile** per la sola stampa locale;
-   - In alternativa servizi di cloud printing.
+1. **Stampa DYMO, DDT e scontrini + lettori barcode**:
+   - Vedi il documento dedicato **`SAAS_PRINTING_BARCODE_PLAN.md`**.
+   - Approccio consigliato: generazione **server-side** (PDF DDT, dati
+     scontrino, etichette DYMO) + **Local Print Agent** per l'hardware.
+   - Scontrino fiscale (se richiesto): stampa locale obbligatoria (modulo
+     certificato / registratore telematico).
+   - Lettori barcode: **HID keyboard-wedge** (zero driver) → lookup EAN via API.
 2. **Token Facebook**: il token in `config.ini` scade → gestirlo
    **server-side** con refresh automatico (nessun segreto nel client).
 3. **Altre integrazioni** (eventuali): fatturazione elettronica, contabilità,
@@ -171,12 +174,17 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 | 2 | Introduzione modello utenti/tenant nello schema | Alta |
 | 3 | Creazione backend FastAPI/Django con API REST | Alta |
 | 4 | Estrarre service layer dalla logica Kivy | Alta |
-| 5 | Frontend web (o client Kivy refactorizzato) | Media |
-| 6 | Migrazione DB su cloud + secret management | Media |
-| 7 | Docker + CI/CD + deploy | Media |
-| 8 | Sicurezza, GDPR, monitoring | Media |
-| 9 | Pagamenti, onboarding tenant, migrazione dati clienti | Bassa |
-| 10 | Test, pilot, go-live | Bassa |
+| 5 | Service layer stampa (DDT, etichette DYMO, scontrini) + barcode | Alta |
+| 6 | Coda `print_jobs` + **Local Print Agent** per l'hardware | Media |
+| 7 | Frontend web (o client Kivy refactorizzato) | Media |
+| 8 | Migrazione DB su cloud + secret management | Media |
+| 9 | Docker + CI/CD + deploy | Media |
+| 10 | Sicurezza, GDPR, monitoring | Media |
+| 11 | Pagamenti, onboarding tenant, migrazione dati clienti | Bassa |
+| 12 | Test, pilot, go-live | Bassa |
+
+> Per DDT, scontrini e barcode vedi il documento dettagliato
+> **`SAAS_PRINTING_BARCODE_PLAN.md`**.
 
 ---
 

@@ -1,3 +1,7 @@
 __pycache__
 buildozer.spec
 venv
+
+# Segreti: non committare .env (mantieni .env.example)
+.env
+*.env.local
