@@ -1,0 +1,167 @@
+#:kivy 2.3.1
+#:import utils kivy.utils
+
+<RigaReparto>:
+    orientation: 'horizontal'
+    padding: dp(12)
+    spacing: dp(12)
+    md_bg_color: app.theme_cls.primaryContainerColor if self.selected else (0.62, 0.62, 0.62, 1)
+    label_1: ''
+    label_2: ''
+    MDLabel:
+        size_hint_x: 0.2
+        text: root.label_1
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+    MDLabel:
+        size_hint_x: 0.8
+        text: root.label_2
+        theme_text_color: 'Custom'
+        text_color: (0, 0, 0, 1) if root.selected else (1, 1, 1, 1)
+
+<Anag_reparti>:
+    md_bg_color: app.theme_cls.backgroundColor
+    MDBoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            type: "small"
+            theme_bg_color: "Custom"
+            md_bg_color: app.theme_cls.primaryColor
+            MDTopAppBarTitle:
+                text: 'Anagrafica Reparti'
+                theme_text_color: "Custom"
+                text_color: 1, 1, 1, 1
+        MDBoxLayout:
+            orientation: 'horizontal'
+            padding: dp(8)
+            spacing: dp(8)
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_x: 0.4
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: 0.12
+                    MDTextField:
+                        id: entry_filtro
+                        mode: 'outlined'
+                        on_text: root._filtra_reparti(self.text)
+                        MDTextFieldHintText:
+                            text: 'Cerca reparto...'
+                    MDButton:
+                        style: 'filled'
+                        on_release: root._reset_ricerca()
+                        MDButtonIcon:
+                            icon: 'close'
+                MDBoxLayout:
+                    size_hint_y: 0.08
+                    md_bg_color: app.theme_cls.primaryColor
+                    MDLabel:
+                        size_hint_x: 0.2
+                        text: 'ID'
+                        halign: 'center'
+                        theme_text_color: 'Custom'
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        size_hint_x: 0.8
+                        text: 'REPARTO'
+                        halign: 'center'
+                        theme_text_color: 'Custom'
+                        text_color: 1, 1, 1, 1
+                RecycleView:
+                    id: rv_elenco
+                    viewclass: 'RigaReparto'
+                    SelectableRecycleBoxLayout:
+                        default_size: None, dp(48)
+                        default_size_hint: 1, None
+                        size_hint_y: None
+                        height: self.minimum_height
+                        orientation: 'vertical'
+                        multiselect: 'False'
+            MDBoxLayout:
+                orientation: 'vertical'
+                size_hint_x: 0.6
+                padding: dp(8)
+                spacing: dp(8)
+                MDLabel:
+                    text: 'Dettagli reparto selezionato'
+                    bold: True
+                    theme_text_color: 'Custom'
+                    text_color: app.theme_cls.primaryColor
+                MDGridLayout:
+                    cols: 2
+                    spacing: dp(8)
+                    adaptive_height: True
+                    MDLabel:
+                        text: 'Reparto'
+                        bold: True
+                    MDTextField:
+                        id: campo_reparto
+                        mode: 'outlined'
+                        readonly: True
+                        MDTextFieldHintText:
+                            text: 'Inserisci nome reparto'
+                    MDLabel:
+                        text: 'Flag dipendenti'
+                        bold: True
+                    MDCheckbox:
+                        id: checkbox_flag1
+                        disabled: True
+                    MDLabel:
+                        text: 'Flag prodotti'
+                        bold: True
+                    MDCheckbox:
+                        id: checkbox_flag2
+                        disabled: True
+                MDLabel:
+                    id: label_errore
+                    text: ''
+                    theme_text_color: 'Custom'
+                    text_color: 1, 0, 0, 1
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    adaptive_height: True
+                    spacing: dp(4)
+                    MDButton:
+                        id: btn_nuovo
+                        style: 'filled'
+                        on_release: root._nuovo()
+                        MDButtonText:
+                            text: 'Nuovo'
+                    MDButton:
+                        id: btn_modifica
+                        style: 'filled'
+                        disabled: True
+                        on_release: root._modifica()
+                        MDButtonText:
+                            text: 'Modifica'
+                    MDButton:
+                        id: btn_salva
+                        style: 'filled'
+                        disabled: True
+                        on_release: root._salva()
+                        MDButtonText:
+                            text: 'Salva'
+                    MDButton:
+                        id: btn_annulla
+                        style: 'filled'
+                        disabled: True
+                        on_release: root._annulla()
+                        MDButtonText:
+                            text: 'Annulla'
+                    MDButton:
+                        id: btn_elimina
+                        style: 'filled'
+                        disabled: True
+                        on_release: root._elimina()
+                        MDButtonText:
+                            text: 'Elimina'
+        MDBoxLayout:
+            size_hint_y: 0.08
+            MDButton:
+                style: "text"
+                on_release: root.indietro()
+                MDButtonIcon:
+                    icon: 'arrow-left'
+                MDButtonText:
+                    text: 'Indietro'

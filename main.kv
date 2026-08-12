@@ -1,10 +1,15 @@
 #:kivy 2.3.1
 #:import FitImage kivymd.uix.fitimage.FitImage
-#:include lotti_vendita/lotti_vendita.kv
-#:include chiudi_lotto/chiudi_lotto.kv
-#:include nuovo_menu/nuovo_menu.kv
-#:include ingresso_merce/ingresso_merce.kv
-#:include anag_dipendenti/anag_dipendenti.kv
+#:include desktop/lotti_vendita/lotti_vendita.kv
+#:include desktop/chiudi_lotto/chiudi_lotto.kv
+#:include desktop/nuovo_menu/nuovo_menu.kv
+#:include desktop/ingresso_merce/ingresso_merce.kv
+#:include desktop/lotti_vendita/lotti_vendita.kv
+#:include desktop/chiudi_lotto/chiudi_lotto.kv
+#:include desktop/nuovo_menu/nuovo_menu.kv
+#:include desktop/ingresso_merce/ingresso_merce.kv
+#:include desktop/anag_dipendenti/anag_dipendenti.kv
+#:include desktop/anag_reparti/anag_reparti.kv
 
 # Pulsante standard del menu principale (stile "filled" condiviso).
 <MenuButton@MDButton>:
@@ -64,6 +69,12 @@
                     icon: 'account-group-outline'
                 MDButtonText:
                     text: 'Dipendenti'
+            MenuButton:
+                on_release: root.anag_reparti()
+                MDButtonIcon:
+                    icon: 'warehouse'
+                MDButtonText:
+                    text: 'Reparti'
             MenuButton:
                 on_release: root.nuovo_menu()
                 MDButtonIcon:

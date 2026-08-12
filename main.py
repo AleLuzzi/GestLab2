@@ -15,11 +15,12 @@ from kivy.uix.screenmanager import ScreenManager, WipeTransition
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 
-from anag_dipendenti import Anag_dipendenti
-from chiudi_lotto import Chiudi_lotto
-from ingresso_merce import Ingresso_merce
-from lotti_vendita import Lotti_vendita
-from nuovo_menu import Nuovo_menu
+from desktop.anag_dipendenti import Anag_dipendenti
+from desktop.anag_reparti import Anag_reparti
+from desktop.chiudi_lotto import Chiudi_lotto
+from desktop.ingresso_merce import Ingresso_merce
+from desktop.lotti_vendita import Lotti_vendita
+from desktop.nuovo_menu import Nuovo_menu
 
 # --------------------------------------------------------------------------- #
 #  Costanti: nomi delle schermate (evita magic string sparse nel codice)
@@ -30,6 +31,7 @@ SCREEN_CHIUDI_LOTTO = 'ChiudiLotto'
 SCREEN_LOTTI_VENDITA = 'LottiVendita'
 SCREEN_NUOVO_MENU = 'NuovoMenu'
 SCREEN_ANAG_DIPENDENTI = 'AnagDipendenti'
+SCREEN_ANAG_REPARTI = 'AnagReparti'
 
 
 class Menu(MDScreen):
@@ -63,6 +65,10 @@ class Menu(MDScreen):
         """Apre la schermata Anagrafica Dipendenti."""
         self._vai_a(SCREEN_ANAG_DIPENDENTI)
 
+    def anag_reparti(self):
+        """Apre la schermata Anagrafica Reparti."""
+        self._vai_a(SCREEN_ANAG_REPARTI)
+
     @staticmethod
     def esci():
         """Termina l'applicazione."""
@@ -84,6 +90,7 @@ class MainApp(MDApp):
         sm.add_widget(Lotti_vendita(name=SCREEN_LOTTI_VENDITA))
         sm.add_widget(Nuovo_menu(name=SCREEN_NUOVO_MENU))
         sm.add_widget(Anag_dipendenti(name=SCREEN_ANAG_DIPENDENTI))
+        sm.add_widget(Anag_reparti(name=SCREEN_ANAG_REPARTI))
         return sm
 
 
