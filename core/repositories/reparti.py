@@ -7,12 +7,11 @@ sul modello ``Reparto`` usando il context manager di ``core.db``.
 from ..db import connection
 from ..core_models import Reparto
 
-
 def reparti_abilitati(tenant_id=None):
     """Recupera i reparti abilitati per i dipendenti (flag1_dip = 1)."""
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "SELECT ID, reparto FROM reparti "
                 "WHERE flag1_dip = 1 AND tenant_id = %s ORDER BY ID",
@@ -29,7 +28,7 @@ def fetch_all(tenant_id=None):
     """Recupera tutti i reparti come oggetti ``Reparto``."""
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "SELECT id, reparto, flag1_dip, flag2_prod "
                 "FROM reparti WHERE tenant_id = %s",
@@ -43,7 +42,7 @@ def find_by_id(reparto_id, tenant_id=None):
     """Cerca un reparto tramite il suo ID (opzionalmente scoped al tenant)."""
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "SELECT id, reparto, flag1_dip, flag2_prod "
                 "FROM reparti WHERE id = %s AND tenant_id = %s",
@@ -60,7 +59,7 @@ def insert(value, tenant_id=None):
         value = Reparto(**value)
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "INSERT INTO reparti (reparto, flag1_dip, flag2_prod, tenant_id) "
                 "VALUES (%s, %s, %s, %s)",
@@ -78,7 +77,7 @@ def save(value, tenant_id=None):
     """Aggiorna un ``Reparto`` (deve avere ``id``)."""
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "UPDATE reparti SET reparto = %s, flag1_dip = %s, flag2_prod = %s "
                 "WHERE id = %s AND tenant_id = %s",
@@ -94,7 +93,7 @@ def delete(value, tenant_id=None):
     """Elimina un ``Reparto`` dal database."""
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
+        if tenant_id is not None :
             c.execute(
                 "DELETE FROM reparti WHERE id = %s AND tenant_id = %s",
                 (value.id, tenant_id),

@@ -94,6 +94,8 @@ function switchView(view) {
     p.classList.toggle("active", p.id === "view-" + view));
   if (view === "dashboard") loadDashboard();
   if (view === "dipendenti") loadDipendenti();
+  if (view === "merceologie") loadMerceologie();
+  if (view === "reparti") loadReparti();
   if (view === "lotti") loadLotti();
   if (view === "menu") loadMenu();
   if (view === "printjobs") loadPrintJobs();
@@ -126,16 +128,22 @@ async function doLogin(email, password) {
 // ------------------------------------------------------------------ #
 async function loadDashboard() {
   try {
-    const [dip, lotti, jobs] = await Promise.all([
+    const [dip, reparti, merceologie, lotti, jobs] = await Promise.all([
       api("/api/v1/dipendenti"),
+      api("/api/v1/reparti"),
+      api("/api/v1/merceologie"),
       api("/api/v1/lotti/aperti"),
       api("/api/v1/print-jobs"),
     ]);
     $("stat-dip").textContent = Array.isArray(dip) ? dip.length : 0;
+    $("stat-reparti").textContent = Array.isArray(reparti) ? reparti.length : 0;
+    $("stat-merc").textContent = Array.isArray(merceologie) ? merceologie.length : 0;
     $("stat-lotti").textContent = Array.isArray(lotti) ? lotti.length : 0;
     $("stat-jobs").textContent = Array.isArray(jobs) ? jobs.length : 0;
   } catch (e) {
     $("stat-dip").textContent = "—";
+    $("stat-reparti").textContent = "—";
+    $("stat-merc").textContent = "—";
     $("stat-lotti").textContent = "—";
     $("stat-jobs").textContent = "—";
   }
@@ -229,6 +237,167 @@ async function delDip(id) {
   try {
     await api("/api/v1/dipendenti/" + id, { method: "DELETE" });
     loadDipendenti();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// ------------------------------------------------------------------ #
+//  Merceologie
+// ------------------------------------------------------------------ #
+async function loadMerceologie() {
+  try {
+    const list = await api("/api/v1/merceologie");
+    const tbody = $("merc-tbody");
+    tbody.innerHTML = list.length
+      ? list.map((m) => `
+        <tr>
+          <td>${esc(m.id)}</td>
+          <td>${esc(m.merceologia)}</td>
+          <td>${esc(m.reparto_nome ?? "")}</td>
+          <td>${esc(m.flag1_inv ? "Sì" : "No")}</td>
+          <td>${esc(m.flag2_taglio ? "Sì" : "No")}</td>
+          <td>${esc(m.flag3_ing_base ? "Sì" : "No")}</td>
+           
+          <td class="row-actions">
+            <button class="btn ghost" onclick="editMerc(${m.id})">Modifica</button>
+            <button class="btn danger" onclick="delMerc(${m.id})">Elimina</button>
+          </td>
+        </tr>`).join("")
+      : '<tr><td colspan="7" class="empty">Nessuna merceologia</td></tr>';
+  } catch (e) {
+    $("merc-tbody").innerHTML = `<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`;
+  }
+  
+}
+
+function nuovaMerc() {
+  $("merc-id").value = "";
+  $("merc-nome").value = "";
+  $("merc-reparto").value = "";
+  $("merc-form-title").textContent = "Nuova merceologia";
+  $("merc-error").textContent = "";
+  $("merc-form").style.display = "block";
+}
+
+function editMerc(id) {
+  api("/api/v1/merceologie").then((list) => {
+    const m = list.find((x) => x.id === id);
+    if (!m) return;
+    $("merc-id").value = m.id;
+    $("merc-nome").value = m.merceologia;
+    $("merc-reparto").value = m.reparto ?? "";
+    $("merc-form-title").textContent = "Modifica merceologia #" + m.id;
+    $("merc-error").textContent = "";
+    $("merc-form").style.display = "block";
+  });
+}
+
+async function salvaMerc() {
+  $("merc-error").textContent = "";
+  const id = $("merc-id").value;
+  const payload = {
+    merceologia: $("merc-nome").value,
+    reparto: $("merc-reparto").value === "" ? null : Number($("merc-reparto").value),
+  };
+  try {
+    if (id) {
+      await api("/api/v1/merceologie/" + id, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await api("/api/v1/merceologie", { method: "POST", body: JSON.stringify(payload) });
+    }
+    $("merc-form").style.display = "none";
+    loadMerceologie();
+  } catch (e) {
+    $("merc-error").textContent = e.message;
+  }
+}
+
+async function delMerc(id) {
+  if (!confirm("Eliminare la merceologia #" + id + "?")) return;
+  try {
+    await api("/api/v1/merceologie/" + id, { method: "DELETE" });
+    loadMerceologie();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// ------------------------------------------------------------------ #
+//  Reparti
+// ------------------------------------------------------------------ #
+async function loadReparti() {
+  try {
+    const list = await api("/api/v1/reparti");
+    const tbody = $("reparti-tbody");
+    tbody.innerHTML = list.length
+      ? list.map((r) => `
+        <tr>
+          <td>${esc(r.id)}</td>
+          <td>${esc(r.reparto)}</td>
+          <td>${esc(r.flag1_dip ? "Sì" : "No")}</td>
+          <td>${esc(r.flag2_prod ? "Sì" : "No")}</td>
+          <td class="row-actions">
+            <button class="btn ghost" onclick="editReparto(${r.id})">Modifica</button>
+            <button class="btn danger" onclick="delReparto(${r.id})">Elimina</button>
+          </td>
+        </tr>`).join("")
+      : '<tr><td colspan="5" class="empty">Nessun reparto</td></tr>';
+  } catch (e) {
+    $("reparti-tbody").innerHTML = `<tr><td colspan="5" class="empty">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function nuovoReparto() {
+  $("reparti-id").value = "";
+  $("reparti-nome").value = "";
+  $("reparti-flag1").checked = false;
+  $("reparti-flag2").checked = false;
+  $("reparti-form-title").textContent = "Nuovo reparto";
+  $("reparti-error").textContent = "";
+  $("reparti-form").style.display = "block";
+}
+
+function editReparto(id) {
+  api("/api/v1/reparti").then((list) => {
+    const r = list.find((x) => x.id === id);
+    if (!r) return;
+    $("reparti-id").value = r.id;
+    $("reparti-nome").value = r.reparto;
+    $("reparti-flag1").checked = Boolean(r.flag1_dip);
+    $("reparti-flag2").checked = Boolean(r.flag2_prod);
+    $("reparti-form-title").textContent = "Modifica reparto #" + r.id;
+    $("reparti-error").textContent = "";
+    $("reparti-form").style.display = "block";
+  });
+}
+
+async function salvaReparto() {
+  $("reparti-error").textContent = "";
+  const id = $("reparti-id").value;
+  const payload = {
+    reparto: $("reparti-nome").value,
+    flag1_dip: $("reparti-flag1").checked ? 1 : 0,
+    flag2_prod: $("reparti-flag2").checked ? 1 : 0,
+  };
+  try {
+    if (id) {
+      await api("/api/v1/reparti/" + id, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await api("/api/v1/reparti", { method: "POST", body: JSON.stringify(payload) });
+    }
+    $("reparti-form").style.display = "none";
+    loadReparti();
+  } catch (e) {
+    $("reparti-error").textContent = e.message;
+  }
+}
+
+async function delReparto(id) {
+  if (!confirm("Eliminare il reparto #" + id + "?")) return;
+  try {
+    await api("/api/v1/reparti/" + id, { method: "DELETE" });
+    loadReparti();
   } catch (e) {
     alert(e.message);
   }
@@ -466,6 +635,16 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-nuovo-dip").addEventListener("click", nuovaDip);
   $("btn-save-dip").addEventListener("click", salvaDip);
   $("btn-cancel-dip").addEventListener("click", () => ($("dip-form").style.display = "none"));
+
+  // Merceologie
+  $("btn-nuovo-merc").addEventListener("click", nuovaMerc);
+  $("btn-save-merc").addEventListener("click", salvaMerc);
+  $("btn-cancel-merc").addEventListener("click", () => ($("merc-form").style.display = "none"));
+
+  // Reparti
+  $("btn-nuovo-reparto").addEventListener("click", nuovoReparto);
+  $("btn-save-reparto").addEventListener("click", salvaReparto);
+  $("btn-cancel-reparto").addEventListener("click", () => ($("reparti-form").style.display = "none"));
 
   // Stampa tabs
   document.querySelectorAll(".tab-btn").forEach((b) =>

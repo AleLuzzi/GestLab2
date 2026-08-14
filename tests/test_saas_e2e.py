@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.db import connection
 from saas import auth, tenant_repo, print_repo
-from core.services import printing, barcode
+from core.services import printing, barcode, reparti as reparti_service
 
 RES = "\033[0m"
 GREEN = "\033[92m"
@@ -184,6 +184,25 @@ def test_print_job_flow(tenant_id):
 
     # Nessun altro job pending.
     check(print_repo.prendi_prossimo_job(did) is None, "coda vuota dopo il completamento")
+
+
+def test_reparti_service(tenant_id):
+    print(f"\n{YELLOW}== Reparti service =={RES}")
+    nuovo = reparti_service.crea_reparto("Cucina", 1, 0, tenant_id)
+    check(nuovo is not None and nuovo.reparto == "Cucina", "creazione reparto in tenant")
+
+    trovato = reparti_service.trova_reparto(nuovo.id, tenant_id)
+    check(trovato is not None and trovato.id == nuovo.id, "ricerca reparto per id")
+
+    reparti = reparti_service.lista_reparti(tenant_id)
+    check(any(r.id == nuovo.id for r in reparti), "lista reparti del tenant")
+
+    reparti_service.aggiorna_reparto(trovato, "Cucina 2", 1, 1, tenant_id)
+    aggiornato = reparti_service.trova_reparto(nuovo.id, tenant_id)
+    check(aggiornato is not None and aggiornato.reparto == "Cucina 2", "aggiornamento reparto")
+
+    reparti_service.elimina_reparto(aggiornato, tenant_id)
+    check(reparti_service.trova_reparto(nuovo.id, tenant_id) is None, "eliminazione reparto")
 
 
 def main():

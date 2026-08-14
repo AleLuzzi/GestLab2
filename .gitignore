@@ -1,6 +1,8 @@
 __pycache__
 buildozer.spec
 venv
+.continue/
+.vscode/
 
 # Segreti: non committare .env (mantieni .env.example)
 .env

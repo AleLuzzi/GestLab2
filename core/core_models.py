@@ -224,26 +224,39 @@ class Taglio:
 
 
 class Merceologia:
-    """Record merceologia (tabella `merceologie`)."""
+    """Record merceologia (tabella `merceologie`).
+
+    `reparto_nome` e' il nome del reparto risolto tramite JOIN con `reparti`
+    (non persistito sulla tabella, solo per la visualizzazione).
+    """
 
     __slots__ = (
         "id", "merceologia", "id_reparto",
         "flag1_inv", "flag2_taglio", "flag3_ing_base",
+        "reparto_nome",
     )
 
     def __init__(self, id=None, merceologia="", id_reparto=None,
-                 flag1_inv=0, flag2_taglio=0, flag3_ing_base=0):
+                 flag1_inv=0, flag2_taglio=0, flag3_ing_base=0, reparto_nome=None):
         self.id = id
         self.merceologia = merceologia
         self.id_reparto = id_reparto
         self.flag1_inv = int(flag1_inv) if flag1_inv is not None else 0
         self.flag2_taglio = int(flag2_taglio) if flag2_taglio is not None else 0
         self.flag3_ing_base = int(flag3_ing_base) if flag3_ing_base is not None else 0
-
+        self.reparto_nome = reparto_nome
+        
     @classmethod
     def from_row(cls, row):
-        """Costruisce da una riga della tabella merceologie."""
-        return cls(row[0], row[1], row[2], row[3], row[4], row[5])
+        """Costruisce da una riga della tabella merceologie.
+
+        Supporta righe con:
+        - (id, merceologia, id_reparto, flag1_inv, flag2_taglio, flag3_ing_base)
+        - (id, merceologia, id_reparto, flag1_inv, flag2_taglio, flag3_ing_base, reparto_nome)
+        """
+        if len(row) == 6:
+            return cls(row[0], row[1], row[2], row[3], row[4], row[5])
+        return cls(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
 
     def params_insert(self):
         """Valori per INSERT INTO merceologie(...)."""

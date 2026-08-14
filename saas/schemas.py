@@ -71,6 +71,53 @@ class DipendenteOut(BaseModel):
 
 
 # ------------------------------------------------------------------------- #
+#  Merceologie
+# ------------------------------------------------------------------------- #
+
+class MerceologiaCreate(BaseModel):
+    merceologia: str = Field(..., min_length=1, max_length=255)
+    reparto: int | None = None
+
+
+class MerceologiaUpdate(BaseModel):
+    merceologia: str | None = None
+    reparto: int | None = None
+
+
+class MerceologiaOut(BaseModel):
+    id: int | None = None
+    merceologia: str
+    reparto: int | None = None
+    flag1_inv: int = 0        
+    flag2_taglio: int = 0     
+    flag3_ing_base: int = 0  
+    reparto_nome: str | None = None 
+
+
+# ------------------------------------------------------------------------- #
+#  Reparti
+# ------------------------------------------------------------------------- #
+
+class RepartoCreate(BaseModel):
+    reparto: str = Field(..., min_length=1, max_length=255)
+    flag1_dip: int = 0
+    flag2_prod: int = 0
+
+
+class RepartoUpdate(BaseModel):
+    reparto: str | None = None
+    flag1_dip: int | None = None
+    flag2_prod: int | None = None
+
+
+class RepartoOut(BaseModel):
+    id: int | None = None
+    reparto: str
+    flag1_dip: int = 0
+    flag2_prod: int = 0
+
+
+# ------------------------------------------------------------------------- #
 #  Stampa (DDT, scontrini, etichette) e barcode
 # ------------------------------------------------------------------------- #
 

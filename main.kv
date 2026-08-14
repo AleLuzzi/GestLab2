@@ -9,6 +9,7 @@
 #:include desktop/nuovo_menu/nuovo_menu.kv
 #:include desktop/ingresso_merce/ingresso_merce.kv
 #:include desktop/anag_dipendenti/anag_dipendenti.kv
+#:include desktop/anag_merceologie/anag_merceologie.kv
 #:include desktop/anag_reparti/anag_reparti.kv
 
 # Pulsante standard del menu principale (stile "filled" condiviso).
@@ -69,6 +70,12 @@
                     icon: 'account-group-outline'
                 MDButtonText:
                     text: 'Dipendenti'
+            MenuButton:
+                on_release: root.anag_merceologie()
+                MDButtonIcon:
+                    icon: 'package-variant'
+                MDButtonText:
+                    text: 'Merceologie'
             MenuButton:
                 on_release: root.anag_reparti()
                 MDButtonIcon:

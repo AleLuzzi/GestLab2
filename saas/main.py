@@ -23,8 +23,14 @@ from saas.schemas import (
     DispositivoCreate,
     EtichettaCreate,
     LoginRequest,
+    MerceologiaCreate,
+    MerceologiaOut,
+    MerceologiaUpdate,
     PrintJobCreate,
     PrintJobOut,
+    RepartoCreate,
+    RepartoOut,
+    RepartoUpdate,
     RefreshRequest,
     ScontrinoCreate,
     TenantCreate,
@@ -33,6 +39,8 @@ from saas.schemas import (
 )
 
 from core.services import dipendenti as dipendenti_service
+from core.services import merceologie as merceologie_service
+from core.services import reparti as reparti_service
 from core.services import lotti as lotti_service
 from core.services import menu as menu_service
 from core.services import printing as printing_service
@@ -196,6 +204,146 @@ def elimina_dipendente(
     if not dipendente:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Dipendente non trovato")
     dipendenti_service.elimina_dipendente(dipendente, user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Merceologie
+# ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/merceologie", response_model=list[MerceologiaOut])
+def lista_merceologie(user: dict = Depends(auth.get_current_user)):
+    """Elenco merceologie del tenant corrente."""
+    merceologie = merceologie_service.lista_merceologie(user["tenant_id"])
+    return [
+        MerceologiaOut(
+            id=m.id,
+            merceologia=m.merceologia,
+            reparto=m.id_reparto,
+            flag1_inv=m.flag1_inv,       
+            flag2_taglio=m.flag2_taglio, 
+            flag3_ing_base=m.flag3_ing_base,
+            reparto_nome=m.reparto_nome,
+        )
+        for m in merceologie
+    ]
+
+
+@app.post("/api/v1/merceologie", response_model=MerceologiaOut, status_code=status.HTTP_201_CREATED)
+def crea_merceologia(
+    payload: MerceologiaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea una nuova merceologia nel tenant corrente."""
+    nuovo = merceologie_service.crea_merceologia(
+        merceologia=payload.merceologia,
+        id_reparto=payload.reparto,
+        tenant_id=user["tenant_id"],
+    )
+    return MerceologiaOut(
+        id=nuovo.id,
+        merceologia=nuovo.merceologia,
+        reparto=nuovo.id_reparto,
+        reparto_nome=nuovo.reparto_nome,
+    )
+
+
+@app.put("/api/v1/merceologie/{merceologia_id}", response_model=MerceologiaOut)
+def aggiorna_merceologia(
+    merceologia_id: int,
+    payload: MerceologiaUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna una merceologia esistente del tenant corrente."""
+    merceologia = merceologie_service.trova_merceologia(merceologia_id, user["tenant_id"])
+    if not merceologia:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Merceologia non trovata")
+
+    merceologie_service.aggiorna_merceologia(
+        merceologia,
+        merceologia_nome=payload.merceologia,
+        id_reparto=payload.reparto,
+        tenant_id=user["tenant_id"],
+    )
+    return MerceologiaOut(
+        id=merceologia.id,
+        merceologia=merceologia.merceologia,
+        reparto=merceologia.id_reparto,
+        reparto_nome=merceologia.reparto_nome,
+    )
+
+
+@app.delete("/api/v1/merceologie/{merceologia_id}", status_code=status.HTTP_204_NO_CONTENT)
+def elimina_merceologia(
+    merceologia_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Elimina una merceologia del tenant corrente."""
+    merceologia = merceologie_service.trova_merceologia(merceologia_id, user["tenant_id"])
+    if not merceologia:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Merceologia non trovata")
+    merceologie_service.elimina_merceologia(merceologia, user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Reparti
+# ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/reparti", response_model=list[RepartoOut])
+def lista_reparti(user: dict = Depends(auth.get_current_user)):
+    """Elenco reparti del tenant corrente."""
+    reparti = reparti_service.lista_reparti(user["tenant_id"])
+    return [
+        RepartoOut(id=r.id, reparto=r.reparto, flag1_dip=r.flag1_dip, flag2_prod=r.flag2_prod)
+        for r in reparti
+    ]
+
+
+@app.post("/api/v1/reparti", response_model=RepartoOut, status_code=status.HTTP_201_CREATED)
+def crea_reparto(
+    payload: RepartoCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea un nuovo reparto nel tenant corrente."""
+    nuovo = reparti_service.crea_reparto(
+        payload.reparto,
+        payload.flag1_dip,
+        payload.flag2_prod,
+        user["tenant_id"],
+    )
+    return RepartoOut(id=nuovo.id, reparto=nuovo.reparto, flag1_dip=nuovo.flag1_dip, flag2_prod=nuovo.flag2_prod)
+
+
+@app.put("/api/v1/reparti/{reparto_id}", response_model=RepartoOut)
+def aggiorna_reparto(
+    reparto_id: int,
+    payload: RepartoUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna un reparto esistente del tenant corrente."""
+    reparto = reparti_service.trova_reparto(reparto_id, user["tenant_id"])
+    if not reparto:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reparto non trovato")
+
+    reparti_service.aggiorna_reparto(
+        reparto,
+        nome=payload.reparto,
+        flag1_dip=payload.flag1_dip,
+        flag2_prod=payload.flag2_prod,
+        tenant_id=user["tenant_id"],
+    )
+    return RepartoOut(id=reparto.id, reparto=reparto.reparto, flag1_dip=reparto.flag1_dip, flag2_prod=reparto.flag2_prod)
+
+
+@app.delete("/api/v1/reparti/{reparto_id}", status_code=status.HTTP_204_NO_CONTENT)
+def elimina_reparto(
+    reparto_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Elimina un reparto del tenant corrente."""
+    reparto = reparti_service.trova_reparto(reparto_id, user["tenant_id"])
+    if not reparto:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Reparto non trovato")
+    reparti_service.elimina_reparto(reparto, user["tenant_id"])
 
 
 # ------------------------------------------------------------------------- #

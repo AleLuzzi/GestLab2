@@ -39,6 +39,8 @@
     <nav class="sidebar">
       <button class="nav-item active" data-view="dashboard">Dashboard</button>
       <button class="nav-item" data-view="dipendenti">Dipendenti</button>
+      <button class="nav-item" data-view="merceologie">Merceologie</button>
+      <button class="nav-item" data-view="reparti">Reparti</button>
       <button class="nav-item" data-view="lotti">Lotti aperti</button>
       <button class="nav-item" data-view="menu">Menu</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
@@ -52,6 +54,8 @@
         <h2>Dashboard</h2>
         <div class="cards">
           <div class="stat-card"><h3>Dipendenti</h3><p id="stat-dip" class="stat">—</p></div>
+          <div class="stat-card"><h3>Reparti</h3><p id="stat-reparti" class="stat">—</p></div>
+          <div class="stat-card"><h3>Merceologie</h3><p id="stat-merc" class="stat">—</p></div>
           <div class="stat-card"><h3>Lotti aperti</h3><p id="stat-lotti" class="stat">—</p></div>
           <div class="stat-card"><h3>Job di stampa</h3><p id="stat-jobs" class="stat">—</p></div>
         </div>
@@ -86,6 +90,56 @@
             <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
           </div>
           <div id="dip-error" class="error"></div>
+        </div>
+      </section>
+
+      <!-- Merceologie -->
+      <section id="view-merceologie" class="panel">
+        <div class="panel-head">
+          <h2>Merceologie</h2>
+          <button id="btn-nuovo-merc" class="btn primary">Nuova merceologia</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Reparto</th><th>Abilitato Inventario</th><th>Abilitato Taglio</th><th>Abilitato Ingrediente Base</th><th>Azioni</th></tr></thead>
+          <tbody id="merc-tbody"></tbody>
+        </table>
+        <div id="merc-form" class="form-card" style="display:none">
+          <h3 id="merc-form-title">Nuova merceologia</h3>
+          <input type="hidden" id="merc-id" />
+          <label>Nome <input type="text" id="merc-nome" required /></label>
+          <label>ID Reparto <input type="number" id="merc-reparto" /></label>
+          <label><input type="checkbox" id="merc-flag1" /> Abilitato per Inventario</label>
+          <label><input type="checkbox" id="merc-flag2" /> Abilitato per Taglio</label>
+          <label><input type="checkbox" id="merc-flag3" /> Abilitato per Ingrediente Base</label>
+          <div class="row">
+            <button id="btn-save-merc" class="btn primary">Salva</button>
+            <button id="btn-cancel-merc" class="btn ghost">Annulla</button>
+          </div>
+          <div id="merc-error" class="error"></div>
+        </div>
+      </section>
+
+      <!-- Reparti -->
+      <section id="view-reparti" class="panel">
+        <div class="panel-head">
+          <h2>Reparti</h2>
+          <button id="btn-nuovo-reparto" class="btn primary">Nuovo reparto</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Abilitato dipendenti</th><th>Abilitato prodotti</th><th>Azioni</th></tr></thead>
+          <tbody id="reparti-tbody"></tbody>
+        </table>
+        <div id="reparti-form" class="form-card" style="display:none">
+          <h3 id="reparti-form-title">Nuovo reparto</h3>
+          <input type="hidden" id="reparti-id" />
+          <label>Nome <input type="text" id="reparti-nome" required /></label>
+          <label><input type="checkbox" id="reparti-flag1" /> Abilitato per dipendenti</label>
+          <label><input type="checkbox" id="reparti-flag2" /> Abilitato per prodotti</label>
+          <div class="row">
+            <button id="btn-save-reparto" class="btn primary">Salva</button>
+            <button id="btn-cancel-reparto" class="btn ghost">Annulla</button>
+          </div>
+          <div id="reparti-error" class="error"></div>
         </div>
       </section>
 

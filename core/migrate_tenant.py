@@ -28,6 +28,8 @@ TABLES = [
     "fornitori",
     "prodotti",
     "tagli",
+    "merceologie",
+    "reparti",
 ]
 
 
