@@ -96,6 +96,7 @@ function switchView(view) {
   if (view === "dipendenti") loadDipendenti();
   if (view === "merceologie") loadMerceologie();
   if (view === "reparti") loadReparti();
+  if (view === "fornitori") loadFornitori();
   if (view === "lotti") loadLotti();
   if (view === "menu") loadMenu();
   if (view === "printjobs") loadPrintJobs();
@@ -128,21 +129,24 @@ async function doLogin(email, password) {
 // ------------------------------------------------------------------ #
 async function loadDashboard() {
   try {
-    const [dip, reparti, merceologie, lotti, jobs] = await Promise.all([
+    const [dip, reparti, fornitori, merceologie, lotti, jobs] = await Promise.all([
       api("/api/v1/dipendenti"),
       api("/api/v1/reparti"),
+      api("/api/v1/fornitori"),
       api("/api/v1/merceologie"),
       api("/api/v1/lotti/aperti"),
       api("/api/v1/print-jobs"),
     ]);
     $("stat-dip").textContent = Array.isArray(dip) ? dip.length : 0;
     $("stat-reparti").textContent = Array.isArray(reparti) ? reparti.length : 0;
+    $("stat-fornitori").textContent = Array.isArray(fornitori) ? fornitori.length : 0;
     $("stat-merc").textContent = Array.isArray(merceologie) ? merceologie.length : 0;
     $("stat-lotti").textContent = Array.isArray(lotti) ? lotti.length : 0;
     $("stat-jobs").textContent = Array.isArray(jobs) ? jobs.length : 0;
   } catch (e) {
     $("stat-dip").textContent = "—";
     $("stat-reparti").textContent = "—";
+    $("stat-fornitori").textContent = "—";
     $("stat-merc").textContent = "—";
     $("stat-lotti").textContent = "—";
     $("stat-jobs").textContent = "—";
@@ -404,6 +408,86 @@ async function delReparto(id) {
 }
 
 // ------------------------------------------------------------------ #
+//  Fornitori
+// ------------------------------------------------------------------ #
+async function loadFornitori() {
+  try {
+    const list = await api("/api/v1/fornitori");
+    const tbody = $("fornitori-tbody");
+    tbody.innerHTML = list.length
+      ? list.map((f) => `
+        <tr>
+          <td>${esc(f.id)}</td>
+          <td>${esc(f.azienda)}</td>
+          <td>${esc(f.flag1_ing_merce ? "Sì" : "No")}</td>
+          <td>${esc(f.flag2_inventario ? "Sì" : "No")}</td>
+          <td class="row-actions">
+            <button class="btn ghost" onclick="editFornitore(${f.id})">Modifica</button>
+            <button class="btn danger" onclick="delFornitore(${f.id})">Elimina</button>
+          </td>
+        </tr>`).join("")
+      : '<tr><td colspan="5" class="empty">Nessun fornitore</td></tr>';
+  } catch (e) {
+    $("fornitori-tbody").innerHTML = `<tr><td colspan="5" class="empty">${esc(e.message)}</td></tr>`;
+  }
+}
+
+function nuovoFornitore() {
+  $("fornitori-id").value = "";
+  $("fornitori-azienda").value = "";
+  $("fornitori-flag1").checked = false;
+  $("fornitori-flag2").checked = false;
+  $("fornitori-form-title").textContent = "Nuovo fornitore";
+  $("fornitori-error").textContent = "";
+  $("fornitori-form").style.display = "block";
+}
+
+function editFornitore(id) {
+  api("/api/v1/fornitori").then((list) => {
+    const f = list.find((x) => x.id === id);
+    if (!f) return;
+    $("fornitori-id").value = f.id;
+    $("fornitori-azienda").value = f.azienda;
+    $("fornitori-flag1").checked = Boolean(f.flag1_ing_merce);
+    $("fornitori-flag2").checked = Boolean(f.flag2_inventario);
+    $("fornitori-form-title").textContent = "Modifica fornitore #" + f.id;
+    $("fornitori-error").textContent = "";
+    $("fornitori-form").style.display = "block";
+  });
+}
+
+async function salvaFornitore() {
+  $("fornitori-error").textContent = "";
+  const id = $("fornitori-id").value;
+  const payload = {
+    azienda: $("fornitori-azienda").value,
+    flag1_ing_merce: $("fornitori-flag1").checked ? 1 : 0,
+    flag2_inventario: $("fornitori-flag2").checked ? 1 : 0,
+  };
+  try {
+    if (id) {
+      await api("/api/v1/fornitori/" + id, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await api("/api/v1/fornitori", { method: "POST", body: JSON.stringify(payload) });
+    }
+    $("fornitori-form").style.display = "none";
+    loadFornitori();
+  } catch (e) {
+    $("fornitori-error").textContent = e.message;
+  }
+}
+
+async function delFornitore(id) {
+  if (!confirm("Eliminare il fornitore #" + id + "?")) return;
+  try {
+    await api("/api/v1/fornitori/" + id, { method: "DELETE" });
+    loadFornitori();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// ------------------------------------------------------------------ #
 //  Lotti
 // ------------------------------------------------------------------ #
 async function loadLotti() {
@@ -645,6 +729,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-nuovo-reparto").addEventListener("click", nuovoReparto);
   $("btn-save-reparto").addEventListener("click", salvaReparto);
   $("btn-cancel-reparto").addEventListener("click", () => ($("reparti-form").style.display = "none"));
+
+  // Fornitori
+  $("btn-nuovo-fornitore").addEventListener("click", nuovoFornitore);
+  $("btn-save-fornitore").addEventListener("click", salvaFornitore);
+  $("btn-cancel-fornitore").addEventListener("click", () => ($("fornitori-form").style.display = "none"));
 
   // Stampa tabs
   document.querySelectorAll(".tab-btn").forEach((b) =>

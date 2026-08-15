@@ -31,6 +31,9 @@ from saas.schemas import (
     RepartoCreate,
     RepartoOut,
     RepartoUpdate,
+    FornitoreCreate,
+    FornitoreOut,
+    FornitoreUpdate,
     RefreshRequest,
     ScontrinoCreate,
     TenantCreate,
@@ -41,6 +44,7 @@ from saas.schemas import (
 from core.services import dipendenti as dipendenti_service
 from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
+from core.services import fornitori as fornitori_service
 from core.services import lotti as lotti_service
 from core.services import menu as menu_service
 from core.services import printing as printing_service
@@ -344,6 +348,83 @@ def elimina_reparto(
     if not reparto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reparto non trovato")
     reparti_service.elimina_reparto(reparto, user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Fornitori
+# ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/fornitori", response_model=list[FornitoreOut])
+def lista_fornitori(user: dict = Depends(auth.get_current_user)):
+    """Elenco fornitori del tenant corrente."""
+    fornitori = fornitori_service.lista_fornitori(user["tenant_id"])
+    return [
+        FornitoreOut(
+            id=f.id,
+            azienda=f.azienda,
+            flag1_ing_merce=f.flag1_ing_merce,
+            flag2_inventario=f.flag2_inventario,
+        )
+        for f in fornitori
+    ]
+
+
+@app.post("/api/v1/fornitori", response_model=FornitoreOut, status_code=status.HTTP_201_CREATED)
+def crea_fornitore(
+    payload: FornitoreCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea un nuovo fornitore nel tenant corrente."""
+    nuovo = fornitori_service.crea_fornitore(
+        payload.azienda,
+        payload.flag1_ing_merce,
+        payload.flag2_inventario,
+        user["tenant_id"],
+    )
+    return FornitoreOut(
+        id=nuovo.id,
+        azienda=nuovo.azienda,
+        flag1_ing_merce=nuovo.flag1_ing_merce,
+        flag2_inventario=nuovo.flag2_inventario,
+    )
+
+
+@app.put("/api/v1/fornitori/{fornitore_id}", response_model=FornitoreOut)
+def aggiorna_fornitore(
+    fornitore_id: int,
+    payload: FornitoreUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna un fornitore esistente del tenant corrente."""
+    fornitore = fornitori_service.trova_fornitore(fornitore_id, user["tenant_id"])
+    if not fornitore:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fornitore non trovato")
+
+    fornitori_service.aggiorna_fornitore(
+        fornitore,
+        azienda=payload.azienda,
+        flag1_ing_merce=payload.flag1_ing_merce,
+        flag2_inventario=payload.flag2_inventario,
+        tenant_id=user["tenant_id"],
+    )
+    return FornitoreOut(
+        id=fornitore.id,
+        azienda=fornitore.azienda,
+        flag1_ing_merce=fornitore.flag1_ing_merce,
+        flag2_inventario=fornitore.flag2_inventario,
+    )
+
+
+@app.delete("/api/v1/fornitori/{fornitore_id}", status_code=status.HTTP_204_NO_CONTENT)
+def elimina_fornitore(
+    fornitore_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Elimina un fornitore del tenant corrente."""
+    fornitore = fornitori_service.trova_fornitore(fornitore_id, user["tenant_id"])
+    if not fornitore:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Fornitore non trovato")
+    fornitori_service.elimina_fornitore(fornitore, user["tenant_id"])
 
 
 # ------------------------------------------------------------------------- #

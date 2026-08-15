@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.db import connection
 from saas import auth, tenant_repo, print_repo
-from core.services import printing, barcode, reparti as reparti_service
+from core.services import printing, barcode, reparti as reparti_service, fornitori as fornitori_service
 
 RES = "\033[0m"
 GREEN = "\033[92m"
@@ -205,12 +205,33 @@ def test_reparti_service(tenant_id):
     check(reparti_service.trova_reparto(nuovo.id, tenant_id) is None, "eliminazione reparto")
 
 
+def test_fornitori_service(tenant_id):
+    print(f"\n{YELLOW}== Fornitori service =={RES}")
+    nuovo = fornitori_service.crea_fornitore("Acme Srl", 1, 0, tenant_id)
+    check(nuovo is not None and nuovo.azienda == "Acme Srl", "creazione fornitore in tenant")
+
+    trovato = fornitori_service.trova_fornitore(nuovo.id, tenant_id)
+    check(trovato is not None and trovato.id == nuovo.id, "ricerca fornitore per id")
+
+    fornitori = fornitori_service.lista_fornitori(tenant_id)
+    check(any(f.id == nuovo.id for f in fornitori), "lista fornitori del tenant")
+
+    fornitori_service.aggiorna_fornitore(trovato, "Acme 2", 1, 1, tenant_id)
+    aggiornato = fornitori_service.trova_fornitore(nuovo.id, tenant_id)
+    check(aggiornato is not None and aggiornato.azienda == "Acme 2", "aggiornamento fornitore")
+
+    fornitori_service.elimina_fornitore(aggiornato, tenant_id)
+    check(fornitori_service.trova_fornitore(nuovo.id, tenant_id) is None, "eliminazione fornitore")
+
+
 def main():
     print(f"{YELLOW}=== Test end-to-end SaaS GestLab (S14) ==={RES}")
     tenant_id = bootstrap()
     test_auth_logic(tenant_id)
     test_stampa_e_barcode()
     test_print_job_flow(tenant_id)
+    test_reparti_service(tenant_id)
+    test_fornitori_service(tenant_id)
 
     print(f"\n=== Risultato: {GREEN}{_passed} passati{RES}, {RED}{_failed} falliti{RES} ===")
     if _failed:

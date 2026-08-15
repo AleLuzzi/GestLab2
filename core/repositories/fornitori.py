@@ -64,6 +64,8 @@ def insert(value, tenant_id=None):
                 "VALUES (%s, %s, %s, %s)",
                 (value.azienda, value.flag1_ing_merce, value.flag2_inventario, tenant_id),
             )
+            if hasattr(c, "lastrowid") and c.lastrowid:
+                value.id = c.lastrowid
             conn.commit()
             return value
         value.insert(c, conn)

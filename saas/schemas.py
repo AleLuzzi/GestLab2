@@ -118,6 +118,29 @@ class RepartoOut(BaseModel):
 
 
 # ------------------------------------------------------------------------- #
+#  Fornitori
+# ------------------------------------------------------------------------- #
+
+class FornitoreCreate(BaseModel):
+    azienda: str = Field(..., min_length=1, max_length=50)
+    flag1_ing_merce: int = 0
+    flag2_inventario: int = 0
+
+
+class FornitoreUpdate(BaseModel):
+    azienda: str | None = None
+    flag1_ing_merce: int | None = None
+    flag2_inventario: int | None = None
+
+
+class FornitoreOut(BaseModel):
+    id: int | None = None
+    azienda: str
+    flag1_ing_merce: int = 0
+    flag2_inventario: int = 0
+
+
+# ------------------------------------------------------------------------- #
 #  Stampa (DDT, scontrini, etichette) e barcode
 # ------------------------------------------------------------------------- #
 

@@ -41,6 +41,7 @@
       <button class="nav-item" data-view="dipendenti">Dipendenti</button>
       <button class="nav-item" data-view="merceologie">Merceologie</button>
       <button class="nav-item" data-view="reparti">Reparti</button>
+      <button class="nav-item" data-view="fornitori">Fornitori</button>
       <button class="nav-item" data-view="lotti">Lotti aperti</button>
       <button class="nav-item" data-view="menu">Menu</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
@@ -55,6 +56,7 @@
         <div class="cards">
           <div class="stat-card"><h3>Dipendenti</h3><p id="stat-dip" class="stat">—</p></div>
           <div class="stat-card"><h3>Reparti</h3><p id="stat-reparti" class="stat">—</p></div>
+          <div class="stat-card"><h3>Fornitori</h3><p id="stat-fornitori" class="stat">—</p></div>
           <div class="stat-card"><h3>Merceologie</h3><p id="stat-merc" class="stat">—</p></div>
           <div class="stat-card"><h3>Lotti aperti</h3><p id="stat-lotti" class="stat">—</p></div>
           <div class="stat-card"><h3>Job di stampa</h3><p id="stat-jobs" class="stat">—</p></div>
@@ -140,6 +142,30 @@
             <button id="btn-cancel-reparto" class="btn ghost">Annulla</button>
           </div>
           <div id="reparti-error" class="error"></div>
+        </div>
+      </section>
+
+      <!-- Fornitori -->
+      <section id="view-fornitori" class="panel">
+        <div class="panel-head">
+          <h2>Fornitori</h2>
+          <button id="btn-nuovo-fornitore" class="btn primary">Nuovo fornitore</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Azienda</th><th>Abilitato ingresso merce</th><th>Abilitato inventario</th><th>Azioni</th></tr></thead>
+          <tbody id="fornitori-tbody"></tbody>
+        </table>
+        <div id="fornitori-form" class="form-card" style="display:none">
+          <h3 id="fornitori-form-title">Nuovo fornitore</h3>
+          <input type="hidden" id="fornitori-id" />
+          <label>Azienda <input type="text" id="fornitori-azienda" required maxlength="50" /></label>
+          <label><input type="checkbox" id="fornitori-flag1" /> Abilitato per ingresso merce</label>
+          <label><input type="checkbox" id="fornitori-flag2" /> Abilitato per inventario</label>
+          <div class="row">
+            <button id="btn-save-fornitore" class="btn primary">Salva</button>
+            <button id="btn-cancel-fornitore" class="btn ghost">Annulla</button>
+          </div>
+          <div id="fornitori-error" class="error"></div>
         </div>
       </section>
 

@@ -8,6 +8,7 @@ sia dalle UI desktop (Tkinter/Kivy) sia dal backend SaaS (FastAPI).
 __all__ = [
     "dipendenti",
     "reparti",
+    "fornitori",
     "lotti",
     "ingresso_merce",
     "menu",
