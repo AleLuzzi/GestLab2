@@ -1,6 +1,6 @@
 -- ------------------------------------------------
 -- GestLab - Struttura del database 'data'
--- Generato automaticamente il 2026-08-09T13:26:00.135194
+-- Generato automaticamente il 2026-08-16T15:46:03.858858
 -- Contiene SOLO lo schema (CREATE TABLE), nessun dato.
 -- ------------------------------------------------
 
@@ -121,10 +121,13 @@ CREATE TABLE `merceologie` (
   `flag1_inv` int DEFAULT NULL,
   `flag2_taglio` int DEFAULT NULL,
   `flag3_ing_base` int DEFAULT NULL,
+  `tenant_id` bigint DEFAULT NULL,
   PRIMARY KEY (`Id`),
   KEY `Id` (`Id`),
-  KEY `Id_2` (`Id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb3;
+  KEY `Id_2` (`Id`),
+  KEY `idx_merceologie_tenant` (`tenant_id`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=20 DEFAULT CHARSET=utf8mb3;
 
 -- Tabella: merceologie_old
 CREATE TABLE `merceologie_old` (
@@ -211,7 +214,9 @@ CREATE TABLE `reparti` (
   `reparto` varchar(15) DEFAULT NULL,
   `flag1_dip` int DEFAULT NULL,
   `flag2_prod` int DEFAULT NULL,
-  PRIMARY KEY (`ID`)
+  `tenant_id` bigint DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  KEY `idx_tenant_id` (`tenant_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb3;
 
 -- Tabella: tagli
