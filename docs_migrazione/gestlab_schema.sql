@@ -7,7 +7,8 @@
 -- Tabella: classi
 CREATE TABLE `classi` (
   `Id` int DEFAULT NULL,
-  `classe` varchar(14) DEFAULT NULL
+  `classe` varchar(14) DEFAULT NULL,
+  `tenant_id` bigint DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 -- Tabella: dipendenti
