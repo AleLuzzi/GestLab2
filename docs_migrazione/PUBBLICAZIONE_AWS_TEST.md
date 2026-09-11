@@ -323,25 +323,14 @@ Non copiare:
 cd /opt/gestlab/app
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --upgrade pip
+python3 -m pip install --upgrade pip
 ```
 
 Per il backend web installare le dipendenze necessarie:
 
 ```bash
-pip install \
-  fastapi \
-  'uvicorn[standard]' \
-  'pydantic[email]' \
-  python-multipart \
-  PyJWT \
-  bcrypt \
-  mysql-connector-python \
-  python-dotenv \
-  reportlab \
-  qrcode \
-  python-escpos \
-  pillow
+pip install -r requirements.txt
+  
 ```
 
 `kivy` e `kivymd` servono alla UI desktop e non sono necessari per il backend
@@ -374,18 +363,33 @@ GESTLAB_TENANT_NOME=Laboratorio Test AWS
 Proteggere il file:
 
 ```bash
-sudo chmod 600 /etc/gestlab/gestlab.env
-sudo chown root:root /etc/gestlab/gestlab.env
-```
 sudo chown root:ubuntu /etc/gestlab/gestlab.env
 sudo chmod 640 /etc/gestlab/gestlab.env
 
+#comandi vecchi 
+sudo chmod 600 /etc/gestlab/gestlab.env
+sudo chown root:root /etc/gestlab/gestlab.env
+```
+
+
+Devi creare un file .env nella root del progetto (/opt/gestlab/app/.env), 
+non usare solo /etc/gestlab/gestlab.env.
+
+Esegui sul server:
+
+```bash
+sudo cp /etc/gestlab/gestlab.env /opt/gestlab/app/.env
+sudo chown ubuntu:ubuntu /opt/gestlab/app/.env
+sudo chmod 640 /opt/gestlab/app/.env
+```
 
 ## 12. Eseguire il bootstrap SaaS
 
 Dalla root del progetto:
 
+```bash
 sudo bash -c "cd /opt/gestlab/app && set -a && . /etc/gestlab/gestlab.env && set +a && . .venv/bin/activate && python -m saas.bootstrap"
+```
 
 Il comando crea, se mancanti, le tabelle SaaS e l'utente admin iniziale. È
 idempotente, ma non usare la password di esempio della documentazione locale.
