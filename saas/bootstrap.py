@@ -1,13 +1,13 @@
 """Bootstrap del DB multi-tenant e dell'utente admin iniziale.
 
-Crea le tabelle SaaS (tenant, utenti, dispositivi_stampa, print_jobs) se non
-esistono e inserisce un tenant + utente admin iniziali, in modo che il login
-alla console web funzioni subito.
+Legge e esegue il file init_database.sql (schema unificato) per creare tutte
+le tabelle di business e SaaS. Quindi crea un tenant e un utente admin
+iniziali.
 
 Esecuzione:
     python -m saas.bootstrap
 
-Varibili d'ambiente (opzionali, per sovrascrivere le credenziali di default):
+Variabili d'ambiente (opzionali, per sovrascrivere le credenziali di default):
     GESTLAB_ADMIN_EMAIL     (default: admin@gestlab.it)
     GESTLAB_ADMIN_PASSWORD  (default: Admin123!)
     GESTLAB_TENANT_NOME     (default: Laboratorio Principale)
@@ -27,73 +27,97 @@ ADMIN_EMAIL = os.environ.get("GESTLAB_ADMIN_EMAIL", "admin@gestlab.it")
 ADMIN_PASSWORD = os.environ.get("GESTLAB_ADMIN_PASSWORD", "Admin123!")
 TENANT_NOME = os.environ.get("GESTLAB_TENANT_NOME", "Laboratorio Principale")
 
-# ------------------------------------------------------------------------- #
-#  Creazione tabelle (idempotente)
-# ------------------------------------------------------------------------- #
-_CREATE_TABLES = [
+# Percorso del file SQL unificato.
+SCHEMA_FILE = os.path.join(os.path.dirname(__file__), "init_database.sql")
+
+
+def _remove_sql_comments(sql_line):
+    """Rimuove commenti SQL da una riga."""
+    # Rimuove commenti -- (SQL standard)
+    idx = sql_line.find("--")
+    if idx != -1:
+        sql_line = sql_line[:idx]
+    return sql_line.strip()
+
+
+def _parse_sql_statements(sql_content):
+    """Parsifica il file SQL rimuovendo commenti e dividendo gli statement.
+    
+    Args:
+        sql_content: contenuto grezzo del file SQL
+        
+    Returns:
+        list: lista di statement SQL validi (non vuoti, senza commenti)
     """
-    CREATE TABLE IF NOT EXISTS tenant (
-        id BIGINT PRIMARY KEY AUTO_INCREMENT,
-        nome VARCHAR(255) NOT NULL,
-        piano VARCHAR(50) DEFAULT 'basic',
-        attivo BOOLEAN DEFAULT TRUE,
-        creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS utenti (
-        id BIGINT PRIMARY KEY AUTO_INCREMENT,
-        tenant_id BIGINT NOT NULL,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
-        ruolo VARCHAR(20) NOT NULL DEFAULT 'operatore',
-        attivo BOOLEAN DEFAULT TRUE,
-        creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CONSTRAINT fk_utenti_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS dispositivi_stampa (
-        id BIGINT PRIMARY KEY AUTO_INCREMENT,
-        tenant_id BIGINT NOT NULL,
-        nome VARCHAR(255) NOT NULL,
-        token VARCHAR(255) NOT NULL UNIQUE,
-        stampante_dymo VARCHAR(255),
-        stampante_termica VARCHAR(255),
-        ultimo_heartbeat TIMESTAMP NULL,
-        CONSTRAINT fk_dispositivi_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(id)
-    )
-    """,
-    """
-    CREATE TABLE IF NOT EXISTS print_jobs (
-        id BIGINT PRIMARY KEY AUTO_INCREMENT,
-        tenant_id BIGINT NOT NULL,
-        dispositivo_id BIGINT NULL,
-        tipo VARCHAR(20) NOT NULL,
-        stato VARCHAR(20) NOT NULL DEFAULT 'pending',
-        payload TEXT NOT NULL,
-        creato_il TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        stampato_il TIMESTAMP NULL,
-        CONSTRAINT fk_printjobs_tenant FOREIGN KEY (tenant_id) REFERENCES tenant(id),
-        CONSTRAINT fk_printjobs_dispositivo FOREIGN KEY (dispositivo_id)
-            REFERENCES dispositivi_stampa(id)
-    )
-    """,
-]
+    statements = []
+    current_stmt = []
+    
+    for line in sql_content.split("\n"):
+        # Rimuove commenti da questa riga
+        clean_line = _remove_sql_comments(line)
+        if not clean_line:
+            continue
+        
+        current_stmt.append(clean_line)
+        
+        # Se la riga termina con ;, abbiamo uno statement completo
+        if clean_line.endswith(";"):
+            stmt = " ".join(current_stmt)
+            # Rimuove il ; finale e il whitespace
+            stmt = stmt.rstrip(";").strip()
+            if stmt:
+                statements.append(stmt)
+            current_stmt = []
+    
+    # Aggiunge l'ultimo statement se c'è
+    if current_stmt:
+        stmt = " ".join(current_stmt).rstrip(";").strip()
+        if stmt:
+            statements.append(stmt)
+    
+    return statements
 
 
 def crea_tabelle():
-    """Crea le tabelle multi-tenant se non esistono (idempotente)."""
+    """Esegue init_database.sql per creare tutte le tabelle (idempotente)."""
+    if not os.path.exists(SCHEMA_FILE):
+        raise FileNotFoundError(f"Schema file non trovato: {SCHEMA_FILE}")
+
+    with open(SCHEMA_FILE, "r", encoding="utf-8") as f:
+        sql_content = f.read()
+
+    # Parsifica gli statement rimuovendo commenti
+    statements = _parse_sql_statements(sql_content)
+    
+    if not statements:
+        raise ValueError(f"Nessuno statement SQL trovato in {SCHEMA_FILE}")
+    
+    print(f"  Info: trovati {len(statements)} statement da eseguire")
+
     with connection() as conn:
         c = conn.cursor()
-        for stmt in _CREATE_TABLES:
+        executed = 0
+        errors = 0
+        
+        for i, stmt in enumerate(statements, 1):
             try:
                 c.execute(stmt)
+                executed += 1
             except Exception as e:
-                # Le FK possono fallire se il parent-missing; le ignoriamo
-                # solo se la tabella esiste gia' con lo stesso schema.
-                print(f"  [warn] create ignorato: {e}")
+                errors += 1
+                error_msg = str(e).lower()
+                # Ignora errori per tabelle già esistenti (IF NOT EXISTS).
+                if "already exists" not in error_msg and "duplicate" not in error_msg:
+                    print(f"  [err] Statement {i}: {e}")
+                    print(f"        SQL: {stmt[:100]}...")
+                else:
+                    print(f"  [ok]  Statement {i} (tabella già esistente)")
+        
         conn.commit()
+    
+    print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati, {errors} errori")
+    if errors > 0:
+        print(f"  Nota: alcuni errori potrebbero essere ignorabili (es. tabelle già esistenti)")
 
 
 def crea_admin():
@@ -111,16 +135,21 @@ def crea_admin():
 
 
 def main():
-    print("=== Bootstrap GestLab SaaS ===")
+    print("=== Bootstrap GestLab SaaS ===\n")
+    print(f"1. Creazione schema da: {SCHEMA_FILE}")
     crea_tabelle()
+    print(f"\n2. Creazione tenant e admin iniziale")
     tid = crea_admin()
-    print(f"\nCredenziali di accesso alla console web:")
+    print(f"\n✓ Setup completato!\n")
+    print(f"Credenziali di accesso alla console web:")
     print(f"  URL:      http://localhost:8000/")
     print(f"  Email:    {ADMIN_EMAIL}")
     print(f"  Password: {ADMIN_PASSWORD}")
     print(f"  Ruolo:    admin")
-    print("\nAvvia il server con: python -m uvicorn saas.main:app --reload")
+    print(f"\nAvvia il server con:")
+    print(f"  python -m uvicorn saas.main:app --reload")
 
 
 if __name__ == "__main__":
     main()
+

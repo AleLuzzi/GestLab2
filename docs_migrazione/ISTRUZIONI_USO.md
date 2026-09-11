@@ -43,19 +43,26 @@ Il server parte su **http://localhost:8000/**.
 
 ### 2.2 Bootstrap del DB (prima volta)
 
-Al primo avvio è necessario creare le tabelle multi-tenant e l'utente admin
-iniziale. Esegui (una sola volta, da terminale nella cartella del progetto):
+Al primo avvio è necessario creare tutte le tabelle (business + SaaS) e
+l'utente admin iniziale. Esegui (una sola volta, da terminale nella cartella
+del progetto):
 
 ```bash
 python -m saas.bootstrap
 ```
 
 Il comando:
-- Crea le tabelle `tenant`, `utenti`, `dispositivi_stampa`, `print_jobs`
-  (se non esistono).
+- Legge il file `saas/init_database.sql` (schema unificato).
+- Crea tutte le tabelle di business (dipendenti, fornitori, prodotti, reparti,
+  ecc.) con il supporto multi-tenant (colonna `tenant_id`).
+- Crea le tabelle SaaS (`tenant`, `utenti`, `dispositivi_stampa`, `print_jobs`).
 - Crea un tenant di default e un utente **admin** iniziale.
 
-> Il comando è **idempotente**: se l'utente esiste già, non lo ricrea.
+> Il comando è **idempotente**: se le tabelle o l'utente esistono già, non li
+> ricrea. Puoi eseguirlo più volte senza problemi.
+
+> **Nota**: in precedenza erano necessari i comandi `bootstrap` + `migrate_tenant`.
+> Ora la migrazione è gestita direttamente dal file `init_database.sql`.
 
 ### 2.3 Credenziali di accesso
 
@@ -136,7 +143,7 @@ python main.py
 Serve KivyMD (già in `requirements.txt`). Se manca:
 
 ```bash
-python -m pip install kivy kivymd==2.0.1.dev0
+python -m pip install kivy==2.3.1 kivymd==2.0.0
 ```
 
 ### 3.3 Funzioni disponibili nel menu desktop
