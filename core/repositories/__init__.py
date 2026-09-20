@@ -5,4 +5,4 @@ usando esclusivamente il context manager ``core.db.connection`` e mai una
 connessione globale condivisa.
 """
 
-__all__ = ["prodotti", "lotti", "reparti", "fornitori", "dipendenti", "ingresso_merce_repo"]
+__all__ = ["prodotti", "lotti", "reparti", "fornitori", "dipendenti", "tagli", "ingresso_merce_repo"]

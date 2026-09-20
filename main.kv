@@ -11,6 +11,7 @@
 #:include desktop/anag_dipendenti/anag_dipendenti.kv
 #:include desktop/anag_merceologie/anag_merceologie.kv
 #:include desktop/anag_reparti/anag_reparti.kv
+#:include desktop/anag_tagli/anag_tagli.kv
 
 # Pulsante standard del menu principale (stile "filled" condiviso).
 <MenuButton@MDButton>:
@@ -82,6 +83,12 @@
                     icon: 'warehouse'
                 MDButtonText:
                     text: 'Reparti'
+            MenuButton:
+                on_release: root.anag_tagli()
+                MDButtonIcon:
+                    icon: 'content-cut'
+                MDButtonText:
+                    text: 'Tagli'
             MenuButton:
                 on_release: root.nuovo_menu()
                 MDButtonIcon:

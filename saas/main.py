@@ -36,6 +36,9 @@ from saas.schemas import (
     FornitoreUpdate,
     RefreshRequest,
     ScontrinoCreate,
+    TaglioCreate,
+    TaglioOut,
+    TaglioUpdate,
     TenantCreate,
     TokenResponse,
     UtenteCreate,
@@ -45,6 +48,7 @@ from core.services import dipendenti as dipendenti_service
 from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
 from core.services import fornitori as fornitori_service
+from core.services import tagli as tagli_service
 from core.services import lotti as lotti_service
 from core.services import menu as menu_service
 from core.services import printing as printing_service
@@ -286,6 +290,81 @@ def elimina_merceologia(
     if not merceologia:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merceologia non trovata")
     merceologie_service.elimina_merceologia(merceologia, user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Tagli
+# ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/tagli", response_model=list[TaglioOut])
+def lista_tagli(user: dict = Depends(auth.get_current_user)):
+    """Elenco tagli del tenant corrente."""
+    tagli = tagli_service.lista_tagli(user["tenant_id"])
+    return [
+        TaglioOut(
+            id=t.id,
+            taglio=t.taglio,
+            id_merceologia=t.id_merceologia,
+            merceologia_nome=t.merceologia_nome,
+        )
+        for t in tagli
+    ]
+
+
+@app.post("/api/v1/tagli", response_model=TaglioOut, status_code=status.HTTP_201_CREATED)
+def crea_taglio(
+    payload: TaglioCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea un nuovo taglio nel tenant corrente."""
+    nuovo = tagli_service.crea_taglio(
+        payload.taglio,
+        payload.id_merceologia,
+        user["tenant_id"],
+    )
+    return TaglioOut(
+        id=nuovo.id,
+        taglio=nuovo.taglio,
+        id_merceologia=nuovo.id_merceologia,
+        merceologia_nome=nuovo.merceologia_nome,
+    )
+
+
+@app.put("/api/v1/tagli/{taglio_id}", response_model=TaglioOut)
+def aggiorna_taglio(
+    taglio_id: int,
+    payload: TaglioUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna un taglio esistente del tenant corrente."""
+    taglio = tagli_service.trova_taglio(taglio_id, user["tenant_id"])
+    if not taglio:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Taglio non trovato")
+
+    tagli_service.aggiorna_taglio(
+        taglio,
+        nome=payload.taglio,
+        id_merceologia=payload.id_merceologia,
+        tenant_id=user["tenant_id"],
+    )
+    return TaglioOut(
+        id=taglio.id,
+        taglio=taglio.taglio,
+        id_merceologia=taglio.id_merceologia,
+        merceologia_nome=taglio.merceologia_nome,
+    )
+
+
+@app.delete("/api/v1/tagli/{taglio_id}", status_code=status.HTTP_204_NO_CONTENT)
+def elimina_taglio(
+    taglio_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Elimina un taglio del tenant corrente."""
+    taglio = tagli_service.trova_taglio(taglio_id, user["tenant_id"])
+    if not taglio:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Taglio non trovato")
+    tagli_service.elimina_taglio(taglio, user["tenant_id"])
 
 
 # ------------------------------------------------------------------------- #

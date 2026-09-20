@@ -159,17 +159,20 @@ class Fornitore:
 class Taglio:
     """Record taglio (tabella `tagli`)."""
 
-    __slots__ = ("id", "taglio", "id_merceologia")
+    __slots__ = ("id", "taglio", "id_merceologia", "merceologia_nome")
 
-    def __init__(self, id=None, taglio="", id_merceologia=None):
+    def __init__(self, id=None, taglio="", id_merceologia=None, merceologia_nome=None):
         self.id = id
         self.taglio = taglio or ""
         self.id_merceologia = id_merceologia
+        self.merceologia_nome = merceologia_nome
 
     @classmethod
     def from_row(cls, row):
-        """Costruisce da una riga `SELECT id, taglio, id_merceologia FROM tagli`."""
-        return cls(row[0], row[1], row[2])
+        """Costruisce da una riga `SELECT id, taglio, id_merceologia ... FROM tagli`."""
+        if len(row) == 3:
+            return cls(row[0], row[1], row[2])
+        return cls(row[0], row[1], row[2], row[3])
 
     def params_insert(self):
         """Valori per INSERT INTO tagli(taglio, Id_Merceologia)."""

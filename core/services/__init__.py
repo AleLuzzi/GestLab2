@@ -9,6 +9,7 @@ __all__ = [
     "dipendenti",
     "reparti",
     "fornitori",
+    "tagli",
     "lotti",
     "ingresso_merce",
     "menu",

@@ -95,6 +95,27 @@ class MerceologiaOut(BaseModel):
 
 
 # ------------------------------------------------------------------------- #
+#  Tagli
+# ------------------------------------------------------------------------- #
+
+class TaglioCreate(BaseModel):
+    taglio: str = Field(..., min_length=1, max_length=255)
+    id_merceologia: int | None = None
+
+
+class TaglioUpdate(BaseModel):
+    taglio: str | None = None
+    id_merceologia: int | None = None
+
+
+class TaglioOut(BaseModel):
+    id: int | None = None
+    taglio: str
+    id_merceologia: int | None = None
+    merceologia_nome: str | None = None
+
+
+# ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #
 

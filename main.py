@@ -18,6 +18,7 @@ from kivymd.uix.screen import MDScreen
 from desktop.anag_dipendenti import Anag_dipendenti
 from desktop.anag_merceologie import Anag_merceologie
 from desktop.anag_reparti import Anag_reparti
+from desktop.anag_tagli import Anag_tagli
 from desktop.chiudi_lotto import Chiudi_lotto
 from desktop.ingresso_merce import Ingresso_merce
 from desktop.lotti_vendita import Lotti_vendita
@@ -34,6 +35,7 @@ SCREEN_NUOVO_MENU = 'NuovoMenu'
 SCREEN_ANAG_DIPENDENTI = 'AnagDipendenti'
 SCREEN_ANAG_MERCEOLOGIE = 'AnagMerceologie'
 SCREEN_ANAG_REPARTI = 'AnagReparti'
+SCREEN_ANAG_TAGLI = 'AnagTagli'
 
 
 class Menu(MDScreen):
@@ -75,6 +77,10 @@ class Menu(MDScreen):
         """Apre la schermata Anagrafica Reparti."""
         self._vai_a(SCREEN_ANAG_REPARTI)
 
+    def anag_tagli(self):
+        """Apre la schermata Anagrafica Tagli."""
+        self._vai_a(SCREEN_ANAG_TAGLI)
+
     @staticmethod
     def esci():
         """Termina l'applicazione."""
@@ -98,6 +104,7 @@ class MainApp(MDApp):
         sm.add_widget(Anag_dipendenti(name=SCREEN_ANAG_DIPENDENTI))
         sm.add_widget(Anag_merceologie(name=SCREEN_ANAG_MERCEOLOGIE))
         sm.add_widget(Anag_reparti(name=SCREEN_ANAG_REPARTI))
+        sm.add_widget(Anag_tagli(name=SCREEN_ANAG_TAGLI))
         return sm
 
 

@@ -16,7 +16,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.db import connection
 from saas import auth, tenant_repo, print_repo
-from core.services import printing, barcode, reparti as reparti_service, fornitori as fornitori_service
+from core.services import (
+    printing,
+    barcode,
+    reparti as reparti_service,
+    fornitori as fornitori_service,
+    tagli as tagli_service,
+)
 
 RES = "\033[0m"
 GREEN = "\033[92m"
@@ -224,6 +230,25 @@ def test_fornitori_service(tenant_id):
     check(fornitori_service.trova_fornitore(nuovo.id, tenant_id) is None, "eliminazione fornitore")
 
 
+def test_tagli_service(tenant_id):
+    print(f"\n{YELLOW}== Tagli service =={RES}")
+    nuovo = tagli_service.crea_taglio("Bovino", 1, tenant_id)
+    check(nuovo is not None and nuovo.taglio == "Bovino", "creazione taglio in tenant")
+
+    trovato = tagli_service.trova_taglio(nuovo.id, tenant_id)
+    check(trovato is not None and trovato.id == nuovo.id, "ricerca taglio per id")
+
+    tagli = tagli_service.lista_tagli(tenant_id)
+    check(any(t.id == nuovo.id for t in tagli), "lista tagli del tenant")
+
+    tagli_service.aggiorna_taglio(trovato, "Bovino 2", 1, tenant_id)
+    aggiornato = tagli_service.trova_taglio(nuovo.id, tenant_id)
+    check(aggiornato is not None and aggiornato.taglio == "Bovino 2", "aggiornamento taglio")
+
+    tagli_service.elimina_taglio(aggiornato, tenant_id)
+    check(tagli_service.trova_taglio(nuovo.id, tenant_id) is None, "eliminazione taglio")
+
+
 def main():
     print(f"{YELLOW}=== Test end-to-end SaaS GestLab (S14) ==={RES}")
     tenant_id = bootstrap()
@@ -232,6 +257,7 @@ def main():
     test_print_job_flow(tenant_id)
     test_reparti_service(tenant_id)
     test_fornitori_service(tenant_id)
+    test_tagli_service(tenant_id)
 
     print(f"\n=== Risultato: {GREEN}{_passed} passati{RES}, {RED}{_failed} falliti{RES} ===")
     if _failed:
