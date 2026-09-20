@@ -107,7 +107,9 @@ function showApp() {
 function showLanding() {
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
   $("view-landing").classList.add("active");
-  document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach((b) =>
+    b.classList.toggle("active", b.dataset.view === "home")
+  );
 }
 
 function openConfigurazioni() {
@@ -116,7 +118,56 @@ function openConfigurazioni() {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
 }
 
+function openIngressoMerce() {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  $("view-ingresso-merce").classList.add("active");
+  document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+  updateIngressoMerceSummary();
+}
+
+function updateIngressoMerceSummary() {
+  const fornitore = $("ingress-fornitore");
+  const data = $("ingress-data");
+  const ddt = $("ingress-ddt");
+  const prodotto = $("ingress-prodotto");
+  const qta = $("ingress-qta");
+  const prezzo = $("ingress-prezzo");
+
+  $("summary-fornitore").textContent = fornitore.value
+    ? fornitore.options[fornitore.selectedIndex].text
+    : "-";
+  $("summary-data").textContent = data.value ? new Date(data.value + "T00:00:00").toLocaleDateString("it-IT") : "-";
+  $("summary-ddt").textContent = ddt.value || "-";
+  $("summary-prodotto").textContent = prodotto.value || "-";
+
+  const quantita = Number(qta.value || 0);
+  const unitario = Number(prezzo.value || 0);
+  const totale = quantita * unitario;
+  $("summary-totale").textContent = new Intl.NumberFormat("it-IT", {
+    style: "currency",
+    currency: "EUR",
+  }).format(totale);
+}
+
+function resetIngressoMerce() {
+  $("ingress-fornitore").value = "";
+  $("ingress-data").value = "";
+  $("ingress-ddt").value = "";
+  $("ingress-prodotto").value = "";
+  $("ingress-qta").value = 1;
+  $("ingress-peso").value = 0;
+  $("ingress-prezzo").value = 0;
+  $("ingress-iva").value = 22;
+  $("ingress-error").textContent = "";
+  updateIngressoMerceSummary();
+}
+
 function switchView(view) {
+  if (view === "home") {
+    showLanding();
+    return;
+  }
+
   document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
   const target = $("view-" + view);
   if (target) {
@@ -813,11 +864,37 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-logout").addEventListener("click", showLogin);
 
   // Landing / navigazione
-  $("btn-ingresso-merce").addEventListener("click", () => {
-    // Placeholder richiesto: per ora non fa nulla.
-  });
+  $("btn-ingresso-merce").addEventListener("click", openIngressoMerce);
   $("btn-configurazioni").addEventListener("click", openConfigurazioni);
   $("btn-back-home").addEventListener("click", showLanding);
+  $("btn-back-from-ingresso").addEventListener("click", showLanding);
+  $("btn-reset-ingresso").addEventListener("click", resetIngressoMerce);
+  $("btn-salva-ingresso").addEventListener("click", () => {
+    const prodotto = $("ingress-prodotto").value.trim();
+    const fornitore = $("ingress-fornitore").value;
+    if (!fornitore || !prodotto) {
+      $("ingress-error").textContent = "Seleziona fornitore e inserisci il prodotto.";
+      return;
+    }
+    $("ingress-error").textContent = "Movimento di ingresso registrato in memoria.";
+    updateIngressoMerceSummary();
+  });
+
+  [
+    "ingress-fornitore",
+    "ingress-data",
+    "ingress-ddt",
+    "ingress-prodotto",
+    "ingress-qta",
+    "ingress-peso",
+    "ingress-prezzo",
+    "ingress-iva",
+  ].forEach((id) => {
+    const el = $(id);
+    if (el) el.addEventListener("input", updateIngressoMerceSummary);
+    if (el) el.addEventListener("change", updateIngressoMerceSummary);
+  });
+
   document.querySelectorAll(".nav-item").forEach((b) =>
     b.addEventListener("click", () => switchView(b.dataset.view)));
   document.querySelectorAll(".config-card").forEach((card) =>

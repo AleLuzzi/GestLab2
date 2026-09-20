@@ -66,7 +66,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 }
 .nav-item:hover { background: var(--bg-3); color: var(--text); }
 .nav-item.active { background: var(--accent); color: #fff; }
-.nav-item.admin-only { display: none; }
+.nav-item.admin-only, .config-card.admin-only { display: none; }
 
 .content { margin-left: 210px; padding: 28px; flex: 1; }
 .panel { display: none; }
@@ -146,6 +146,41 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .config-icon {
   font-size: 32px;
   margin-bottom: 12px;
+}
+
+.ingresso-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.cargo-form { max-width: none; }
+.split-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.summary-card {
+  min-height: 100%;
+}
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.summary-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.summary-list span {
+  color: var(--text-dim);
+}
+.summary-list strong {
+  text-align: right;
+  font-size: 14px;
 }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }

@@ -37,16 +37,12 @@
     </header>
 
     <nav class="sidebar">
+      <button class="nav-item" data-view="home">Home</button>
       <button class="nav-item" data-view="dashboard">Dashboard</button>
-      <button class="nav-item" data-view="dipendenti">Dipendenti</button>
-      <button class="nav-item" data-view="merceologie">Merceologie</button>
-      <button class="nav-item" data-view="reparti">Reparti</button>
-      <button class="nav-item" data-view="fornitori">Fornitori</button>
       <button class="nav-item" data-view="lotti">Lotti aperti</button>
       <button class="nav-item" data-view="menu">Menu</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
       <button class="nav-item" data-view="printjobs">Coda stampa</button>
-      <button class="nav-item admin-only" data-view="admin">Admin</button>
     </nav>
 
     <main class="content">
@@ -91,6 +87,10 @@
             <span class="config-icon">🏢</span>
             <span class="config-name">Fornitori</span>
           </button>
+          <button class="config-card admin-only" data-view="admin" type="button">
+            <span class="config-icon">🛡️</span>
+            <span class="config-name">Admin</span>
+          </button>
           <button class="config-card" data-view="menu" type="button">
             <span class="config-icon">🍽️</span>
             <span class="config-name">Menu</span>
@@ -99,6 +99,69 @@
             <span class="config-icon">📋</span>
             <span class="config-name">Lotti aperti</span>
           </button>
+        </div>
+      </section>
+
+      <!-- Ingresso merce -->
+      <section id="view-ingresso-merce" class="panel">
+        <div class="panel-head">
+          <h2>Ingresso merce</h2>
+          <button id="btn-back-from-ingresso" class="btn ghost" type="button">Torna alla scelta</button>
+        </div>
+
+        <div class="ingresso-layout">
+          <div class="form-card cargo-form">
+            <h3>Nuovo movimento</h3>
+            <label>Fornitore
+              <select id="ingress-fornitore">
+                <option value="">Seleziona fornitore</option>
+                <option value="1">Azienda S.r.l.</option>
+                <option value="2">Distribuzione Roma</option>
+                <option value="3">Nord Food Spa</option>
+              </select>
+            </label>
+            <label>Data
+              <input type="date" id="ingress-data" />
+            </label>
+            <label>Numero DDT
+              <input type="text" id="ingress-ddt" placeholder="DDT-2026-001" />
+            </label>
+            <label>Prodotto
+              <input type="text" id="ingress-prodotto" placeholder="Es. Parmigiano 24 mesi" />
+            </label>
+            <div class="row split-row">
+              <label>Quantità
+                <input type="number" id="ingress-qta" value="1" min="1" />
+              </label>
+              <label>Peso / kg
+                <input type="number" id="ingress-peso" value="0" min="0" step="0.1" />
+              </label>
+            </div>
+            <div class="row split-row">
+              <label>Prezzo unitario
+                <input type="number" id="ingress-prezzo" value="0" min="0" step="0.01" />
+              </label>
+              <label>IVA %
+                <input type="number" id="ingress-iva" value="22" min="0" max="100" />
+              </label>
+            </div>
+            <div class="row">
+              <button id="btn-salva-ingresso" class="btn primary" type="button">Salva movimento</button>
+              <button id="btn-reset-ingresso" class="btn ghost" type="button">Azzera</button>
+            </div>
+            <div id="ingress-error" class="error"></div>
+          </div>
+
+          <div class="form-card summary-card">
+            <h3>Riepilogo</h3>
+            <div class="summary-list">
+              <div><span>Fornitore</span><strong id="summary-fornitore">-</strong></div>
+              <div><span>Data</span><strong id="summary-data">-</strong></div>
+              <div><span>DDT</span><strong id="summary-ddt">-</strong></div>
+              <div><span>Prodotto</span><strong id="summary-prodotto">-</strong></div>
+              <div><span>Totale</span><strong id="summary-totale">€ 0,00</strong></div>
+            </div>
+          </div>
         </div>
       </section>
 
