@@ -101,14 +101,29 @@ function showApp() {
   document.querySelectorAll(".admin-only").forEach((el) => {
     el.style.display = isAdmin ? "block" : "none";
   });
-  switchView("dashboard");
+  showLanding();
+}
+
+function showLanding() {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  $("view-landing").classList.add("active");
+  document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
+}
+
+function openConfigurazioni() {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  $("view-configurazioni").classList.add("active");
+  document.querySelectorAll(".nav-item").forEach((b) => b.classList.remove("active"));
 }
 
 function switchView(view) {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  const target = $("view-" + view);
+  if (target) {
+    target.classList.add("active");
+  }
   document.querySelectorAll(".nav-item").forEach((b) =>
     b.classList.toggle("active", b.dataset.view === view));
-  document.querySelectorAll(".panel").forEach((p) =>
-    p.classList.toggle("active", p.id === "view-" + view));
   if (view === "dashboard") loadDashboard();
   if (view === "dipendenti") loadDipendenti();
   if (view === "merceologie") loadMerceologie();
@@ -797,9 +812,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("btn-logout").addEventListener("click", showLogin);
 
-  // Navigazione
+  // Landing / navigazione
+  $("btn-ingresso-merce").addEventListener("click", () => {
+    // Placeholder richiesto: per ora non fa nulla.
+  });
+  $("btn-configurazioni").addEventListener("click", openConfigurazioni);
+  $("btn-back-home").addEventListener("click", showLanding);
   document.querySelectorAll(".nav-item").forEach((b) =>
     b.addEventListener("click", () => switchView(b.dataset.view)));
+  document.querySelectorAll(".config-card").forEach((card) =>
+    card.addEventListener("click", () => switchView(card.dataset.view)));
 
   // Dashboard
   $("btn-ean").addEventListener("click", doEanLookup);
