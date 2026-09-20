@@ -177,6 +177,7 @@ function switchView(view) {
     b.classList.toggle("active", b.dataset.view === view));
   if (view === "dashboard") loadDashboard();
   if (view === "dipendenti") loadDipendenti();
+  if (view === "tagli") loadTagli();
   if (view === "merceologie") loadMerceologie();
   if (view === "reparti") loadReparti();
   if (view === "fornitori") loadFornitori();
@@ -361,6 +362,120 @@ async function delDip(id) {
   try {
     await api("/api/v1/dipendenti/" + id, { method: "DELETE" });
     loadDipendenti();
+  } catch (e) {
+    alert(e.message);
+  }
+}
+
+// ------------------------------------------------------------------ #
+//  Tagli
+// ------------------------------------------------------------------ #
+async function loadTagli() {
+  try {
+    const list = await api("/api/v1/tagli");
+    const tbody = $("tagli-tbody");
+    tbody.innerHTML = list.length
+      ? list.map((t) => `
+        <tr>
+          <td>${esc(t.id)}</td>
+          <td>${esc(t.taglio)}</td>
+          <td>${esc(t.merceologia_nome ?? "")}</td>
+          <td class="row-actions">
+            <button class="btn ghost" onclick="editTaglio(${t.id})">Modifica</button>
+            <button class="btn danger" onclick="delTaglio(${t.id})">Elimina</button>
+          </td>
+        </tr>`).join("")
+      : '<tr><td colspan="4" class="empty">Nessun taglio</td></tr>';
+  } catch (e) {
+    $("tagli-tbody").innerHTML = `<tr><td colspan="4" class="empty">${esc(e.message)}</td></tr>`;
+  }
+}
+
+async function loadTagliMerceologieOptions(selectedId = "") {
+  const select = $("tagli-merceologia");
+  if (!select) return;
+
+  try {
+    const merceologie = await api("/api/v1/merceologie");
+    select.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = merceologie.length ? "Seleziona merceologia" : "Nessuna merceologia disponibile";
+    select.appendChild(placeholder);
+
+    merceologie.forEach((m) => {
+      const option = document.createElement("option");
+      option.value = String(m.id);
+      option.textContent = m.merceologia;
+      if (String(selectedId) === String(m.id)) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    if (selectedId === "") {
+      select.value = "";
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="">Errore caricamento merceologie</option>';
+  }
+}
+
+function nuovoTaglio() {
+  $("tagli-id").value = "";
+  $("tagli-nome").value = "";
+  $("tagli-form-title").textContent = "Nuovo taglio";
+  $("tagli-error").textContent = "";
+  loadTagliMerceologieOptions("").then(() => {
+    $("tagli-form").style.display = "block";
+  });
+}
+
+async function editTaglio(id) {
+  try {
+    const list = await api("/api/v1/tagli");
+    const t = list.find((x) => x.id === id);
+    if (!t) return;
+
+    $("tagli-id").value = t.id;
+    $("tagli-nome").value = t.taglio;
+    $("tagli-form-title").textContent = "Modifica taglio #" + t.id;
+    $("tagli-error").textContent = "";
+
+    await loadTagliMerceologieOptions(t.id_merceologia ?? "");
+    $("tagli-form").style.display = "block";
+  } catch (e) {
+    $("tagli-error").textContent = e.message;
+  }
+}
+
+async function salvaTaglio() {
+  $("tagli-error").textContent = "";
+  const id = $("tagli-id").value;
+  const merceologiaValue = $("tagli-merceologia").value;
+  const payload = {
+    taglio: $("tagli-nome").value,
+    id_merceologia: merceologiaValue === "" ? null : Number(merceologiaValue),
+  };
+  try {
+    if (id) {
+      await api("/api/v1/tagli/" + id, { method: "PUT", body: JSON.stringify(payload) });
+    } else {
+      await api("/api/v1/tagli", { method: "POST", body: JSON.stringify(payload) });
+    }
+    $("tagli-form").style.display = "none";
+    loadTagli();
+  } catch (e) {
+    $("tagli-error").textContent = e.message;
+  }
+}
+
+async function delTaglio(id) {
+  if (!confirm("Eliminare il taglio #" + id + "?")) return;
+  try {
+    await api("/api/v1/tagli/" + id, { method: "DELETE" });
+    loadTagli();
   } catch (e) {
     alert(e.message);
   }
@@ -908,6 +1023,11 @@ document.addEventListener("DOMContentLoaded", () => {
   $("btn-nuovo-dip").addEventListener("click", nuovaDip);
   $("btn-save-dip").addEventListener("click", salvaDip);
   $("btn-cancel-dip").addEventListener("click", () => ($("dip-form").style.display = "none"));
+
+  // Tagli
+  $("btn-nuovo-taglio").addEventListener("click", nuovoTaglio);
+  $("btn-save-taglio").addEventListener("click", salvaTaglio);
+  $("btn-cancel-taglio").addEventListener("click", () => ($("tagli-form").style.display = "none"));
 
   // Merceologie
   $("btn-nuovo-merc").addEventListener("click", nuovaMerc);

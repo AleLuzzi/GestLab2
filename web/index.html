@@ -58,7 +58,7 @@
             </button>
             <button id="btn-configurazioni" class="landing-action primary" type="button">
               <span class="action-title">Configurazioni</span>
-              <span class="action-subtitle">Dipendenti, reparti, merceologie e fornitori</span>
+              <span class="action-subtitle">Dipendenti, reparti, merceologie, tagli e fornitori</span>
             </button>
           </div>
         </div>
@@ -82,6 +82,10 @@
           <button class="config-card" data-view="merceologie" type="button">
             <span class="config-icon">📦</span>
             <span class="config-name">Merceologie</span>
+          </button>
+          <button class="config-card" data-view="tagli" type="button">
+            <span class="config-icon">✂️</span>
+            <span class="config-name">Tagli</span>
           </button>
           <button class="config-card" data-view="fornitori" type="button">
             <span class="config-icon">🏢</span>
@@ -209,6 +213,31 @@
             <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
           </div>
           <div id="dip-error" class="error"></div>
+        </div>
+      </section>
+
+      <!-- Tagli -->
+      <section id="view-tagli" class="panel">
+        <div class="panel-head">
+          <h2>Tagli</h2>
+          <button id="btn-nuovo-taglio" class="btn primary">Nuovo taglio</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Taglio</th><th>Merceologia</th><th>Azioni</th></tr></thead>
+          <tbody id="tagli-tbody"></tbody>
+        </table>
+        <div id="tagli-form" class="form-card" style="display:none">
+          <h3 id="tagli-form-title">Nuovo taglio</h3>
+          <input type="hidden" id="tagli-id" />
+          <label>Taglio <input type="text" id="tagli-nome" required /></label>
+          <label>Merceologia
+            <select id="tagli-merceologia"></select>
+          </label>
+          <div class="row">
+            <button id="btn-save-taglio" class="btn primary">Salva</button>
+            <button id="btn-cancel-taglio" class="btn ghost">Annulla</button>
+          </div>
+          <div id="tagli-error" class="error"></div>
         </div>
       </section>
 
@@ -390,6 +419,6 @@
     </main>
   </div>
 
-<script src="/static/app.js?v=20260801"></script>
+<script src="/static/app.js?v=20260920"></script>
 </body>
 </html>
