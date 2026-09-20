@@ -12,8 +12,10 @@ let currentUser = null;
 //  Utility
 // ------------------------------------------------------------------ #
 async function api(path, options = {}) {
-  const headers = options.headers || {};
-  headers["Content-Type"] = "application/json";
+  const headers = { ...(options.headers || {}) };
+  if (!headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   if (accessToken) headers["Authorization"] = "Bearer " + accessToken;
 
   const res = await fetch(API + path, { ...options, headers });
@@ -22,17 +24,32 @@ async function api(path, options = {}) {
     const ok = await tryRefresh();
     if (ok) return api(path, options);
   }
+
+  const contentLength = res.headers.get("content-length");
+  const hasBody = res.status !== 204 && res.status !== 205 && contentLength !== "0";
+
   if (!res.ok) {
     let detail = res.statusText;
-    try {
-      const body = await res.json();
-      detail = body.detail || JSON.stringify(body);
-    } catch (_) {}
+    if (hasBody) {
+      try {
+        const text = await res.text();
+        if (text) {
+          const body = JSON.parse(text);
+          detail = body.detail || JSON.stringify(body);
+        }
+      } catch (_) {}
+    }
     throw new Error(detail);
   }
+
+  if (!hasBody) return null;
+
+  const text = await res.text();
+  if (!text) return null;
+
   const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res;
+  if (ct.includes("application/json")) return JSON.parse(text);
+  return text;
 }
 
 async function tryRefresh() {
@@ -190,38 +207,75 @@ async function loadDipendenti() {
   }
 }
 
+async function loadDipRepartiOptions(selectedId = "") {
+  const select = $("dip-reparto");
+  if (!select) return;
+
+  try {
+    const reparti = await api("/api/v1/reparti");
+    select.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = reparti.length ? "Seleziona reparto" : "Nessun reparto disponibile";
+    select.appendChild(placeholder);
+
+    reparti.forEach((r) => {
+      const option = document.createElement("option");
+      option.value = String(r.id);
+      option.textContent = r.reparto;
+      if (String(selectedId) === String(r.id)) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    if (selectedId === "") {
+      select.value = "";
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="">Errore caricamento reparti</option>';
+  }
+}
+
 function nuovaDip() {
   $("dip-id").value = "";
   $("dip-nome").value = "";
   $("dip-email").value = "";
-  $("dip-reparto").value = "";
   $("dip-form-title").textContent = "Nuovo dipendente";
   $("dip-error").textContent = "";
-  $("dip-form").style.display = "block";
+  loadDipRepartiOptions("").then(() => {
+    $("dip-form").style.display = "block";
+  });
 }
 
-function editDip(id) {
-  // rileggiamo dal server per dati freschi
-  api("/api/v1/dipendenti").then((list) => {
+async function editDip(id) {
+  try {
+    const list = await api("/api/v1/dipendenti");
     const d = list.find((x) => x.id === id);
     if (!d) return;
+
     $("dip-id").value = d.id;
     $("dip-nome").value = d.nome;
     $("dip-email").value = d.email;
-    $("dip-reparto").value = d.reparto ?? "";
     $("dip-form-title").textContent = "Modifica dipendente #" + d.id;
     $("dip-error").textContent = "";
+
+    await loadDipRepartiOptions(d.reparto ?? "");
     $("dip-form").style.display = "block";
-  });
+  } catch (e) {
+    $("dip-error").textContent = e.message;
+  }
 }
 
 async function salvaDip() {
   $("dip-error").textContent = "";
   const id = $("dip-id").value;
+  const repartoValue = $("dip-reparto").value;
   const payload = {
     nome: $("dip-nome").value,
     email: $("dip-email").value,
-    reparto: $("dip-reparto").value === "" ? null : Number($("dip-reparto").value),
+    reparto: repartoValue === "" ? null : Number(repartoValue),
   };
   try {
     if (id) {
@@ -275,34 +329,70 @@ async function loadMerceologie() {
   
 }
 
+async function loadMercRepartiOptions(selectedId = "") {
+  const select = $("merc-reparto");
+  if (!select) return;
+
+  try {
+    const reparti = await api("/api/v1/reparti");
+    select.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = reparti.length ? "Seleziona reparto" : "Nessun reparto disponibile";
+    select.appendChild(placeholder);
+
+    reparti.forEach((r) => {
+      const option = document.createElement("option");
+      option.value = String(r.id);
+      option.textContent = r.reparto;
+      if (String(selectedId) === String(r.id)) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    });
+
+    if (selectedId === "") {
+      select.value = "";
+    }
+  } catch (e) {
+    select.innerHTML = '<option value="">Errore caricamento reparti</option>';
+  }
+}
+
 function nuovaMerc() {
   $("merc-id").value = "";
   $("merc-nome").value = "";
-  $("merc-reparto").value = "";
   $("merc-form-title").textContent = "Nuova merceologia";
   $("merc-error").textContent = "";
-  $("merc-form").style.display = "block";
+  loadMercRepartiOptions("").then(() => {
+    $("merc-form").style.display = "block";
+  });
 }
 
-function editMerc(id) {
-  api("/api/v1/merceologie").then((list) => {
+async function editMerc(id) {
+  try {
+    const list = await api("/api/v1/merceologie");
     const m = list.find((x) => x.id === id);
     if (!m) return;
     $("merc-id").value = m.id;
     $("merc-nome").value = m.merceologia;
-    $("merc-reparto").value = m.reparto ?? "";
     $("merc-form-title").textContent = "Modifica merceologia #" + m.id;
     $("merc-error").textContent = "";
+    await loadMercRepartiOptions(m.reparto ?? "");
     $("merc-form").style.display = "block";
-  });
+  } catch (e) {
+    $("merc-error").textContent = e.message;
+  }
 }
 
 async function salvaMerc() {
   $("merc-error").textContent = "";
   const id = $("merc-id").value;
+  const repartoValue = $("merc-reparto").value;
   const payload = {
     merceologia: $("merc-nome").value,
-    reparto: $("merc-reparto").value === "" ? null : Number($("merc-reparto").value),
+    reparto: repartoValue === "" ? null : Number(repartoValue),
   };
   try {
     if (id) {

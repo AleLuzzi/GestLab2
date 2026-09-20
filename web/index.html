@@ -86,7 +86,9 @@
           <input type="hidden" id="dip-id" />
           <label>Nome <input type="text" id="dip-nome" required /></label>
           <label>Email <input type="email" id="dip-email" /></label>
-          <label>ID Reparto <input type="number" id="dip-reparto" /></label>
+          <label>Reparto
+            <select id="dip-reparto"></select>
+          </label>
           <div class="row">
             <button id="btn-save-dip" class="btn primary">Salva</button>
             <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
@@ -109,7 +111,9 @@
           <h3 id="merc-form-title">Nuova merceologia</h3>
           <input type="hidden" id="merc-id" />
           <label>Nome <input type="text" id="merc-nome" required /></label>
-          <label>ID Reparto <input type="number" id="merc-reparto" /></label>
+          <label>Reparto
+            <select id="merc-reparto"></select>
+          </label>
           <label><input type="checkbox" id="merc-flag1" /> Abilitato per Inventario</label>
           <label><input type="checkbox" id="merc-flag2" /> Abilitato per Taglio</label>
           <label><input type="checkbox" id="merc-flag3" /> Abilitato per Ingrediente Base</label>
