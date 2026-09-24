@@ -301,7 +301,7 @@ Se hai dati locali da migrare:
 sudo mkdir -p /opt/gestlab
 sudo chown ubuntu:ubuntu /opt/gestlab
 cd /opt/gestlab
-git clone <URL_DEL_REPOSITORY> app
+git clone https://github.com/AleLuzzi/GestLab2.git app
 cd /opt/gestlab/app
 ```
 
@@ -423,7 +423,7 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/opt/gestlab/app
 EnvironmentFile=/etc/gestlab/gestlab.env
-ExecStart=/opt/gestlab/app/.venv/bin/python -m uvicorn saas.main:app --host 127.0.0.1 --port 8000
+ExecStart=/opt/gestlab/app/.venv/bin/python3 -m uvicorn saas.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 NoNewPrivileges=true

@@ -5,6 +5,20 @@ I servizi orchestrano i repository e i modelli di ``core`` e sono riusabili
 sia dalle UI desktop (Tkinter/Kivy) sia dal backend SaaS (FastAPI).
 """
 
+from . import (
+    barcode,
+    dipendenti,
+    fornitori,
+    ingresso_merce,
+    lotti,
+    menu,
+    merceologie,
+    printing,
+    reparti,
+    tagli,
+    vendite,
+)
+
 __all__ = [
     "dipendenti",
     "reparti",
