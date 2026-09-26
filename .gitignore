@@ -7,3 +7,5 @@ venv
 # Segreti: non committare .env (mantieni .env.example)
 .env
 *.env.local
+deploy/gestlab.env
+deploy/*.pem

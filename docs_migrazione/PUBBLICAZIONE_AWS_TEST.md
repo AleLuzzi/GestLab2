@@ -3,6 +3,10 @@
 Guida passo passo per pubblicare la console web SaaS di GestLab2 su AWS con il
 costo minimo compatibile con il codice attuale.
 
+Per eseguire gli stessi passi in modo automatico (script PowerShell + bootstrap
+Ubuntu) vedere [`PUBBLICAZIONE_AWS_AUTOMATICA.md`](PUBBLICAZIONE_AWS_AUTOMATICA.md).
+Questa guida resta il riferimento manuale.
+
 > Questa guida riguarda `saas.main:app` e la console web nella cartella `web/`.
 > La UI desktop Kivy (`main.py`) non viene eseguita sul server web.
 
