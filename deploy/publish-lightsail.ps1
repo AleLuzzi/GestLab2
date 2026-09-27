@@ -14,7 +14,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Region = "eu-west-3",
+    [string]$Region = "eu-west-3a",
     [string]$InstanceName = "gestlab-test",
     [string]$StaticIpName = "",
     [string]$BundleId = "nano_3_0",
@@ -27,7 +27,7 @@ param(
     [string]$GitRepo = "https://github.com/AleLuzzi/GestLab2.git",
     [string]$GitRef = "main",
     [string]$EnvFile = "",
-    [string]$AdminEmail = "",
+    [string]$AdminEmail = "alessandro.luzzi77@gmail.com",
     [string]$AdminPassword = "",
     [string]$TenantNome = "Laboratorio Test AWS",
     [string]$Domain = "",
@@ -54,23 +54,34 @@ function Assert-Command {
 
 function Invoke-Aws {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$AwsArgs)
-    $output = & aws @AwsArgs --region $Region --output json 2>&1
+
+    $args = @("--region", $Region, "--output", "json") + $AwsArgs
+    $output = & aws @args 2>&1 | Out-String
+
     if ($LASTEXITCODE -ne 0) {
-        throw "AWS CLI non riuscito: aws $($AwsArgs -join ' ')`n$output"
+        $msg = $output.Trim()
+        throw "AWS CLI non riuscito: aws $($args -join ' ')`n$msg"
     }
-    if ($output) {
-        return ($output | Out-String | ConvertFrom-Json)
+
+    if (-not [string]::IsNullOrWhiteSpace($output)) {
+        return ($output.Trim() | ConvertFrom-Json)
     }
+
     return $null
 }
 
 function Get-AwsText {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$AwsArgs)
-    $output = & aws @AwsArgs --region $Region --output text 2>&1
+
+    $args = @("--region", $Region, "--output", "text") + $AwsArgs
+    $output = & aws @args 2>&1 | Out-String
+
     if ($LASTEXITCODE -ne 0) {
-        throw "AWS CLI non riuscito: aws $($AwsArgs -join ' ')`n$output"
+        $msg = $output.Trim()
+        throw "AWS CLI non riuscito: aws $($args -join ' ')`n$msg"
     }
-    return [string]$output
+
+    return [string]$output.Trim()
 }
 
 function New-RandomSecret {

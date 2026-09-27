@@ -225,6 +225,8 @@ cd /opt/gestlab/app
 python3 -m saas.bootstrap
 ```
 
+
+
 Questo comando:
 - Legge il file unificato `saas/init_database.sql`
 - Crea tutte le tabelle di business (dipendenti, fornitori, prodotti, ecc.) con supporto multi-tenant
@@ -302,12 +304,15 @@ Se hai dati locali da migrare:
 ### 9.1 Da repository Git
 
 ```bash
-sudo mkdir -p /opt/gestlab
-sudo chown ubuntu:ubuntu /opt/gestlab
-cd /opt/gestlab
-git clone https://github.com/AleLuzzi/GestLab2.git app
+sudo mkdir -p /opt/gestlab &&
+sudo chown ubuntu:ubuntu /opt/gestlab &&
+cd /opt/gestlab &&
+git clone https://github.com/AleLuzzi/GestLab2.git app &&
 cd /opt/gestlab/app
 ```
+
+
+
 
 ### 9.2 Da archivio locale
 
@@ -324,16 +329,16 @@ Non copiare:
 ## 10. Installare l'ambiente Python
 
 ```bash
-cd /opt/gestlab/app
-python3 -m venv .venv
-. .venv/bin/activate
+cd /opt/gestlab/app &&
+python3 -m venv .venv &&
+. .venv/bin/activate &&
 python3 -m pip install --upgrade pip
 ```
 
 Per il backend web installare le dipendenze necessarie:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-web.txt
   
 ```
 
@@ -346,7 +351,7 @@ dipendenze e consumo di memoria.
 Creare un file leggibile soltanto da `root` e dall'utente del servizio:
 
 ```bash
-sudo install -d -m 750 /etc/gestlab
+sudo install -d -m 750 /etc/gestlab &&
 sudo nano /etc/gestlab/gestlab.env
 ```
 
@@ -367,12 +372,8 @@ GESTLAB_TENANT_NOME=Laboratorio Test AWS
 Proteggere il file:
 
 ```bash
-sudo chown root:ubuntu /etc/gestlab/gestlab.env
+sudo chown root:ubuntu /etc/gestlab/gestlab.env &&
 sudo chmod 640 /etc/gestlab/gestlab.env
-
-#comandi vecchi 
-sudo chmod 600 /etc/gestlab/gestlab.env
-sudo chown root:root /etc/gestlab/gestlab.env
 ```
 
 
@@ -382,8 +383,8 @@ non usare solo /etc/gestlab/gestlab.env.
 Esegui sul server:
 
 ```bash
-sudo cp /etc/gestlab/gestlab.env /opt/gestlab/app/.env
-sudo chown ubuntu:ubuntu /opt/gestlab/app/.env
+sudo cp /etc/gestlab/gestlab.env /opt/gestlab/app/.env &&
+sudo chown ubuntu:ubuntu /opt/gestlab/app/.env &&
 sudo chmod 640 /opt/gestlab/app/.env
 ```
 
@@ -439,8 +440,8 @@ WantedBy=multi-user.target
 Attivare il servizio:
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now gestlab
+sudo systemctl daemon-reload &&
+sudo systemctl enable --now gestlab &&
 sudo systemctl status gestlab --no-pager
 ```
 
@@ -489,9 +490,9 @@ server {
 Attivare il sito e verificare la configurazione:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/gestlab /etc/nginx/sites-enabled/gestlab
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t
+sudo ln -s /etc/nginx/sites-available/gestlab /etc/nginx/sites-enabled/gestlab &&
+sudo rm -f /etc/nginx/sites-enabled/default &&
+sudo nginx -t &&
 sudo systemctl reload nginx
 ```
 
