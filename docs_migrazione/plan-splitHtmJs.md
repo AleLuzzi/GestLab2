@@ -1,7 +1,7 @@
 # Come separare HTML e JS in modo professionale
 
 ## Obiettivo
-Separare il markup della UI in [web/index.html](web/index.html) dalla logica in [web/app.js](web/app.js), mantenendo la stessa UX ma migliorando manutenzione, testabilità e scalabilità.
+Separare il markup della UI in [web/index.html](web/index.html) dalla logica in [web/js/](web/js/), mantenendo la stessa UX ma migliorando manutenzione, testabilità e scalabilità.
 
 ## Passi consigliati
 
@@ -70,11 +70,10 @@ Separare il markup della UI in [web/index.html](web/index.html) dalla logica in 
 
 ### 7) Suddividere il JS in moduli logici
 - Esempio di struttura ideale:
-  - `app.js` -> bootstrapping + state + utilities
-  - `features/auth.js` -> login/logout
-  - `features/dashboard.js` -> stats e lookup
-  - `features/crud.js` -> dipendenti, reparti, merceologie, tagli, fornitori
-  - `features/printing.js` -> DDT / scontrino / etichetta
+  - `web/js/app.js` -> bootstrap e inizializzazione
+  - `web/js/api/client.js` -> richieste API, token e refresh
+  - `web/js/core/` -> autenticazione, navigazione e helper DOM
+  - `web/js/features/` -> dashboard, anagrafiche, ingresso merce, lotti, menu, stampa e admin
 - Se si vuole restare su un file solo, almeno creare sezioni chiari con commenti e funzioni ben separate.
 
 ### 8) Condividere i dati tra view e form
@@ -106,9 +105,9 @@ Dopo il refactor, fare una checklist:
 ## Raccomandazione pratica per questo progetto
 Per il repo attuale, il punto di partenza migliore è:
 1. lasciare in [web/index.html](web/index.html) solo i container delle view e i form;
-2. lasciare in [web/app.js](web/app.js) solo l'event binding, la renderizzazione e la logica API;
+2. mantenere in [web/js/app.js](web/js/app.js) solo l'inizializzazione dei moduli;
 3. creare una struttura per le CRUD via `load*` + `save*` + `delete*`;
-4. aggiungere `Tagli` nella stessa modalità usata per Dipendenti, Merceologie e Reparti;
+4. mantenere `Tagli` allineato alle altre anagrafiche;
 5. verificare con una sessione reale e i JSON restituiti da [saas/main.py](saas/main.py).
 
 ## Regola d'oro

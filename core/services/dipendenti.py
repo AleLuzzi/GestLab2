@@ -1,7 +1,7 @@
 """Servizio Dipendenti: business logic per la gestione dei dipendenti.
 
 Orchestra il repository ``core.repositories.dipendenti`` e il modello
-``Dipendente``. Usato dalla UI anagrafica e (in futuro) dal backend SaaS.
+``Dipendente``. Usato dalla UI anagrafica e dal backend SaaS.
 """
 
 from core import Dipendente
