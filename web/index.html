@@ -117,59 +117,77 @@
           <button id="btn-back-from-ingresso" class="btn ghost" type="button">Torna alla scelta</button>
         </div>
 
-        <div class="ingresso-layout">
-          <div class="form-card cargo-form">
-            <h3>Nuovo movimento</h3>
-            <label>Fornitore
-              <select id="ingress-fornitore">
-                <option value="">Seleziona fornitore</option>
-                <option value="1">Azienda S.r.l.</option>
-                <option value="2">Distribuzione Roma</option>
-                <option value="3">Nord Food Spa</option>
-              </select>
-            </label>
-            <label>Data
-              <input type="date" id="ingress-data" />
-            </label>
-            <label>Numero DDT
-              <input type="text" id="ingress-ddt" placeholder="DDT-2026-001" />
-            </label>
-            <label>Prodotto
-              <input type="text" id="ingress-prodotto" placeholder="Es. Parmigiano 24 mesi" />
-            </label>
-            <div class="row split-row">
-              <label>Quantità
-                <input type="number" id="ingress-qta" value="1" min="1" />
-              </label>
-              <label>Peso / kg
-                <input type="number" id="ingress-peso" value="0" min="0" step="0.1" />
-              </label>
-            </div>
-            <div class="row split-row">
-              <label>Prezzo unitario
-                <input type="number" id="ingress-prezzo" value="0" min="0" step="0.01" />
-              </label>
-              <label>IVA %
-                <input type="number" id="ingress-iva" value="22" min="0" max="100" />
-              </label>
-            </div>
-            <div class="row">
-              <button id="btn-salva-ingresso" class="btn primary" type="button">Salva movimento</button>
-              <button id="btn-reset-ingresso" class="btn ghost" type="button">Azzera</button>
-            </div>
-            <div id="ingress-error" class="error"></div>
-          </div>
+        <ol class="ingresso-steps" aria-label="Passaggi ingresso merce">
+          <li class="active" data-step-indicator="1">1. Intestazione</li>
+          <li data-step-indicator="2">2. Articoli</li>
+          <li data-step-indicator="3">3. Riepilogo</li>
+        </ol>
 
-          <div class="form-card summary-card">
-            <h3>Riepilogo</h3>
-            <div class="summary-list">
-              <div><span>Fornitore</span><strong id="summary-fornitore">-</strong></div>
-              <div><span>Data</span><strong id="summary-data">-</strong></div>
-              <div><span>DDT</span><strong id="summary-ddt">-</strong></div>
-              <div><span>Prodotto</span><strong id="summary-prodotto">-</strong></div>
-              <div><span>Totale</span><strong id="summary-totale">€ 0,00</strong></div>
+        <div class="form-card ingresso-card">
+          <section class="ingresso-step active" data-step="1" aria-labelledby="ingresso-intestazione-title">
+            <h3 id="ingresso-intestazione-title">Intestazione documento</h3>
+            <div class="ingresso-header-fields">
+              <label>Data
+                <input type="date" id="ingress-data" readonly />
+              </label>
+              <label>Progressivo ingresso
+                <input type="text" id="ingress-progressivo" readonly value="Caricamento…" />
+              </label>
+              <label>Fornitore
+                <select id="ingress-fornitore" required>
+                  <option value="">Caricamento fornitori…</option>
+                </select>
+              </label>
+              <label>Numero documento / DDT
+                <input type="text" id="ingress-ddt" autocomplete="off" placeholder="Inserisci numero documento" />
+              </label>
             </div>
-          </div>
+            <div class="ingresso-actions">
+              <button id="btn-reset-ingresso" class="btn ghost" type="button">Azzera movimento</button>
+              <button id="btn-ingresso-step-1" class="btn primary" type="button">Continua agli articoli</button>
+            </div>
+          </section>
+
+          <section class="ingresso-step" data-step="2" aria-labelledby="ingresso-articoli-title" hidden>
+            <h3 id="ingresso-articoli-title">Articoli ricevuti</h3>
+            <p class="ingresso-help">Scegli la merceologia, seleziona un taglio e inserisci il peso in kg.</p>
+            <div id="ingress-merceologie" class="merceologia-buttons" aria-label="Merceologie"></div>
+            <div id="ingress-articoli-feedback" class="ingresso-feedback" aria-live="polite"></div>
+            <div id="ingress-tagli" class="tagli-list" aria-label="Tagli disponibili"></div>
+            <div class="ingresso-weight-row">
+              <label for="ingress-peso">Peso ricevuto (kg)</label>
+              <input type="number" id="ingress-peso" min="0.01" step="0.01" inputmode="decimal" placeholder="Es. 12,5" />
+              <button id="btn-aggiungi-ingresso" class="btn primary" type="button">Aggiungi al riepilogo</button>
+            </div>
+            <div class="ingresso-actions">
+              <button class="btn ghost" type="button" data-step-back="1">Indietro</button>
+              <button id="btn-ingresso-step-2" class="btn primary" type="button">Vai al riepilogo</button>
+            </div>
+          </section>
+
+          <section class="ingresso-step" data-step="3" aria-labelledby="ingresso-riepilogo-title" hidden>
+            <h3 id="ingresso-riepilogo-title">Riepilogo ingresso</h3>
+            <div class="summary-list ingresso-summary">
+              <div><span>Data</span><strong id="summary-data">-</strong></div>
+              <div><span>Progressivo</span><strong id="summary-progressivo">-</strong></div>
+              <div><span>Fornitore</span><strong id="summary-fornitore">-</strong></div>
+              <div><span>Numero documento / DDT</span><strong id="summary-ddt">-</strong></div>
+              <div><span>Articoli</span><strong id="summary-conteggio">0</strong></div>
+              <div><span>Peso totale</span><strong id="summary-peso">0 kg</strong></div>
+            </div>
+            <div class="ingresso-lines-heading">
+              <h4>Righe inserite</h4>
+              <span id="ingress-conteggio" class="role-badge">0 articoli</span>
+            </div>
+            <div id="ingress-riepilogo-righe" class="ingresso-lines"></div>
+            <div id="ingress-error" class="error" role="status" aria-live="polite"></div>
+            <div class="ingresso-actions">
+              <button class="btn ghost" type="button" data-step-back="2">Torna agli articoli</button>
+              <button id="btn-salva-ingresso" class="btn primary" type="button">Conferma ingresso</button>
+            </div>
+          </section>
+
+          <div id="ingress-load-error" class="error" role="alert" aria-live="assertive"></div>
         </div>
       </section>
 
