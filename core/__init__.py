@@ -7,6 +7,7 @@ dalla UI (Tkinter/Kivy) e pronti per essere riusati dal backend SaaS.
 from . import db, config, env
 from .core_models import (
     Dipendente,
+    Progressivi,
     Fornitore,
     Taglio,
     Merceologia,
@@ -20,6 +21,7 @@ __all__ = [
     "config",
     "env",
     "Dipendente",
+    "Progressivi",
     "Fornitore",
     "Taglio",
     "Merceologia",

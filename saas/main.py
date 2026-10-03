@@ -28,6 +28,8 @@ from saas.schemas import (
     MerceologiaUpdate,
     PrintJobCreate,
     PrintJobOut,
+    ProgressiviOut,
+    ProgressiviWrite,
     RepartoCreate,
     RepartoOut,
     RepartoUpdate,
@@ -53,6 +55,7 @@ from core.services import lotti as lotti_service
 from core.services import menu as menu_service
 from core.services import printing as printing_service
 from core.services import barcode as barcode_service
+from core.services import progressivi as progressivi_service
 
 app = FastAPI(
     title="GestLab SaaS API",
@@ -504,6 +507,78 @@ def elimina_fornitore(
     if not fornitore:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Fornitore non trovato")
     fornitori_service.elimina_fornitore(fornitore, user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Progressivi
+# ------------------------------------------------------------------------- #
+
+def _progressivi_tenant(tenant_id: int):
+    """Restituisce il singolo record del tenant, segnalando dati ambigui."""
+    records = progressivi_service.lista_progressivi(tenant_id)
+    if len(records) > 1:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Sono presenti più record progressivi per questo tenant",
+        )
+    return records
+
+
+@app.get("/api/v1/progressivi", response_model=list[ProgressiviOut])
+def lista_progressivi(user: dict = Depends(auth.get_current_user)):
+    """Legge i contatori del tenant corrente."""
+    return [
+        ProgressiviOut(prog_acq=record.prog_acq, prog_ven=record.prog_ven)
+        for record in _progressivi_tenant(user["tenant_id"])
+    ]
+
+
+@app.post(
+    "/api/v1/progressivi",
+    response_model=ProgressiviOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_progressivi(
+    payload: ProgressiviWrite,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Inizializza i contatori del tenant corrente."""
+    if _progressivi_tenant(user["tenant_id"]):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "I progressivi per questo tenant esistono già",
+        )
+    nuovo = progressivi_service.crea_progressivi(
+        payload.prog_acq, payload.prog_ven, user["tenant_id"]
+    )
+    return ProgressiviOut(prog_acq=nuovo.prog_acq, prog_ven=nuovo.prog_ven)
+
+
+@app.put("/api/v1/progressivi", response_model=ProgressiviOut)
+def aggiorna_progressivi(
+    payload: ProgressiviWrite,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna i contatori del tenant corrente."""
+    records = _progressivi_tenant(user["tenant_id"])
+    if not records:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Progressivi non trovati")
+    aggiornato = progressivi_service.aggiorna_progressivi(
+        records[0],
+        prog_acq=payload.prog_acq,
+        prog_ven=payload.prog_ven,
+        tenant_id=user["tenant_id"],
+    )
+    return ProgressiviOut(prog_acq=aggiornato.prog_acq, prog_ven=aggiornato.prog_ven)
+
+
+@app.delete("/api/v1/progressivi", status_code=status.HTTP_204_NO_CONTENT)
+def elimina_progressivi(user: dict = Depends(auth.require_roles("admin"))):
+    """Elimina i contatori del tenant corrente."""
+    records = _progressivi_tenant(user["tenant_id"])
+    if not records:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Progressivi non trovati")
+    progressivi_service.elimina_progressivi(records[0], user["tenant_id"])
 
 
 # ------------------------------------------------------------------------- #

@@ -14,6 +14,7 @@ from . import (
     menu,
     merceologie,
     printing,
+    progressivi,
     reparti,
     tagli,
     vendite,
@@ -21,6 +22,7 @@ from . import (
 
 __all__ = [
     "dipendenti",
+    "progressivi",
     "reparti",
     "fornitori",
     "tagli",

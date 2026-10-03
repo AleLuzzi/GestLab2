@@ -162,6 +162,20 @@ class FornitoreOut(BaseModel):
 
 
 # ------------------------------------------------------------------------- #
+#  Progressivi
+# ------------------------------------------------------------------------- #
+
+class ProgressiviWrite(BaseModel):
+    prog_acq: int = Field(..., ge=0, le=2147483647)
+    prog_ven: int = Field(..., ge=0, le=2147483647)
+
+
+class ProgressiviOut(BaseModel):
+    prog_acq: int | None = None
+    prog_ven: int | None = None
+
+
+# ------------------------------------------------------------------------- #
 #  Stampa (DDT, scontrini, etichette) e barcode
 # ------------------------------------------------------------------------- #
 

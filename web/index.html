@@ -58,7 +58,7 @@
             </button>
             <button id="btn-configurazioni" class="landing-action primary" type="button">
               <span class="action-title">Configurazioni</span>
-              <span class="action-subtitle">Dipendenti, reparti, merceologie, tagli e fornitori</span>
+              <span class="action-subtitle">Dipendenti, reparti, merceologie, tagli, fornitori e progressivi</span>
             </button>
           </div>
         </div>
@@ -90,6 +90,10 @@
           <button class="config-card" data-view="fornitori" type="button">
             <span class="config-icon">🏢</span>
             <span class="config-name">Fornitori</span>
+          </button>
+          <button class="config-card" data-view="progressivi" type="button">
+            <span class="config-icon">🔢</span>
+            <span class="config-name">Progressivi</span>
           </button>
           <button class="config-card admin-only" data-view="admin" type="button">
             <span class="config-icon">🛡️</span>
@@ -317,6 +321,35 @@
         </div>
       </section>
 
+      <!-- Progressivi -->
+      <section id="view-progressivi" class="panel">
+        <div class="panel-head">
+          <h2>Progressivi</h2>
+          <button id="btn-back-progressivi" class="btn ghost" type="button">Torna a Configurazioni</button>
+        </div>
+        <div class="row">
+          <button id="btn-nuovo-progressivi" class="btn primary" type="button">Configura progressivi</button>
+        </div>
+        <div id="progressivi-error" class="error"></div>
+        <table class="table">
+          <thead><tr><th>Progressivo acquisti</th><th>Progressivo vendite</th><th>Azioni</th></tr></thead>
+          <tbody id="progressivi-tbody"></tbody>
+        </table>
+        <form id="progressivi-form" class="form-card" style="display:none">
+          <h3 id="progressivi-form-title">Configura progressivi</h3>
+          <label>Progressivo acquisti
+            <input type="number" id="progressivi-acq" min="0" max="2147483647" step="1" required />
+          </label>
+          <label>Progressivo vendite
+            <input type="number" id="progressivi-ven" min="0" max="2147483647" step="1" required />
+          </label>
+          <div class="row">
+            <button class="btn primary" type="submit">Salva</button>
+            <button id="btn-cancel-progressivi" class="btn ghost" type="button">Annulla</button>
+          </div>
+        </form>
+      </section>
+
       <!-- Lotti -->
       <section id="view-lotti" class="panel">
         <h2>Lotti aperti</h2>
@@ -419,6 +452,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261001"></script>
+<script type="module" src="/static/js/app.js?v=20261003"></script>
 </body>
 </html>

@@ -97,6 +97,78 @@ class Dipendente:
             raise e
 
 
+class Progressivi:
+    """Record dei contatori progressivi, associato al tenant."""
+
+    __slots__ = ("prog_acq", "prog_ven", "tenant_id")
+
+    def __init__(self, prog_acq=None, prog_ven=None, tenant_id=None):
+        self.prog_acq = prog_acq
+        self.prog_ven = prog_ven
+        self.tenant_id = tenant_id
+
+    @classmethod
+    def from_row(cls, row):
+        """Costruisce un oggetto dai campi ``prog_acq``, ``prog_ven``, ``tenant_id``."""
+        return cls(row[0], row[1], row[2])
+
+    def params_insert(self):
+        """Valori per l'inserimento dei contatori."""
+        return (self.prog_acq, self.prog_ven, self.tenant_id)
+
+    @classmethod
+    def fetch_all(cls, cursor):
+        """Recupera tutti i contatori."""
+        cursor.execute("SELECT prog_acq, prog_ven, tenant_id FROM progressivi")
+        return [cls.from_row(row) for row in cursor.fetchall()]
+
+    @classmethod
+    def fetch_by_tenant(cls, cursor, tenant_id):
+        """Recupera i contatori associati a un tenant."""
+        cursor.execute(
+            "SELECT prog_acq, prog_ven, tenant_id FROM progressivi "
+            "WHERE tenant_id = %s",
+            (tenant_id,),
+        )
+        return [cls.from_row(row) for row in cursor.fetchall()]
+
+    def save(self, cursor, conn):
+        """Aggiorna i contatori del tenant."""
+        if self.tenant_id is None:
+            cursor.execute(
+                "UPDATE progressivi SET prog_acq = %s, prog_ven = %s "
+                "WHERE tenant_id IS NULL",
+                (self.prog_acq, self.prog_ven),
+            )
+        else:
+            cursor.execute(
+                "UPDATE progressivi SET prog_acq = %s, prog_ven = %s "
+                "WHERE tenant_id = %s",
+                (self.prog_acq, self.prog_ven, self.tenant_id),
+            )
+        conn.commit()
+
+    def insert(self, cursor, conn):
+        """Inserisce i contatori."""
+        cursor.execute(
+            "INSERT INTO progressivi (prog_acq, prog_ven, tenant_id) "
+            "VALUES (%s, %s, %s)",
+            self.params_insert(),
+        )
+        conn.commit()
+
+    def delete(self, cursor, conn):
+        """Elimina i contatori del tenant."""
+        if self.tenant_id is None:
+            cursor.execute("DELETE FROM progressivi WHERE tenant_id IS NULL")
+        else:
+            cursor.execute(
+                "DELETE FROM progressivi WHERE tenant_id = %s",
+                (self.tenant_id,),
+            )
+        conn.commit()
+
+
 class Fornitore:
     """Record fornitore (tabella `fornitori`)."""
 

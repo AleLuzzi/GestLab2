@@ -187,7 +187,7 @@ CREATE TABLE IF NOT EXISTS `progressivi` (
   `prog_acq` int DEFAULT NULL,
   `prog_ven` int DEFAULT NULL,
   `tenant_id` bigint DEFAULT NULL,
-  KEY `idx_tenant_id` (`tenant_id`)
+  UNIQUE KEY `uq_progressivi_tenant_id` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `lotti_vendita` (
