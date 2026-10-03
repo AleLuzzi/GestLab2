@@ -67,6 +67,56 @@ def insert(value, tenant_id=None):
         return value
 
 
+def insert_many(values, tenant_id):
+    """Inserisce tutte le righe di un ingresso in un'unica transazione."""
+    values = [
+        value if isinstance(value, MovIngressoMerce) else MovIngressoMerce(**value)
+        for value in values
+    ]
+    if not values:
+        raise ValueError("Un ingresso merce deve contenere almeno una riga.")
+
+    with connection() as conn:
+        c = conn.cursor()
+        try:
+            c.executemany(
+                "INSERT INTO ingresso_merce "
+                "(progressivo_acq, data_acq, documento, fornitore, prodotto, "
+                " quantita, residuo, lotto_chiuso, id_merc, tenant_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                [
+                    (
+                        value.prog_acq,
+                        value.data,
+                        value.num_ddt,
+                        value.fornitore,
+                        value.taglio,
+                        value.peso_i,
+                        value.peso_f,
+                        value.lotto_chiuso,
+                        value.id_merc,
+                        tenant_id,
+                    )
+                    for value in values
+                ],
+            )
+            c.execute(
+                "UPDATE progressivi "
+                "SET prog_acq = prog_acq + 1 "
+                "WHERE tenant_id = %s",
+                (tenant_id,),
+            )
+            if c.rowcount != 1:
+                raise RuntimeError(
+                    "Impossibile aggiornare il progressivo acquisti del tenant."
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    return values
+
+
 def save(value, tenant_id=None):
     """Aggiorna un ``MovIngressoMerce`` esistente."""
     with connection() as conn:

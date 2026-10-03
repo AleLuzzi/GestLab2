@@ -36,6 +36,7 @@ from saas.schemas import (
     FornitoreCreate,
     FornitoreOut,
     FornitoreUpdate,
+    IngressoMerceCreate,
     RefreshRequest,
     ScontrinoCreate,
     TaglioCreate,
@@ -56,6 +57,7 @@ from core.services import menu as menu_service
 from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
+from core.services import ingresso_merce as ingresso_merce_service
 
 app = FastAPI(
     title="GestLab SaaS API",
@@ -579,6 +581,27 @@ def elimina_progressivi(user: dict = Depends(auth.require_roles("admin"))):
     if not records:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Progressivi non trovati")
     progressivi_service.elimina_progressivi(records[0], user["tenant_id"])
+
+
+# ------------------------------------------------------------------------- #
+#  Ingresso merce
+# ------------------------------------------------------------------------- #
+
+@app.post("/api/v1/ingresso-merce", status_code=status.HTTP_201_CREATED)
+def conferma_ingresso_merce(
+    payload: IngressoMerceCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Salva tutte le righe dell'ingresso nel tenant autenticato."""
+    movimenti = ingresso_merce_service.salva_movimenti(
+        prog_acq=payload.prog_acq,
+        data=payload.data,
+        num_ddt=payload.num_ddt,
+        fornitore=payload.fornitore,
+        righe=payload.righe,
+        tenant_id=user["tenant_id"],
+    )
+    return {"inseriti": len(movimenti)}
 
 
 # ------------------------------------------------------------------------- #

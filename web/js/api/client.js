@@ -56,7 +56,9 @@ async function request(path, options = {}, responseType = "json", retried = fals
         const text = await response.text();
         if (text) {
           const body = JSON.parse(text);
-          detail = body.detail || JSON.stringify(body);
+          detail = typeof body.detail === "string"
+            ? body.detail
+            : JSON.stringify(body.detail ?? body);
         }
       } catch (_) {}
     }

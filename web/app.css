@@ -234,6 +234,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 }
 .tagli-list { margin-top: 12px; }
 .ingresso-feedback { min-height: 24px; margin-top: 10px; color: var(--text-dim); }
+.ingresso-feedback.success { color: var(--accent-hover); }
 .ingresso-weight-row {
   display: grid;
   grid-template-columns: minmax(150px, 1fr) minmax(140px, 220px) auto;

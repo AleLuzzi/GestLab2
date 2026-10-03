@@ -7,6 +7,7 @@ Usato dalla UI ingresso merce e dal backend SaaS (endpoint /ingresso-merce).
 from core.repositories import lotti as lotti_repo
 from core.repositories import prodotti as prodotti_repo
 from core.repositories import ingresso_merce_repo as mov_repo
+from core.core_models import MovIngressoMerce
 
 
 def progressivo_ingresso():
@@ -44,6 +45,25 @@ def salva_movimento(movimento):
     if movimento.prog_acq is None:
         return mov_repo.insert(movimento)
     return mov_repo.save(movimento)
+
+
+def salva_movimenti(prog_acq, data, num_ddt, fornitore, righe, tenant_id):
+    """Salva atomicamente le righe di un ingresso per il tenant corrente."""
+    movimenti = [
+        MovIngressoMerce(
+            prog_acq=prog_acq,
+            data=data,
+            num_ddt=num_ddt,
+            fornitore=fornitore,
+            taglio=riga.taglio,
+            peso_i=str(riga.peso),
+            peso_f=str(riga.peso),
+            lotto_chiuso="no",
+            id_merc=riga.id_merc,
+        )
+        for riga in righe
+    ]
+    return mov_repo.insert_many(movimenti, tenant_id)
 
 
 def elimina_movimento(movimento):

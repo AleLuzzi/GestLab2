@@ -260,6 +260,7 @@ function aggiungiRighe() {
     righeIngresso.push({
       id: prossimoIdRiga++,
       taglio: taglio.taglio,
+      id_merc: merceologiaSelezionata.id,
       merceologia: merceologiaSelezionata.merceologia,
       peso,
     });
@@ -283,6 +284,9 @@ function azzeraIngresso() {
   merceologiaSelezionata = null;
   tagliSelezionati.clear();
   prossimoIdRiga = 1;
+  $("btn-salva-ingresso").disabled = false;
+  $("ingress-success").textContent = "";
+  $("ingress-success").classList.remove("success");
   $("ingress-error").textContent = "";
   $("ingress-articoli-feedback").textContent = "";
   mostraStep(1);
@@ -325,15 +329,48 @@ export function initIngressoMerce() {
   $("ingress-fornitore").addEventListener("change", aggiornaRiepilogo);
   $("ingress-ddt").addEventListener("input", aggiornaRiepilogo);
 
-  $("btn-salva-ingresso").addEventListener("click", () => {
+  $("btn-salva-ingresso").addEventListener("click", async () => {
     if (!$("ingress-fornitore").value || righeIngresso.length === 0) {
       $("ingress-error").classList.remove("success");
       $("ingress-error").textContent = "Completa l'intestazione e aggiungi almeno un articolo.";
       return;
     }
-    $("ingress-error").classList.add("success");
-    $("ingress-error").textContent =
-      "Movimento confermato solo in memoria: il salvataggio su database non è ancora implementato.";
+    if (!progressivo) {
+      $("ingress-error").classList.remove("success");
+      $("ingress-error").textContent = "Progressivo di ingresso non disponibile.";
+      return;
+    }
+
+    const button = $("btn-salva-ingresso");
+    button.disabled = true;
+    $("ingress-error").classList.remove("success");
+    $("ingress-error").textContent = "Salvataggio ingresso in corso…";
+    try {
+      const response = await api("/api/v1/ingresso-merce", {
+        method: "POST",
+        body: JSON.stringify({
+          prog_acq: progressivo,
+          data: $("ingress-data").value,
+          num_ddt: $("ingress-ddt").value.trim(),
+          fornitore: nomeFornitoreSelezionato(),
+          righe: righeIngresso.map((riga) => ({
+            taglio: riga.taglio,
+            peso: String(riga.peso),
+            id_merc: riga.id_merc,
+          })),
+        }),
+      });
+      const progressivoNumerico = Number.parseInt(progressivo, 10);
+      progressivo = `${progressivoNumerico + 1}A`;
+      $("ingress-progressivo").value = progressivo;
+      azzeraIngresso();
+      $("ingress-success").classList.add("success");
+      $("ingress-success").textContent =
+        `Ingresso salvato nel database (${response.inseriti} righe).`;
+    } catch (error) {
+      button.disabled = false;
+      $("ingress-error").textContent = `Impossibile salvare l'ingresso: ${error.message}`;
+    }
   });
   $("ingress-data").value = dataLocaleISO();
   $("ingress-fornitore").disabled = true;

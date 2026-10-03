@@ -4,7 +4,10 @@ Definisce i modelli di richiesta/risposta. ``tenant_id`` NON viene mai
 accettato dal client: viene estratto dal JWT lato server (frontend "sottile").
 """
 
-from pydantic import BaseModel, EmailStr, Field
+from datetime import date
+from decimal import Decimal
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 # ------------------------------------------------------------------------- #
@@ -173,6 +176,31 @@ class ProgressiviWrite(BaseModel):
 class ProgressiviOut(BaseModel):
     prog_acq: int | None = None
     prog_ven: int | None = None
+
+
+# ------------------------------------------------------------------------- #
+#  Ingresso merce
+# ------------------------------------------------------------------------- #
+
+class IngressoMerceRigaCreate(BaseModel):
+    taglio: str = Field(..., min_length=1, max_length=30)
+    peso: Decimal = Field(..., gt=0, max_digits=6, decimal_places=2)
+    id_merc: int = Field(..., gt=0)
+
+    @field_validator("peso")
+    @classmethod
+    def peso_entra_nella_colonna(cls, value):
+        if len(format(value, "f")) > 6:
+            raise ValueError("Il peso supera i 6 caratteri consentiti.")
+        return value
+
+
+class IngressoMerceCreate(BaseModel):
+    prog_acq: str = Field(..., min_length=1, max_length=5)
+    data: date
+    num_ddt: str = Field(default="", max_length=8)
+    fornitore: str = Field(..., min_length=1, max_length=50)
+    righe: list[IngressoMerceRigaCreate] = Field(..., min_length=1)
 
 
 # ------------------------------------------------------------------------- #
