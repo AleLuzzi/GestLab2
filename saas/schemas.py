@@ -137,6 +137,31 @@ class IngressoTracciatoCreate(BaseModel):
     righe: list[IngressoTracciatoRigaCreate] = Field(..., min_length=1)
 
 
+class LavorazioneInputCreate(BaseModel):
+    lotto_id: int = Field(..., gt=0)
+    quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+
+
+class LavorazioneOutputCreate(BaseModel):
+    articolo_id: int = Field(..., gt=0)
+    quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+
+
+class LavorazioneScartoCreate(BaseModel):
+    descrizione: str = Field(..., min_length=1, max_length=120)
+    quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    unita_misura: str = Field(..., min_length=1, max_length=8)
+
+
+class LavorazioneCreate(BaseModel):
+    data: date
+    descrizione: str = Field(default="", max_length=255)
+    operatore: str | None = Field(default=None, max_length=120)
+    input: list[LavorazioneInputCreate] = Field(..., min_length=1)
+    output: list[LavorazioneOutputCreate] = Field(..., min_length=1)
+    scarti: list[LavorazioneScartoCreate] = Field(default_factory=list)
+
+
 # ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #

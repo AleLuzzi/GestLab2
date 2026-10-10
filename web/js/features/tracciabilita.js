@@ -110,22 +110,6 @@ function creaRiga(containerId, fields, selectOptions, removeLabel) {
   return row;
 }
 
-function aggiungiRigaIngresso() {
-  creaRiga(
-    "trace-ingress-lines",
-    [
-      {
-        name: "articolo_id",
-        label: "Articolo",
-        options: [{ value: "", label: "Seleziona articolo" }],
-      },
-      { name: "quantita", label: "Quantità" },
-    ],
-    (select) => riempiSelectArticoli(select),
-    "Rimuovi riga ingresso",
-  );
-}
-
 function aggiungiRigaInput() {
   creaRiga(
     "trace-work-inputs",
@@ -189,20 +173,6 @@ function leggiRighe(containerId, fields) {
     });
     return result;
   });
-}
-
-function renderArticoli() {
-  const tbody = $("trace-articles-tbody");
-  tbody.innerHTML = articoli.length
-    ? articoli.map((articolo) => `
-      <tr>
-        <td>${esc(articolo.codice || "—")}</td>
-        <td>${esc(articolo.nome)}</td>
-        <td>${esc(articolo.categoria || "—")}</td>
-        <td>${esc(articolo.unita_misura)}</td>
-        <td>${articolo.attivo ? "Attivo" : "Disattivato"}</td>
-      </tr>`).join("")
-    : '<tr><td colspan="5" class="empty">Nessun articolo. Aggiungine uno per registrare ingressi e lavorazioni.</td></tr>';
 }
 
 function renderLotti() {
@@ -333,8 +303,8 @@ async function mostraDettaglioLotto(lottoId) {
 }
 
 export async function loadTracciabilita() {
+  impostaMessaggio("trace-work-data-error");
   impostaMessaggio("trace-lots-error");
-  impostaMessaggio("trace-articles-error");
   const soloDisponibili = $("trace-only-available").checked;
   const risultati = await Promise.allSettled([
     api("/api/v1/articoli"),
@@ -343,11 +313,9 @@ export async function loadTracciabilita() {
 
   if (risultati[0].status === "fulfilled") {
     articoli = risultati[0].value;
-    renderArticoli();
   } else {
     articoli = [];
-    impostaMessaggio("trace-articles-error", `Impossibile caricare gli articoli: ${risultati[0].reason?.message || risultati[0].reason}`);
-    $("trace-articles-tbody").innerHTML = '<tr><td colspan="5" class="empty">Errore nel caricamento degli articoli.</td></tr>';
+    impostaMessaggio("trace-work-data-error", `Impossibile caricare gli articoli per le lavorazioni: ${risultati[0].reason?.message || risultati[0].reason}`);
   }
   if (risultati[1].status === "fulfilled") {
     lotti = risultati[1].value;
@@ -374,82 +342,6 @@ function attivaTab(nome) {
     section.classList.toggle("active", active);
   });
   if (nome === "lavorazione" && !lottiCaricati) loadTracciabilita();
-}
-
-function configuraFormArticolo() {
-  $("btn-trace-new-article").addEventListener("click", () => {
-    $("trace-article-form").hidden = false;
-    $("trace-article-name").focus();
-  });
-  $("btn-trace-cancel-article").addEventListener("click", () => {
-    $("trace-article-form").reset();
-    $("trace-article-form").hidden = true;
-    impostaMessaggio("trace-article-form-error");
-  });
-  $("trace-article-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    impostaMessaggio("trace-article-form-error");
-    const button = event.currentTarget.querySelector('[type="submit"]');
-    button.disabled = true;
-    try {
-      await api("/api/v1/articoli", {
-        method: "POST",
-        body: JSON.stringify({
-          nome: $("trace-article-name").value.trim(),
-          codice: $("trace-article-code").value.trim() || null,
-          categoria: $("trace-article-category").value.trim() || null,
-          unita_misura: $("trace-article-unit").value,
-        }),
-      });
-      $("trace-article-form").reset();
-      $("trace-article-form").hidden = true;
-      await loadTracciabilita();
-    } catch (error) {
-      impostaMessaggio("trace-article-form-error", `Impossibile salvare l'articolo: ${error.message}`);
-    } finally {
-      button.disabled = false;
-    }
-  });
-}
-
-function configuraFormIngresso() {
-  $("trace-ingress-date").value = dataLocaleISO();
-  aggiungiRigaIngresso();
-  $("btn-trace-add-ingress-line").addEventListener("click", aggiungiRigaIngresso);
-  $("trace-ingress-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    impostaMessaggio("trace-ingress-error");
-    const righe = leggiRighe("trace-ingress-lines", ["articolo_id", "quantita"]);
-    if (!righe.length) {
-      impostaMessaggio("trace-ingress-error", "Aggiungi almeno un articolo all'ingresso.");
-      return;
-    }
-    const button = form.querySelector('[type="submit"]');
-    button.disabled = true;
-    try {
-      const result = await api("/api/v1/tracciabilita/ingressi", {
-        method: "POST",
-        body: JSON.stringify({
-          data: $("trace-ingress-date").value,
-          numero_ddt: $("trace-ingress-ddt").value.trim(),
-          fornitore: $("trace-ingress-supplier").value.trim(),
-          righe,
-        }),
-      });
-      const codici = result.lotti.map((lotto) => lotto.codice_lotto).join(", ");
-      impostaMessaggio("trace-ingress-error", `Ingresso registrato. Lotti creati: ${codici}`, true);
-      form.reset();
-      $("trace-ingress-date").value = dataLocaleISO();
-      $("trace-ingress-lines").replaceChildren();
-      await loadTracciabilita();
-      aggiungiRigaIngresso();
-    } catch (error) {
-      impostaMessaggio("trace-ingress-error", `Impossibile registrare l'ingresso: ${error.message}`);
-    } finally {
-      button.disabled = false;
-    }
-  });
 }
 
 function configuraFormLavorazione() {
@@ -509,7 +401,5 @@ export function initTracciabilita() {
   $("trace-search").addEventListener("input", renderLotti);
   $("trace-only-available").addEventListener("change", loadTracciabilita);
   $("btn-trace-refresh").addEventListener("click", loadTracciabilita);
-  configuraFormArticolo();
-  configuraFormIngresso();
   configuraFormLavorazione();
 }

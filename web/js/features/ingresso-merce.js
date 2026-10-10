@@ -239,7 +239,8 @@ async function caricaDatiIngresso() {
 }
 
 function aggiungiRighe() {
-  const quantita = Number($("ingress-quantita").value);
+  const inputQuantita = $("ingress-quantita");
+  const quantita = inputQuantita.valueAsNumber;
   if (!categoriaSelezionata) {
     $("ingress-articoli-feedback").textContent = "Seleziona prima una categoria.";
     return;
@@ -248,9 +249,10 @@ function aggiungiRighe() {
     $("ingress-articoli-feedback").textContent = "Seleziona almeno un articolo.";
     return;
   }
-  if (!Number.isFinite(quantita) || quantita <= 0) {
-    $("ingress-articoli-feedback").textContent = "Inserisci una quantità maggiore di zero.";
-    $("ingress-quantita").focus();
+  if (!Number.isFinite(quantita) || !inputQuantita.checkValidity()) {
+    $("ingress-articoli-feedback").textContent =
+      "Inserisci una quantità valida, da 0,001 a 999.999.999,999, con massimo 3 decimali.";
+    inputQuantita.focus();
     return;
   }
 
@@ -349,7 +351,7 @@ export function initIngressoMerce() {
           fornitore: nomeFornitoreSelezionato(),
           righe: righeIngresso.map((riga) => ({
             articolo_id: Number(riga.articoloId),
-            quantita: String(riga.quantita),
+            quantita: riga.quantita.toFixed(3),
           })),
         }),
       });

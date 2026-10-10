@@ -55,6 +55,11 @@ prima di dismettere i dati legacy.
 Le nuove rotte usano il tenant del token autenticato; il client non deve
 inviare `tenant_id`.
 
+- La gestione CRUD del catalogo articoli è disponibile in Configurazioni.
+- I documenti e i lotti in ingresso si registrano solo da Ingresso merce; la
+  conferma usa `POST /api/v1/tracciabilita/ingressi`.
+- La schermata Tracciabilità consente di consultare i lotti e registrare le
+  lavorazioni. Gli articoli di output sono selezionati dal catalogo esistente.
 - `GET /api/v1/articoli`: elenca il catalogo.
 - `POST /api/v1/articoli`: crea un articolo, per esempio
   `{"nome":"Mezzena Suino","categoria":"Suino","unita_misura":"kg"}`.

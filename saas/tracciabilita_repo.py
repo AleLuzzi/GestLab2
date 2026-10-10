@@ -278,9 +278,10 @@ def _prossimo_progressivo(cursor, tenant_id, tipo_lotto):
         f"SELECT {column} FROM progressivi WHERE tenant_id = %s FOR UPDATE",
         (tenant_id,),
     )
-    row = cursor.fetchone()
-    if not row:
+    rows = cursor.fetchall()
+    if not rows:
         raise RuntimeError("Impossibile leggere il progressivo del tenant.")
+    row = rows[0]
     numero = int(row[0] or 0) + 1
     cursor.execute(
         f"UPDATE progressivi SET {column} = %s WHERE tenant_id = %s",

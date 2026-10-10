@@ -8,7 +8,10 @@ filtrano tutti i dati per ``tenant_id`` (multi-tenancy reale, modello A:
 schema condiviso). Il client non deve mai inviare il ``tenant_id``.
 """
 
+import logging
 import os
+import uuid
+from logging.handlers import RotatingFileHandler
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, Response
@@ -41,6 +44,7 @@ from saas.schemas import (
     ArticoloOut,
     ArticoloUpdate,
     IngressoTracciatoCreate,
+    LavorazioneCreate,
     RefreshRequest,
     ScontrinoCreate,
     TenantCreate,
@@ -59,6 +63,26 @@ from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
 from core.services import ingresso_merce as ingresso_merce_service
 from saas import tracciabilita_repo
+
+_PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LOG_DIR = os.environ.get("GESTLAB_LOG_DIR", os.path.join(_PROJECT_DIR, "logs"))
+os.makedirs(_LOG_DIR, exist_ok=True)
+
+logger = logging.getLogger("gestlab.saas")
+logger.setLevel(logging.INFO)
+logger.propagate = False
+if not any(getattr(handler, "_gestlab_file_handler", False) for handler in logger.handlers):
+    file_handler = RotatingFileHandler(
+        os.path.join(_LOG_DIR, "gestlab-saas.log"),
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+        encoding="utf-8",
+    )
+    file_handler._gestlab_file_handler = True
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    )
+    logger.addHandler(file_handler)
 
 app = FastAPI(
     title="GestLab SaaS API",
@@ -612,6 +636,77 @@ def registra_ingresso_tracciato(
             status.HTTP_404_NOT_FOUND,
             "Uno o più articoli non esistono o non sono attivi",
         ) from error
+    except Exception as error:
+        riferimento = uuid.uuid4().hex
+        logger.exception(
+            "Errore durante il salvataggio dell'ingresso tracciato "
+            "reference=%s tenant_id=%s numero_righe=%s",
+            riferimento,
+            user["tenant_id"],
+            len(payload.righe),
+        )
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            f"Errore interno durante il salvataggio dell'ingresso. "
+            f"Riferimento assistenza: {riferimento}",
+        ) from error
+
+
+@app.get("/api/v1/tracciabilita/lotti")
+def lista_lotti_tracciati(
+    solo_disponibili: bool = False,
+    user: dict = Depends(auth.get_current_user),
+):
+    """Elenca i lotti del tenant, filtrabili per sola giacenza disponibile."""
+    return tracciabilita_repo.lista_lotti(
+        user["tenant_id"],
+        solo_disponibili=solo_disponibili,
+    )
+
+
+@app.get("/api/v1/tracciabilita/lotti/{lotto_id}")
+def dettaglio_lotto_tracciato(
+    lotto_id: int,
+    user: dict = Depends(auth.get_current_user),
+):
+    """Restituisce origine, lavorazione e movimenti del lotto."""
+    dettaglio = tracciabilita_repo.dettaglio_lotto(user["tenant_id"], lotto_id)
+    if dettaglio is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato")
+    return dettaglio
+
+
+@app.post(
+    "/api/v1/tracciabilita/lavorazioni",
+    status_code=status.HTTP_201_CREATED,
+)
+def registra_lavorazione_tracciata(
+    payload: LavorazioneCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Registra la trasformazione dei lotti e i prodotti ottenuti."""
+    try:
+        return tracciabilita_repo.registra_lavorazione(
+            tenant_id=user["tenant_id"],
+            data=payload.data,
+            descrizione=payload.descrizione,
+            operatore=payload.operatore,
+            input_lavorazione=payload.input,
+            output=payload.output,
+            scarti=payload.scarti,
+        )
+    except tracciabilita_repo.ArticoloNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Uno o più articoli non esistono o non sono attivi",
+        ) from error
+    except tracciabilita_repo.LottoNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Uno o più lotti non esistono",
+        ) from error
+    except tracciabilita_repo.GiacenzaInsufficiente as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
 
 
 # ------------------------------------------------------------------------- #

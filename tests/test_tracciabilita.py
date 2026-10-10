@@ -5,7 +5,10 @@ from contextlib import contextmanager
 from decimal import Decimal
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
 from saas import tracciabilita_repo
+from saas.main import registra_ingresso_tracciato
 from saas.schemas import IngressoTracciatoCreate, LavorazioneCreate
 
 
@@ -46,6 +49,29 @@ class FakeConnection:
 
 
 class TracciabilitaTests(unittest.TestCase):
+    def test_unexpected_ingress_error_is_logged_and_returns_reference(self):
+        payload = IngressoTracciatoCreate(
+            data="2026-10-03",
+            fornitore="Fornitore",
+            righe=[{"articolo_id": 3, "quantita": "8.250"}],
+        )
+
+        with (
+            patch(
+                "saas.main.tracciabilita_repo.registra_ingresso",
+                side_effect=RuntimeError("database failure"),
+            ),
+            patch("saas.main.logger.exception") as log_exception,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                registra_ingresso_tracciato(payload, {"tenant_id": 42})
+
+        self.assertEqual(raised.exception.status_code, 500)
+        self.assertRegex(raised.exception.detail, r"Riferimento assistenza: [0-9a-f]{32}")
+        log_exception.assert_called_once()
+        self.assertIn("tenant_id=%s", log_exception.call_args.args[0])
+        self.assertEqual(log_exception.call_args.args[2:], (42, 1))
+
     def test_progressivo_uses_separate_counter_and_returns_next_number(self):
         cursor = FakeCursor(
             lambda query, params: [(8,)] if query.startswith("SELECT prog_ven") else []
@@ -56,6 +82,24 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(numero, 9)
         self.assertTrue(
             any("UPDATE progressivi SET prog_ven" in query for query, _ in cursor.statements)
+        )
+
+    def test_progressivo_drains_locked_select_before_updating(self):
+        class FetchAllCursor(FakeCursor):
+            def fetchone(self):
+                raise AssertionError(
+                    "Il result set del progressivo deve essere letto interamente."
+                )
+
+        cursor = FetchAllCursor(
+            lambda query, params: [(8,)] if query.startswith("SELECT prog_acq") else []
+        )
+
+        numero = tracciabilita_repo._prossimo_progressivo(cursor, 42, "A")
+
+        self.assertEqual(numero, 9)
+        self.assertTrue(
+            any("UPDATE progressivi SET prog_acq" in query for query, _ in cursor.statements)
         )
 
     def test_input_schema_requires_at_least_one_input_and_output(self):

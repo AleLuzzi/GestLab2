@@ -141,7 +141,7 @@
                 </select>
               </label>
               <label>Numero documento / DDT
-                <input type="text" id="ingress-ddt" autocomplete="off" placeholder="Inserisci numero documento" />
+                <input type="text" id="ingress-ddt" maxlength="40" autocomplete="off" placeholder="Inserisci numero documento" />
               </label>
             </div>
             <div id="ingress-success" class="ingresso-feedback" role="status" aria-live="polite"></div>
@@ -159,7 +159,7 @@
             <div id="ingress-articoli" class="articoli-list" aria-label="Articoli disponibili"></div>
             <div class="ingresso-weight-row">
               <label for="ingress-quantita">Quantità ricevuta</label>
-              <input type="number" id="ingress-quantita" min="0.001" step="0.001" inputmode="decimal" placeholder="Es. 12,500" />
+              <input type="number" id="ingress-quantita" min="0.001" max="999999999.999" step="0.001" inputmode="decimal" placeholder="Es. 12,500" />
               <button id="btn-aggiungi-ingresso" class="btn primary" type="button">Aggiungi al riepilogo</button>
             </div>
             <div class="ingresso-actions">
@@ -390,20 +390,19 @@
       <section id="view-tracciabilita" class="panel">
         <div class="panel-head">
           <h2>Tracciabilità</h2>
-          <div class="row">
-            <button id="btn-trace-refresh" class="btn ghost" type="button">Aggiorna</button>
-            <button id="btn-trace-new-article" class="btn primary" type="button">Nuovo articolo</button>
-          </div>
+          <button id="btn-trace-refresh" class="btn ghost" type="button">Aggiorna</button>
         </div>
 
         <div class="trace-toolbar">
           <div class="tabs" aria-label="Sezioni tracciabilità">
-            <button class="tab-btn active" type="button" data-trace-tab="articoli" aria-selected="true">Articoli</button>
             <button class="tab-btn" type="button" data-trace-tab="lotti" aria-selected="false">Lotti</button>
-            <button class="tab-btn" type="button" data-trace-tab="ingresso" aria-selected="false">Ingresso</button>
-            <button class="tab-btn" type="button" data-trace-tab="lavorazione" aria-selected="false">Lavorazione</button>
+            <button class="tab-btn active" type="button" data-trace-tab="lavorazione" aria-selected="true">Lavorazione</button>
           </div>
+        </div>
 
+        <div id="trace-detail" class="trace-detail" hidden>        </div>
+
+        <div data-trace-section="lotti" class="trace-section" hidden>
           <div class="trace-controls">
             <label class="trace-search-field">
               <span>Filtra lotti</span>
@@ -413,53 +412,6 @@
               <input id="trace-only-available" type="checkbox" /> Solo disponibili
             </label>
           </div>
-        </div>
-
-        <div id="trace-detail" class="trace-detail" hidden></div>
-
-        <div data-trace-section="articoli" class="trace-section active">
-          <form id="trace-article-form" class="form-card" hidden>
-            <h3>Nuovo articolo</h3>
-            <label>Nome
-              <input id="trace-article-name" type="text" required />
-            </label>
-            <label>Codice
-              <input id="trace-article-code" type="text" maxlength="32" />
-            </label>
-            <label>Categoria
-              <input id="trace-article-category" type="text" maxlength="64" />
-            </label>
-            <label>Unità di misura
-              <select id="trace-article-unit">
-                <option value="kg">kg</option>
-                <option value="pz">pz</option>
-                <option value="lt">lt</option>
-                <option value="m">m</option>
-              </select>
-            </label>
-            <div class="row">
-              <button class="btn primary" type="submit">Salva articolo</button>
-              <button id="btn-trace-cancel-article" class="btn ghost" type="button">Annulla</button>
-            </div>
-            <div id="trace-article-form-error" class="error"></div>
-          </form>
-
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Codice</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Unità</th>
-                <th>Stato</th>
-              </tr>
-            </thead>
-            <tbody id="trace-articles-tbody"></tbody>
-          </table>
-          <div id="trace-articles-error" class="error"></div>
-        </div>
-
-        <div data-trace-section="lotti" class="trace-section" hidden>
           <table class="table trace-table">
             <thead>
               <tr>
@@ -476,35 +428,8 @@
           <div id="trace-lots-error" class="error"></div>
         </div>
 
-        <div data-trace-section="ingresso" class="trace-section" hidden>
-          <form id="trace-ingress-form" class="form-card">
-            <h3>Nuovo ingresso</h3>
-            <div class="row split-row">
-              <label>Data
-                <input id="trace-ingress-date" type="date" required />
-              </label>
-              <label>Numero DDT
-                <input id="trace-ingress-ddt" type="text" maxlength="50" />
-              </label>
-            </div>
-            <label>Fornitore
-              <input id="trace-ingress-supplier" type="text" maxlength="80" />
-            </label>
-
-            <div class="trace-lines-header">
-              <h4>Righe articolo</h4>
-              <button id="btn-trace-add-ingress-line" class="btn ghost" type="button">+ Aggiungi riga</button>
-            </div>
-            <div id="trace-ingress-lines" class="trace-lines"></div>
-
-            <div class="row">
-              <button class="btn primary" type="submit">Registra ingresso</button>
-            </div>
-            <div id="trace-ingress-error" class="error"></div>
-          </form>
-        </div>
-
-        <div data-trace-section="lavorazione" class="trace-section" hidden>
+        <div data-trace-section="lavorazione" class="trace-section active">
+          <div id="trace-work-data-error" class="error"></div>
           <form id="trace-work-form" class="form-card">
             <h3>Nuova lavorazione</h3>
             <div class="row split-row">

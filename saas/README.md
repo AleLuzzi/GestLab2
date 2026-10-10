@@ -16,6 +16,13 @@ python -m uvicorn saas.main:app --reload
 - **Console web (UI SaaS)**: <http://localhost:8000/>
 - **Documentazione interattiva (OpenAPI)**: <http://localhost:8000/docs>
 
+Gli errori imprevisti durante la conferma di un ingresso tracciato vengono
+registrati in `logs/gestlab-saas.log`, con rotazione automatica (5 MB, fino a
+5 file storici). Per scegliere un'altra cartella, impostare `GESTLAB_LOG_DIR`
+prima di avviare il server. In caso di errore, comunicare all'assistenza il
+riferimento mostrato nell'interfaccia: consente di trovare il traceback senza
+registrare token o dati del documento.
+
 > La console web (`web/`) è una SPA vanilla (HTML/CSS/JS, nessuna build) servita
 > direttamente dal backend FastAPI. Include login, dashboard, gestione dipendenti,
 > lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di
