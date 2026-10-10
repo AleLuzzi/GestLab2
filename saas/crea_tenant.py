@@ -2,7 +2,7 @@
 """Script per creare un nuovo tenant."""
 
 import sys
-from saas.tenant_repo import crea_tenant, crea_utente
+from saas.repositories.tenant_repo import crea_tenant, crea_utente
 from saas.auth import hash_password
 
 def main():

@@ -35,7 +35,10 @@ saas/
 ├── main.py            # app FastAPI + route
 ├── auth.py            # JWT + bcrypt + dipendenze ruoli
 ├── schemas.py         # modelli Pydantic (request/response)
-├── tenant_repo.py     # accesso DB tenant/utenti
+├── repositories/
+│   ├── tenant_repo.py       # accesso DB tenant/utenti
+│   ├── tracciabilita_repo.py # articoli, lotti e lavorazioni
+│   └── print_repo.py        # dispositivi e coda di stampa
 ├── schema_multitenant.sql  # schema multi-tenant (tenant, utenti, print_jobs...)
 └── __init__.py
 ```
@@ -71,7 +74,7 @@ Il progetto implementa il modello "SaaS + local print agent" del piano
 1. **Generazione server-side**: i documenti (DDT, scontrini, etichette) sono
    generati dal service layer del core (`core/services/printing.py`).
 2. **Coda `print_jobs`**: i job vengono accodati in DB per tenant
-   (`saas/print_repo.py`), con stato `pending → printing → done/error`.
+   (`saas/repositories/print_repo.py`), con stato `pending → printing → done/error`.
 3. **Local Print Agent**: processo locale (`saas/print_agent.py`) che fa
    polling su `/agent/next-job`, stampa il documento sull'hardware fisico
    (DYMO, scontrino termico, PDF) e aggiorna lo stato.

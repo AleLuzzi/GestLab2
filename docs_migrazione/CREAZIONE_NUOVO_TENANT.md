@@ -59,7 +59,7 @@ Usa Python per creare il nuovo tenant. Esegui questo comando:
 
 ```bash
 python -c "
-from saas.tenant_repo import crea_tenant, crea_utente
+from saas.repositories.tenant_repo import crea_tenant, crea_utente
 from saas.auth import hash_password
 
 # 1. Crea il tenant
@@ -183,7 +183,7 @@ Verifica che il tenant sia stato creato correttamente:
 
 ```bash
 python -c "
-from saas.tenant_repo import trova_tenant
+from saas.repositories.tenant_repo import trova_tenant
 
 # Cerca il tenant con ID 5 (o l'ID che hai ricevuto)
 tenant = trova_tenant(5)
@@ -208,7 +208,7 @@ Se preferisci usare uno script, crea un file `crea_tenant.py` nella cartella `sa
 """Script per creare un nuovo tenant."""
 
 import sys
-from saas.tenant_repo import crea_tenant, crea_utente
+from saas.repositories.tenant_repo import crea_tenant, crea_utente
 from saas.auth import hash_password
 
 def main():
@@ -276,7 +276,7 @@ Dopo la creazione, puoi:
 
 ```bash
 python -c "
-from saas.tenant_repo import crea_utente
+from saas.repositories.tenant_repo import crea_utente
 from saas.auth import hash_password
 
 tenant_id = 5  # L'ID del tenant

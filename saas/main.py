@@ -17,7 +17,8 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from saas import auth, tenant_repo, print_repo
+from saas import auth
+from saas.repositories import print_repo, tenant_repo, tracciabilita_repo
 from saas.schemas import (
     DdtCreate,
     DipendenteCreate,
@@ -62,8 +63,6 @@ from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
 from core.services import ingresso_merce as ingresso_merce_service
-from saas import tracciabilita_repo
-
 _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LOG_DIR = os.environ.get("GESTLAB_LOG_DIR", os.path.join(_PROJECT_DIR, "logs"))
 os.makedirs(_LOG_DIR, exist_ok=True)

@@ -1,7 +1,7 @@
 """Repository per la coda di stampa (print_jobs) e dispositivi_stampa.
 
 Gestisce l'accodamento dei job di stampa e il loro ciclo di vita
-(pending -> printing -> done/error). Usa ``core.db.connection``.
+(pending -> printing -> done/error). Usa ``core.db.connection`` ed e' parte di ``saas.repositories``.
 """
 
 from core.db import connection

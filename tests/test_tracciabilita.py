@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
-from saas import tracciabilita_repo
+from saas.repositories import tracciabilita_repo
 from saas.main import registra_ingresso_tracciato
 from saas.schemas import IngressoTracciatoCreate, LavorazioneCreate
 

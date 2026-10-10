@@ -2,6 +2,7 @@
 
 Questi accessi usano direttamente ``core.db.connection``. In produzione
 (cloud) andranno migrati a SQLAlchemy/Alembic con pool di connessioni.
+Il modulo appartiene al package ``saas.repositories``.
 """
 
 from core.db import connection

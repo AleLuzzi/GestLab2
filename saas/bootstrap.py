@@ -20,7 +20,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.db import connection
-from saas import auth, tenant_repo
+from saas import auth
+from saas.repositories import tenant_repo
 
 # Credenziali admin di default (sovrascrivibili via env).
 ADMIN_EMAIL = os.environ.get("GESTLAB_ADMIN_EMAIL", "admin@gestlab.it")
@@ -152,4 +153,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
