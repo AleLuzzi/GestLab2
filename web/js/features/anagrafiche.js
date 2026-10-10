@@ -1,6 +1,8 @@
 import { api } from "../api/client.js";
 import { $, esc } from "../core/dom.js";
 
+let articoliCache = [];
+
 async function renderTable(tbodyId, endpoint, columns, emptyLabel, colSpan) {
   const tbody = $(tbodyId);
   try {
@@ -69,12 +71,32 @@ export const loadDipendenti = () => renderTable("dip-tbody", "/api/v1/dipendenti
     <button class="btn danger" data-action="delete-dip" data-id="${esc(item.id)}">Elimina</button>
   </td>`, "Nessun dipendente", 5);
 
-export const loadTagli = () => renderTable("tagli-tbody", "/api/v1/tagli", (item) => `
-  <td>${esc(item.id)}</td><td>${esc(item.taglio)}</td><td>${esc(item.merceologia_nome ?? "")}</td>
-  <td class="row-actions">
-    <button class="btn ghost" data-action="edit-taglio" data-id="${esc(item.id)}">Modifica</button>
-    <button class="btn danger" data-action="delete-taglio" data-id="${esc(item.id)}">Elimina</button>
-  </td>`, "Nessun taglio", 4);
+export const loadArticoli = async () => {
+  const tbody = $("articoli-tbody");
+  try {
+    articoliCache = await api("/api/v1/articoli");
+    const articoli = articoliCache;
+    tbody.innerHTML = articoli.length
+      ? articoli.map((articolo) => `
+        <tr>
+          <td>${esc(articolo.id)}</td>
+          <td>${esc(articolo.codice ?? "")}</td>
+          <td>${esc(articolo.nome)}</td>
+          <td>${esc(articolo.categoria ?? "")}</td>
+          <td>${esc(articolo.unita_misura)}</td>
+          <td>${articolo.attivo ? "Attivo" : "Disattivato"}</td>
+          <td class="row-actions">
+            <button class="btn ghost" data-action="edit-articolo" data-id="${esc(articolo.id)}">Modifica</button>
+            ${articolo.attivo
+              ? `<button class="btn danger" data-action="deactivate-articolo" data-id="${esc(articolo.id)}">Disattiva</button>`
+              : `<button class="btn ghost" data-action="activate-articolo" data-id="${esc(articolo.id)}">Riattiva</button>`}
+          </td>
+        </tr>`).join("")
+      : '<tr><td colspan="7" class="empty">Nessun articolo. Aggiungine uno per iniziare.</td></tr>';
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${esc(error.message)}</td></tr>`;
+  }
+};
 
 export const loadMerceologie = () => renderTable("merc-tbody", "/api/v1/merceologie", (item) => `
   <td>${esc(item.id)}</td><td>${esc(item.merceologia)}</td><td>${esc(item.reparto_nome ?? "")}</td>
@@ -129,33 +151,80 @@ function salvaDip() {
     payload: { nome: $("dip-nome").value, email: $("dip-email").value, reparto: reparto === "" ? null : Number(reparto) } });
 }
 
-async function editTaglio(id) {
+async function editArticolo(id) {
   try {
-    const item = (await api("/api/v1/tagli")).find((row) => row.id === id);
+    const item = articoliCache.find((row) => Number(row.id) === id);
     if (!item) return;
-    $("tagli-id").value = item.id;
-    $("tagli-nome").value = item.taglio;
-    $("tagli-form-title").textContent = `Modifica taglio #${item.id}`;
-    $("tagli-error").textContent = "";
-    await loadOptions("tagli-merceologia", "/api/v1/merceologie", "merceologia", "Seleziona merceologia", "Nessuna merceologia disponibile", "Errore caricamento merceologie", item.id_merceologia ?? "");
-    $("tagli-form").style.display = "block";
-  } catch (error) { $("tagli-error").textContent = error.message; }
+    $("articoli-id").value = item.id;
+    $("articoli-nome").value = item.nome;
+    $("articoli-codice").value = item.codice ?? "";
+    $("articoli-categoria").value = item.categoria ?? "";
+    $("articoli-unita").value = item.unita_misura;
+    $("articoli-attivo").checked = item.attivo;
+    $("articoli-form-title").textContent = `Modifica articolo #${item.id}`;
+    $("articoli-error").textContent = "";
+    $("articoli-form").style.display = "block";
+  } catch (error) { $("articoli-error").textContent = error.message; }
 }
 
-function nuovoTaglio() {
-  $("tagli-id").value = "";
-  $("tagli-nome").value = "";
-  $("tagli-form-title").textContent = "Nuovo taglio";
-  $("tagli-error").textContent = "";
-  loadOptions("tagli-merceologia", "/api/v1/merceologie", "merceologia", "Seleziona merceologia", "Nessuna merceologia disponibile", "Errore caricamento merceologie")
-    .then(() => { $("tagli-form").style.display = "block"; });
+function nuovoArticolo() {
+  $("articoli-id").value = "";
+  $("articoli-nome").value = "";
+  $("articoli-codice").value = "";
+  $("articoli-categoria").value = "";
+  $("articoli-unita").value = "kg";
+  $("articoli-attivo").checked = true;
+  $("articoli-form-title").textContent = "Nuovo articolo";
+  $("articoli-error").textContent = "";
+  $("articoli-form").style.display = "block";
 }
 
-function salvaTaglio() {
-  const id = $("tagli-id").value;
-  const merceologia = $("tagli-merceologia").value;
-  return saveResource({ id, endpoint: "/api/v1/tagli", formId: "tagli-form", errorId: "tagli-error", reload: loadTagli,
-    payload: { taglio: $("tagli-nome").value, id_merceologia: merceologia === "" ? null : Number(merceologia) } });
+function salvaArticolo() {
+  const id = $("articoli-id").value;
+  return saveResource({
+    id,
+    endpoint: "/api/v1/articoli",
+    formId: "articoli-form",
+    errorId: "articoli-error",
+    reload: loadArticoli,
+    payload: {
+      nome: $("articoli-nome").value.trim(),
+      codice: $("articoli-codice").value.trim() || null,
+      categoria: $("articoli-categoria").value.trim() || null,
+      unita_misura: $("articoli-unita").value,
+      attivo: $("articoli-attivo").checked,
+    },
+  });
+}
+
+async function disattivaArticolo(id) {
+  if (!confirm(`Disattivare l'articolo #${id}? Non sarà più selezionabile per nuovi ingressi.`)) return;
+  try {
+    await api(`/api/v1/articoli/${id}`, { method: "DELETE" });
+    await loadArticoli();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function riattivaArticolo(id) {
+  const item = articoliCache.find((row) => Number(row.id) === id);
+  if (!item) return;
+  try {
+    await api(`/api/v1/articoli/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        nome: item.nome,
+        codice: item.codice,
+        categoria: item.categoria,
+        unita_misura: item.unita_misura,
+        attivo: true,
+      }),
+    });
+    await loadArticoli();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 async function editMerc(id) {
@@ -257,8 +326,9 @@ export function initAnagrafiche() {
   const actions = {
     "edit-dip": editDip,
     "delete-dip": (id) => deleteResource("/api/v1/dipendenti", id, "il dipendente", loadDipendenti),
-    "edit-taglio": editTaglio,
-    "delete-taglio": (id) => deleteResource("/api/v1/tagli", id, "il taglio", loadTagli),
+    "edit-articolo": editArticolo,
+    "deactivate-articolo": disattivaArticolo,
+    "activate-articolo": riattivaArticolo,
     "edit-merceologia": editMerc,
     "delete-merceologia": (id) => deleteResource("/api/v1/merceologie", id, "la merceologia", loadMerceologie),
     "edit-reparto": editReparto,
@@ -273,7 +343,7 @@ export function initAnagrafiche() {
   });
 
   bindForm("btn-nuovo-dip", "btn-save-dip", "btn-cancel-dip", "dip-form", nuovaDip, salvaDip);
-  bindForm("btn-nuovo-taglio", "btn-save-taglio", "btn-cancel-taglio", "tagli-form", nuovoTaglio, salvaTaglio);
+  bindForm("btn-nuovo-articolo", "btn-save-articolo", "btn-cancel-articolo", "articoli-form", nuovoArticolo, salvaArticolo);
   bindForm("btn-nuovo-merc", "btn-save-merc", "btn-cancel-merc", "merc-form", nuovaMerc, salvaMerc);
   bindForm("btn-nuovo-reparto", "btn-save-reparto", "btn-cancel-reparto", "reparti-form", nuovoReparto, salvaReparto);
   bindForm("btn-nuovo-fornitore", "btn-save-fornitore", "btn-cancel-fornitore", "fornitori-form", nuovoFornitore, salvaFornitore);

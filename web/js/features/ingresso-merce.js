@@ -2,12 +2,10 @@ import { api } from "../api/client.js";
 import { $ } from "../core/dom.js";
 
 let fornitori = [];
-let merceologie = [];
-let tagli = [];
+let articoli = [];
 let righeIngresso = [];
-let merceologiaSelezionata = null;
-let tagliSelezionati = new Set();
-let progressivo = "";
+let categoriaSelezionata = null;
+let articoliSelezionati = new Set();
 let datiCaricati = false;
 let caricamentoDati = null;
 let prossimoIdRiga = 1;
@@ -42,19 +40,23 @@ function mostraStep(numero) {
 
 function aggiornaRiepilogo() {
   const data = $("ingress-data").value;
-  const pesoTotale = righeIngresso.reduce((totale, riga) => totale + riga.peso, 0);
+  const quantitaPerUnita = righeIngresso.reduce((totale, riga) => {
+    totale.set(riga.unitaMisura, (totale.get(riga.unitaMisura) || 0) + riga.quantita);
+    return totale;
+  }, new Map());
   const conteggio = righeIngresso.length;
 
   $("summary-data").textContent = data
     ? new Date(`${data}T00:00:00`).toLocaleDateString("it-IT")
     : "-";
-  $("summary-progressivo").textContent = progressivo || "-";
   $("summary-fornitore").textContent = nomeFornitoreSelezionato();
   $("summary-ddt").textContent = $("ingress-ddt").value.trim() || "-";
   $("summary-conteggio").textContent = String(conteggio);
-  $("summary-peso").textContent = `${new Intl.NumberFormat("it-IT", {
-    maximumFractionDigits: 2,
-  }).format(pesoTotale)} kg`;
+  $("summary-quantita").textContent = quantitaPerUnita.size
+    ? [...quantitaPerUnita].map(([unita, quantita]) =>
+      `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 3 }).format(quantita)} ${unita}`,
+    ).join(" · ")
+    : "0";
   $("ingress-conteggio").textContent = `${conteggio} ${conteggio === 1 ? "articolo" : "articoli"}`;
 
   const container = $("ingress-riepilogo-righe");
@@ -74,22 +76,22 @@ function aggiornaRiepilogo() {
     const description = document.createElement("div");
     description.className = "ingresso-line-description";
     const name = document.createElement("strong");
-    name.textContent = riga.taglio;
+    name.textContent = riga.articolo;
     const category = document.createElement("span");
-    category.textContent = riga.merceologia;
+    category.textContent = riga.categoria;
     description.append(name, category);
 
     const weight = document.createElement("strong");
     weight.className = "ingresso-line-weight";
     weight.textContent = `${new Intl.NumberFormat("it-IT", {
-      maximumFractionDigits: 2,
-    }).format(riga.peso)} kg`;
+      maximumFractionDigits: 3,
+    }).format(riga.quantita)} ${riga.unitaMisura}`;
 
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "btn danger ingresso-remove-line";
     remove.textContent = "Rimuovi";
-    remove.setAttribute("aria-label", `Rimuovi ${riga.taglio} dal riepilogo`);
+    remove.setAttribute("aria-label", `Rimuovi ${riga.articolo} dal riepilogo`);
     remove.addEventListener("click", () => {
       righeIngresso = righeIngresso.filter((itemRow) => itemRow.id !== riga.id);
       $("ingress-error").textContent = "";
@@ -119,71 +121,77 @@ function renderFornitori() {
   });
 }
 
-function renderMerceologie() {
-  const container = $("ingress-merceologie");
-  container.replaceChildren();
-  const categorieConTagli = merceologie.filter((merceologia) =>
-    tagli.some((taglio) => String(taglio.id_merceologia) === String(merceologia.id)));
+function articoliAttivi() {
+  return articoli.filter((articolo) => articolo.attivo);
+}
 
-  if (categorieConTagli.length === 0) {
-    $("ingress-articoli-feedback").textContent = "Non ci sono merceologie con tagli disponibili.";
+function categorieArticoli() {
+  return [...new Set(articoliAttivi().map((articolo) =>
+    articolo.categoria?.trim() || "Senza categoria"))];
+}
+
+function renderCategorie() {
+  const container = $("ingress-categorie");
+  container.replaceChildren();
+  const categorie = categorieArticoli();
+
+  if (categorie.length === 0) {
+    $("ingress-articoli-feedback").textContent = "Non ci sono articoli attivi disponibili.";
     return;
   }
 
-  categorieConTagli.forEach((merceologia) => {
+  categorie.forEach((categoria) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "merceologia-button";
-    button.textContent = merceologia.merceologia;
-    button.setAttribute("aria-pressed", String(
-      String(merceologia.id) === String(merceologiaSelezionata?.id),
-    ));
-    button.addEventListener("click", () => selezionaMerceologia(merceologia));
+    button.className = "categoria-button";
+    button.textContent = categoria;
+    button.setAttribute("aria-pressed", String(categoria === categoriaSelezionata));
+    button.addEventListener("click", () => selezionaCategoria(categoria));
     container.appendChild(button);
   });
 }
 
-function renderTagli() {
-  const container = $("ingress-tagli");
+function renderArticoli() {
+  const container = $("ingress-articoli");
   container.replaceChildren();
-  if (!merceologiaSelezionata) {
-    $("ingress-articoli-feedback").textContent = "Seleziona una merceologia per vedere i tagli disponibili.";
+  if (!categoriaSelezionata) {
+    $("ingress-articoli-feedback").textContent = "Seleziona una categoria per vedere gli articoli.";
     return;
   }
 
-  const disponibili = tagli.filter((taglio) =>
-    String(taglio.id_merceologia) === String(merceologiaSelezionata.id));
+  const disponibili = articoliAttivi().filter((articolo) =>
+    (articolo.categoria?.trim() || "Senza categoria") === categoriaSelezionata);
   if (disponibili.length === 0) {
-    $("ingress-articoli-feedback").textContent = "Nessun taglio disponibile per questa merceologia.";
+    $("ingress-articoli-feedback").textContent = "Nessun articolo attivo in questa categoria.";
     return;
   }
 
-  $("ingress-articoli-feedback").textContent = "Seleziona un taglio da aggiungere.";
-  disponibili.forEach((taglio) => {
+  $("ingress-articoli-feedback").textContent = "Seleziona un articolo da aggiungere.";
+  disponibili.forEach((articolo) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "taglio-button";
-    button.textContent = taglio.taglio;
-    button.setAttribute("aria-pressed", String(tagliSelezionati.has(String(taglio.id))));
+    button.className = "articolo-button";
+    button.textContent = `${articolo.nome} (${articolo.unita_misura})`;
+    button.setAttribute("aria-pressed", String(articoliSelezionati.has(String(articolo.id))));
     button.addEventListener("click", () => {
-      const id = String(taglio.id);
-      if (tagliSelezionati.has(id)) tagliSelezionati.delete(id);
+      const id = String(articolo.id);
+      if (articoliSelezionati.has(id)) articoliSelezionati.delete(id);
       else {
-        tagliSelezionati.clear();
-        tagliSelezionati.add(id);
+        articoliSelezionati.clear();
+        articoliSelezionati.add(id);
       }
-      renderTagli();
+      renderArticoli();
     });
     container.appendChild(button);
   });
 }
 
-function selezionaMerceologia(merceologia) {
-  merceologiaSelezionata = merceologia;
-  tagliSelezionati.clear();
+function selezionaCategoria(categoria) {
+  categoriaSelezionata = categoria;
+  articoliSelezionati.clear();
   $("ingress-articoli-feedback").textContent = "";
-  renderMerceologie();
-  renderTagli();
+  renderCategorie();
+  renderArticoli();
 }
 
 async function caricaDatiIngresso() {
@@ -191,14 +199,11 @@ async function caricaDatiIngresso() {
   if (caricamentoDati) return caricamentoDati;
 
   $("ingress-load-error").textContent = "";
-  $("ingress-progressivo").value = "Caricamento…";
   caricamentoDati = Promise.allSettled([
     api("/api/v1/fornitori"),
-    api("/api/v1/merceologie"),
-    api("/api/v1/tagli"),
-    api("/api/v1/progressivi"),
+    api("/api/v1/articoli"),
   ]).then((results) => {
-    const endpoints = ["fornitori", "merceologie", "tagli", "progressivo"];
+    const endpoints = ["fornitori", "articoli"];
     const errors = [];
     results.forEach((result, index) => {
       if (result.status === "rejected") {
@@ -220,17 +225,11 @@ async function caricaDatiIngresso() {
       select.appendChild(option);
       select.disabled = true;
     }
-    if (results[1].status === "fulfilled") merceologie = results[1].value;
-    if (results[2].status === "fulfilled") tagli = results[2].value;
-    if (results[3].status === "fulfilled") {
-      const valore = results[3].value[0]?.prog_acq;
-      progressivo = valore == null ? "" : `${valore}A`;
-      $("ingress-progressivo").value = progressivo || "Non configurato";
-    }
+    if (results[1].status === "fulfilled") articoli = results[1].value;
 
-    if (results[1].status === "fulfilled" && results[2].status === "fulfilled") {
-      renderMerceologie();
-      renderTagli();
+    if (results[1].status === "fulfilled") {
+      renderCategorie();
+      renderArticoli();
     }
     datiCaricati = results.every((result) => result.status === "fulfilled");
   }).finally(() => {
@@ -240,36 +239,38 @@ async function caricaDatiIngresso() {
 }
 
 function aggiungiRighe() {
-  const peso = Number($("ingress-peso").value);
-  if (!merceologiaSelezionata) {
-    $("ingress-articoli-feedback").textContent = "Seleziona prima una merceologia.";
+  const quantita = Number($("ingress-quantita").value);
+  if (!categoriaSelezionata) {
+    $("ingress-articoli-feedback").textContent = "Seleziona prima una categoria.";
     return;
   }
-  if (tagliSelezionati.size === 0) {
-    $("ingress-articoli-feedback").textContent = "Seleziona almeno un taglio.";
+  if (articoliSelezionati.size === 0) {
+    $("ingress-articoli-feedback").textContent = "Seleziona almeno un articolo.";
     return;
   }
-  if (!Number.isFinite(peso) || peso <= 0) {
-    $("ingress-articoli-feedback").textContent = "Inserisci un peso maggiore di zero.";
-    $("ingress-peso").focus();
+  if (!Number.isFinite(quantita) || quantita <= 0) {
+    $("ingress-articoli-feedback").textContent = "Inserisci una quantità maggiore di zero.";
+    $("ingress-quantita").focus();
     return;
   }
 
-  const selezionati = tagli.filter((taglio) => tagliSelezionati.has(String(taglio.id)));
-  selezionati.forEach((taglio) => {
+  const selezionati = articoliAttivi().filter((articolo) =>
+    articoliSelezionati.has(String(articolo.id)));
+  selezionati.forEach((articolo) => {
     righeIngresso.push({
       id: prossimoIdRiga++,
-      taglio: taglio.taglio,
-      id_merc: merceologiaSelezionata.id,
-      merceologia: merceologiaSelezionata.merceologia,
-      peso,
+      articoloId: articolo.id,
+      articolo: articolo.nome,
+      categoria: articolo.categoria?.trim() || "Senza categoria",
+      unitaMisura: articolo.unita_misura,
+      quantita,
     });
   });
-  tagliSelezionati.clear();
-  $("ingress-peso").value = "";
+  articoliSelezionati.clear();
+  $("ingress-quantita").value = "";
   $("ingress-error").textContent = "";
   $("ingress-error").classList.remove("success");
-  renderTagli();
+  renderArticoli();
   aggiornaRiepilogo();
   $("ingress-articoli-feedback").textContent =
     `${selezionati.length} ${selezionati.length === 1 ? "articolo aggiunto" : "articoli aggiunti"} al riepilogo.`;
@@ -279,10 +280,10 @@ function azzeraIngresso() {
   $("ingress-fornitore").value = "";
   $("ingress-data").value = dataLocaleISO();
   $("ingress-ddt").value = "";
-  $("ingress-peso").value = "";
+  $("ingress-quantita").value = "";
   righeIngresso = [];
-  merceologiaSelezionata = null;
-  tagliSelezionati.clear();
+  categoriaSelezionata = null;
+  articoliSelezionati.clear();
   prossimoIdRiga = 1;
   $("btn-salva-ingresso").disabled = false;
   $("ingress-success").textContent = "";
@@ -290,8 +291,8 @@ function azzeraIngresso() {
   $("ingress-error").textContent = "";
   $("ingress-articoli-feedback").textContent = "";
   mostraStep(1);
-  renderMerceologie();
-  renderTagli();
+  renderCategorie();
+  renderArticoli();
   aggiornaRiepilogo();
 }
 
@@ -335,38 +336,28 @@ export function initIngressoMerce() {
       $("ingress-error").textContent = "Completa l'intestazione e aggiungi almeno un articolo.";
       return;
     }
-    if (!progressivo) {
-      $("ingress-error").classList.remove("success");
-      $("ingress-error").textContent = "Progressivo di ingresso non disponibile.";
-      return;
-    }
-
     const button = $("btn-salva-ingresso");
     button.disabled = true;
     $("ingress-error").classList.remove("success");
     $("ingress-error").textContent = "Salvataggio ingresso in corso…";
     try {
-      const response = await api("/api/v1/ingresso-merce", {
+      const response = await api("/api/v1/tracciabilita/ingressi", {
         method: "POST",
         body: JSON.stringify({
-          prog_acq: progressivo,
           data: $("ingress-data").value,
-          num_ddt: $("ingress-ddt").value.trim(),
+          numero_ddt: $("ingress-ddt").value.trim(),
           fornitore: nomeFornitoreSelezionato(),
           righe: righeIngresso.map((riga) => ({
-            taglio: riga.taglio,
-            peso: String(riga.peso),
-            id_merc: riga.id_merc,
+            articolo_id: Number(riga.articoloId),
+            quantita: String(riga.quantita),
           })),
         }),
       });
-      const progressivoNumerico = Number.parseInt(progressivo, 10);
-      progressivo = `${progressivoNumerico + 1}A`;
-      $("ingress-progressivo").value = progressivo;
+      const codiciLotto = response.lotti.map((lotto) => lotto.codice_lotto).join(", ");
       azzeraIngresso();
       $("ingress-success").classList.add("success");
       $("ingress-success").textContent =
-        `Ingresso salvato nel database (${response.inseriti} righe).`;
+        `Ingresso registrato. Lotti creati: ${codiciLotto}.`;
     } catch (error) {
       button.disabled = false;
       $("ingress-error").textContent = `Impossibile salvare l'ingresso: ${error.message}`;
@@ -375,6 +366,6 @@ export function initIngressoMerce() {
   $("ingress-data").value = dataLocaleISO();
   $("ingress-fornitore").disabled = true;
   aggiornaRiepilogo();
-  renderMerceologie();
-  renderTagli();
+  renderCategorie();
+  renderArticoli();
 }

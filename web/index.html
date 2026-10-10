@@ -41,6 +41,7 @@
       <button class="nav-item" data-view="dashboard">Dashboard</button>
       <button class="nav-item" data-view="lotti">Lotti aperti</button>
       <button class="nav-item" data-view="menu">Menu</button>
+      <button class="nav-item" data-view="tracciabilita">Tracciabilità</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
       <button class="nav-item" data-view="printjobs">Coda stampa</button>
     </nav>
@@ -58,7 +59,7 @@
             </button>
             <button id="btn-configurazioni" class="landing-action primary" type="button">
               <span class="action-title">Configurazioni</span>
-              <span class="action-subtitle">Dipendenti, reparti, merceologie, tagli, fornitori e progressivi</span>
+              <span class="action-subtitle">Dipendenti, reparti, merceologie, articoli, fornitori e progressivi</span>
             </button>
           </div>
         </div>
@@ -83,9 +84,9 @@
             <span class="config-icon">📦</span>
             <span class="config-name">Merceologie</span>
           </button>
-          <button class="config-card" data-view="tagli" type="button">
-            <span class="config-icon">✂️</span>
-            <span class="config-name">Tagli</span>
+          <button class="config-card" data-view="articoli" type="button">
+            <span class="config-icon">🧾</span>
+            <span class="config-name">Articoli</span>
           </button>
           <button class="config-card" data-view="fornitori" type="button">
             <span class="config-icon">🏢</span>
@@ -94,6 +95,10 @@
           <button class="config-card" data-view="progressivi" type="button">
             <span class="config-icon">🔢</span>
             <span class="config-name">Progressivi</span>
+          </button>
+          <button class="config-card" data-view="tracciabilita" type="button">
+            <span class="config-icon">🔎</span>
+            <span class="config-name">Tracciabilità</span>
           </button>
           <button class="config-card admin-only" data-view="admin" type="button">
             <span class="config-icon">🛡️</span>
@@ -130,9 +135,6 @@
               <label>Data
                 <input type="date" id="ingress-data" readonly />
               </label>
-              <label>Progressivo ingresso
-                <input type="text" id="ingress-progressivo" readonly value="Caricamento…" />
-              </label>
               <label>Fornitore
                 <select id="ingress-fornitore" required>
                   <option value="">Caricamento fornitori…</option>
@@ -151,13 +153,13 @@
 
           <section class="ingresso-step" data-step="2" aria-labelledby="ingresso-articoli-title" hidden>
             <h3 id="ingresso-articoli-title">Articoli ricevuti</h3>
-            <p class="ingresso-help">Scegli la merceologia, seleziona un taglio e inserisci il peso in kg.</p>
-            <div id="ingress-merceologie" class="merceologia-buttons" aria-label="Merceologie"></div>
+            <p class="ingresso-help">Scegli una categoria, seleziona un articolo e inserisci la quantità nell'unità di misura indicata.</p>
+            <div id="ingress-categorie" class="categoria-buttons" aria-label="Categorie articolo"></div>
             <div id="ingress-articoli-feedback" class="ingresso-feedback" aria-live="polite"></div>
-            <div id="ingress-tagli" class="tagli-list" aria-label="Tagli disponibili"></div>
+            <div id="ingress-articoli" class="articoli-list" aria-label="Articoli disponibili"></div>
             <div class="ingresso-weight-row">
-              <label for="ingress-peso">Peso ricevuto (kg)</label>
-              <input type="number" id="ingress-peso" min="0.01" step="0.01" inputmode="decimal" placeholder="Es. 12,5" />
+              <label for="ingress-quantita">Quantità ricevuta</label>
+              <input type="number" id="ingress-quantita" min="0.001" step="0.001" inputmode="decimal" placeholder="Es. 12,500" />
               <button id="btn-aggiungi-ingresso" class="btn primary" type="button">Aggiungi al riepilogo</button>
             </div>
             <div class="ingresso-actions">
@@ -170,11 +172,10 @@
             <h3 id="ingresso-riepilogo-title">Riepilogo ingresso</h3>
             <div class="summary-list ingresso-summary">
               <div><span>Data</span><strong id="summary-data">-</strong></div>
-              <div><span>Progressivo</span><strong id="summary-progressivo">-</strong></div>
               <div><span>Fornitore</span><strong id="summary-fornitore">-</strong></div>
               <div><span>Numero documento / DDT</span><strong id="summary-ddt">-</strong></div>
               <div><span>Articoli</span><strong id="summary-conteggio">0</strong></div>
-              <div><span>Peso totale</span><strong id="summary-peso">0 kg</strong></div>
+              <div><span>Quantità totale</span><strong id="summary-quantita">0</strong></div>
             </div>
             <div class="ingresso-lines-heading">
               <h4>Righe inserite</h4>
@@ -239,28 +240,35 @@
         </div>
       </section>
 
-      <!-- Tagli -->
-      <section id="view-tagli" class="panel">
+      <!-- Articoli -->
+      <section id="view-articoli" class="panel">
         <div class="panel-head">
-          <h2>Tagli</h2>
-          <button id="btn-nuovo-taglio" class="btn primary">Nuovo taglio</button>
+          <h2>Articoli</h2>
+          <button id="btn-nuovo-articolo" class="btn primary" type="button">Nuovo articolo</button>
         </div>
         <table class="table">
-          <thead><tr><th>ID</th><th>Taglio</th><th>Merceologia</th><th>Azioni</th></tr></thead>
-          <tbody id="tagli-tbody"></tbody>
+          <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>Stato</th><th>Azioni</th></tr></thead>
+          <tbody id="articoli-tbody"></tbody>
         </table>
-        <div id="tagli-form" class="form-card" style="display:none">
-          <h3 id="tagli-form-title">Nuovo taglio</h3>
-          <input type="hidden" id="tagli-id" />
-          <label>Taglio <input type="text" id="tagli-nome" required /></label>
-          <label>Merceologia
-            <select id="tagli-merceologia"></select>
+        <div id="articoli-form" class="form-card" style="display:none">
+          <h3 id="articoli-form-title">Nuovo articolo</h3>
+          <input type="hidden" id="articoli-id" />
+          <label>Nome <input type="text" id="articoli-nome" maxlength="120" required /></label>
+          <label>Codice <input type="text" id="articoli-codice" maxlength="60" /></label>
+          <label>Categoria <input type="text" id="articoli-categoria" maxlength="80" /></label>
+          <label>Unità di misura
+            <select id="articoli-unita">
+              <option value="kg">kg</option>
+              <option value="pz">pz</option>
+              <option value="lt">lt</option>
+            </select>
           </label>
+          <label><input type="checkbox" id="articoli-attivo" checked /> Articolo attivo</label>
           <div class="row">
-            <button id="btn-save-taglio" class="btn primary">Salva</button>
-            <button id="btn-cancel-taglio" class="btn ghost">Annulla</button>
+            <button id="btn-save-articolo" class="btn primary" type="button">Salva</button>
+            <button id="btn-cancel-articolo" class="btn ghost" type="button">Annulla</button>
           </div>
-          <div id="tagli-error" class="error"></div>
+          <div id="articoli-error" class="error"></div>
         </div>
       </section>
 
@@ -376,6 +384,165 @@
           <thead><tr><th>Progressivo</th><th>Fornitore</th><th>Prodotto</th><th>Residuo</th></tr></thead>
           <tbody id="lotti-tbody"></tbody>
         </table>
+      </section>
+
+      <!-- Tracciabilità -->
+      <section id="view-tracciabilita" class="panel">
+        <div class="panel-head">
+          <h2>Tracciabilità</h2>
+          <div class="row">
+            <button id="btn-trace-refresh" class="btn ghost" type="button">Aggiorna</button>
+            <button id="btn-trace-new-article" class="btn primary" type="button">Nuovo articolo</button>
+          </div>
+        </div>
+
+        <div class="trace-toolbar">
+          <div class="tabs" aria-label="Sezioni tracciabilità">
+            <button class="tab-btn active" type="button" data-trace-tab="articoli" aria-selected="true">Articoli</button>
+            <button class="tab-btn" type="button" data-trace-tab="lotti" aria-selected="false">Lotti</button>
+            <button class="tab-btn" type="button" data-trace-tab="ingresso" aria-selected="false">Ingresso</button>
+            <button class="tab-btn" type="button" data-trace-tab="lavorazione" aria-selected="false">Lavorazione</button>
+          </div>
+
+          <div class="trace-controls">
+            <label class="trace-search-field">
+              <span>Filtra lotti</span>
+              <input id="trace-search" type="search" placeholder="Codice, lotto, articolo" />
+            </label>
+            <label class="trace-checkbox">
+              <input id="trace-only-available" type="checkbox" /> Solo disponibili
+            </label>
+          </div>
+        </div>
+
+        <div id="trace-detail" class="trace-detail" hidden></div>
+
+        <div data-trace-section="articoli" class="trace-section active">
+          <form id="trace-article-form" class="form-card" hidden>
+            <h3>Nuovo articolo</h3>
+            <label>Nome
+              <input id="trace-article-name" type="text" required />
+            </label>
+            <label>Codice
+              <input id="trace-article-code" type="text" maxlength="32" />
+            </label>
+            <label>Categoria
+              <input id="trace-article-category" type="text" maxlength="64" />
+            </label>
+            <label>Unità di misura
+              <select id="trace-article-unit">
+                <option value="kg">kg</option>
+                <option value="pz">pz</option>
+                <option value="lt">lt</option>
+                <option value="m">m</option>
+              </select>
+            </label>
+            <div class="row">
+              <button class="btn primary" type="submit">Salva articolo</button>
+              <button id="btn-trace-cancel-article" class="btn ghost" type="button">Annulla</button>
+            </div>
+            <div id="trace-article-form-error" class="error"></div>
+          </form>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Codice</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Unità</th>
+                <th>Stato</th>
+              </tr>
+            </thead>
+            <tbody id="trace-articles-tbody"></tbody>
+          </table>
+          <div id="trace-articles-error" class="error"></div>
+        </div>
+
+        <div data-trace-section="lotti" class="trace-section" hidden>
+          <table class="table trace-table">
+            <thead>
+              <tr>
+                <th>Codice lotto</th>
+                <th>Articolo</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>Disponibile</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="trace-lots-tbody"></tbody>
+          </table>
+          <div id="trace-lots-error" class="error"></div>
+        </div>
+
+        <div data-trace-section="ingresso" class="trace-section" hidden>
+          <form id="trace-ingress-form" class="form-card">
+            <h3>Nuovo ingresso</h3>
+            <div class="row split-row">
+              <label>Data
+                <input id="trace-ingress-date" type="date" required />
+              </label>
+              <label>Numero DDT
+                <input id="trace-ingress-ddt" type="text" maxlength="50" />
+              </label>
+            </div>
+            <label>Fornitore
+              <input id="trace-ingress-supplier" type="text" maxlength="80" />
+            </label>
+
+            <div class="trace-lines-header">
+              <h4>Righe articolo</h4>
+              <button id="btn-trace-add-ingress-line" class="btn ghost" type="button">+ Aggiungi riga</button>
+            </div>
+            <div id="trace-ingress-lines" class="trace-lines"></div>
+
+            <div class="row">
+              <button class="btn primary" type="submit">Registra ingresso</button>
+            </div>
+            <div id="trace-ingress-error" class="error"></div>
+          </form>
+        </div>
+
+        <div data-trace-section="lavorazione" class="trace-section" hidden>
+          <form id="trace-work-form" class="form-card">
+            <h3>Nuova lavorazione</h3>
+            <div class="row split-row">
+              <label>Data
+                <input id="trace-work-date" type="date" required />
+              </label>
+              <label>Operatore
+                <input id="trace-work-operator" type="text" maxlength="80" />
+              </label>
+            </div>
+            <label>Descrizione
+              <input id="trace-work-description" type="text" maxlength="160" />
+            </label>
+
+            <div class="trace-lines-header">
+              <h4>Input</h4>
+              <button id="btn-trace-add-input" class="btn ghost" type="button">+ Aggiungi lotto</button>
+            </div>
+            <div id="trace-work-inputs" class="trace-lines"></div>
+
+            <div class="trace-lines-header">
+              <h4>Output</h4>
+              <button id="btn-trace-add-output" class="btn ghost" type="button">+ Aggiungi prodotto</button>
+            </div>
+            <div id="trace-work-outputs" class="trace-lines"></div>
+
+            <div class="trace-lines-header">
+              <h4>Scarti</h4>
+              <button id="btn-trace-add-scrap" class="btn ghost" type="button">+ Aggiungi scarto</button>
+            </div>
+            <div id="trace-work-scraps" class="trace-lines"></div>
+
+            <div class="row">
+              <button class="btn primary" type="submit">Registra lavorazione</button>
+            </div>
+            <div id="trace-work-error" class="error"></div>
+          </form>
+        </div>
       </section>
 
       <!-- Menu -->

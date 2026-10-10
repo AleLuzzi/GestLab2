@@ -98,24 +98,43 @@ class MerceologiaOut(BaseModel):
 
 
 # ------------------------------------------------------------------------- #
-#  Tagli
+#  Articoli e ingressi tracciati
 # ------------------------------------------------------------------------- #
 
-class TaglioCreate(BaseModel):
-    taglio: str = Field(..., min_length=1, max_length=255)
-    id_merceologia: int | None = None
+class ArticoloCreate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=120)
+    codice: str | None = Field(default=None, max_length=60)
+    categoria: str | None = Field(default=None, max_length=80)
+    unita_misura: str = Field(default="kg", min_length=1, max_length=8)
 
 
-class TaglioUpdate(BaseModel):
-    taglio: str | None = None
-    id_merceologia: int | None = None
+class ArticoloUpdate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=120)
+    codice: str | None = Field(default=None, max_length=60)
+    categoria: str | None = Field(default=None, max_length=80)
+    unita_misura: str = Field(..., min_length=1, max_length=8)
+    attivo: bool = True
 
 
-class TaglioOut(BaseModel):
-    id: int | None = None
-    taglio: str
-    id_merceologia: int | None = None
-    merceologia_nome: str | None = None
+class ArticoloOut(BaseModel):
+    id: int
+    codice: str | None = None
+    nome: str
+    categoria: str | None = None
+    unita_misura: str
+    attivo: bool
+
+
+class IngressoTracciatoRigaCreate(BaseModel):
+    articolo_id: int = Field(..., gt=0)
+    quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+
+
+class IngressoTracciatoCreate(BaseModel):
+    data: date
+    numero_ddt: str = Field(default="", max_length=40)
+    fornitore: str = Field(..., min_length=1, max_length=120)
+    righe: list[IngressoTracciatoRigaCreate] = Field(..., min_length=1)
 
 
 # ------------------------------------------------------------------------- #

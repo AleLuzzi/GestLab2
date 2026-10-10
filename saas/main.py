@@ -37,11 +37,12 @@ from saas.schemas import (
     FornitoreOut,
     FornitoreUpdate,
     IngressoMerceCreate,
+    ArticoloCreate,
+    ArticoloOut,
+    ArticoloUpdate,
+    IngressoTracciatoCreate,
     RefreshRequest,
     ScontrinoCreate,
-    TaglioCreate,
-    TaglioOut,
-    TaglioUpdate,
     TenantCreate,
     TokenResponse,
     UtenteCreate,
@@ -51,13 +52,13 @@ from core.services import dipendenti as dipendenti_service
 from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
 from core.services import fornitori as fornitori_service
-from core.services import tagli as tagli_service
 from core.services import lotti as lotti_service
 from core.services import menu as menu_service
 from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
 from core.services import ingresso_merce as ingresso_merce_service
+from saas import tracciabilita_repo
 
 app = FastAPI(
     title="GestLab SaaS API",
@@ -298,78 +299,63 @@ def elimina_merceologia(
 
 
 # ------------------------------------------------------------------------- #
-#  Tagli
+#  Articoli
 # ------------------------------------------------------------------------- #
 
-@app.get("/api/v1/tagli", response_model=list[TaglioOut])
-def lista_tagli(user: dict = Depends(auth.get_current_user)):
-    """Elenco tagli del tenant corrente."""
-    tagli = tagli_service.lista_tagli(user["tenant_id"])
-    return [
-        TaglioOut(
-            id=t.id,
-            taglio=t.taglio,
-            id_merceologia=t.id_merceologia,
-            merceologia_nome=t.merceologia_nome,
-        )
-        for t in tagli
-    ]
+@app.get("/api/v1/articoli", response_model=list[ArticoloOut])
+def lista_articoli(user: dict = Depends(auth.get_current_user)):
+    """Elenco articoli del tenant corrente."""
+    return tracciabilita_repo.lista_articoli(user["tenant_id"])
 
 
-@app.post("/api/v1/tagli", response_model=TaglioOut, status_code=status.HTTP_201_CREATED)
-def crea_taglio(
-    payload: TaglioCreate,
+@app.post(
+    "/api/v1/articoli",
+    response_model=ArticoloOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_articolo(
+    payload: ArticoloCreate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Crea un nuovo taglio nel tenant corrente."""
-    nuovo = tagli_service.crea_taglio(
-        payload.taglio,
-        payload.id_merceologia,
+    """Crea un articolo nel tenant corrente."""
+    return tracciabilita_repo.crea_articolo(
         user["tenant_id"],
-    )
-    return TaglioOut(
-        id=nuovo.id,
-        taglio=nuovo.taglio,
-        id_merceologia=nuovo.id_merceologia,
-        merceologia_nome=nuovo.merceologia_nome,
+        payload.codice,
+        payload.nome,
+        payload.categoria,
+        payload.unita_misura,
     )
 
 
-@app.put("/api/v1/tagli/{taglio_id}", response_model=TaglioOut)
-def aggiorna_taglio(
-    taglio_id: int,
-    payload: TaglioUpdate,
+@app.put("/api/v1/articoli/{articolo_id}", response_model=ArticoloOut)
+def aggiorna_articolo(
+    articolo_id: int,
+    payload: ArticoloUpdate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Aggiorna un taglio esistente del tenant corrente."""
-    taglio = tagli_service.trova_taglio(taglio_id, user["tenant_id"])
-    if not taglio:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Taglio non trovato")
-
-    tagli_service.aggiorna_taglio(
-        taglio,
-        nome=payload.taglio,
-        id_merceologia=payload.id_merceologia,
-        tenant_id=user["tenant_id"],
+    """Aggiorna un articolo del tenant corrente."""
+    articolo = tracciabilita_repo.aggiorna_articolo(
+        user["tenant_id"],
+        articolo_id,
+        payload.codice,
+        payload.nome,
+        payload.categoria,
+        payload.unita_misura,
+        payload.attivo,
     )
-    return TaglioOut(
-        id=taglio.id,
-        taglio=taglio.taglio,
-        id_merceologia=taglio.id_merceologia,
-        merceologia_nome=taglio.merceologia_nome,
-    )
+    if articolo is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
+    return articolo
 
 
-@app.delete("/api/v1/tagli/{taglio_id}", status_code=status.HTTP_204_NO_CONTENT)
-def elimina_taglio(
-    taglio_id: int,
+@app.delete("/api/v1/articoli/{articolo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def disattiva_articolo(
+    articolo_id: int,
     user: dict = Depends(auth.require_roles("admin")),
 ):
-    """Elimina un taglio del tenant corrente."""
-    taglio = tagli_service.trova_taglio(taglio_id, user["tenant_id"])
-    if not taglio:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Taglio non trovato")
-    tagli_service.elimina_taglio(taglio, user["tenant_id"])
+    """Disattiva un articolo preservando i riferimenti dei lotti storici."""
+    if not tracciabilita_repo.disattiva_articolo(user["tenant_id"], articolo_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
 
 
 # ------------------------------------------------------------------------- #
@@ -602,6 +588,30 @@ def conferma_ingresso_merce(
         tenant_id=user["tenant_id"],
     )
     return {"inseriti": len(movimenti)}
+
+
+@app.post(
+    "/api/v1/tracciabilita/ingressi",
+    status_code=status.HTTP_201_CREATED,
+)
+def registra_ingresso_tracciato(
+    payload: IngressoTracciatoCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Registra il documento d'ingresso e crea i relativi lotti tracciati."""
+    try:
+        return tracciabilita_repo.registra_ingresso(
+            tenant_id=user["tenant_id"],
+            data=payload.data,
+            numero_ddt=payload.numero_ddt,
+            fornitore=payload.fornitore,
+            righe=payload.righe,
+        )
+    except tracciabilita_repo.ArticoloNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Uno o più articoli non esistono o non sono attivi",
+        ) from error
 
 
 # ------------------------------------------------------------------------- #

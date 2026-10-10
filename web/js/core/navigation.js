@@ -1,6 +1,6 @@
 import { $ } from "./dom.js";
 import {
-  loadDipendenti, loadFornitori, loadMerceologie, loadReparti, loadTagli,
+  loadArticoli, loadDipendenti, loadFornitori, loadMerceologie, loadReparti,
 } from "../features/anagrafiche.js";
 import { loadDashboard } from "../features/dashboard.js";
 import { openIngressoMerce } from "../features/ingresso-merce.js";
@@ -8,6 +8,7 @@ import { loadLotti } from "../features/lotti.js";
 import { loadMenu } from "../features/menu.js";
 import { loadPrintJobs } from "../features/printing.js";
 import { loadProgressivi } from "../features/progressivi.js";
+import { loadTracciabilita } from "../features/tracciabilita.js";
 
 function showLanding() {
   document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
@@ -36,8 +37,8 @@ function switchView(view) {
 
   const loaders = {
     dashboard: loadDashboard,
+    articoli: loadArticoli,
     dipendenti: loadDipendenti,
-    tagli: loadTagli,
     merceologie: loadMerceologie,
     reparti: loadReparti,
     fornitori: loadFornitori,
@@ -45,6 +46,7 @@ function switchView(view) {
     lotti: loadLotti,
     menu: loadMenu,
     printjobs: loadPrintJobs,
+    tracciabilita: loadTracciabilita,
   };
   loaders[view]?.();
 }
