@@ -219,13 +219,14 @@
           <button id="btn-nuovo-dip" class="btn primary">Nuovo dipendente</button>
         </div>
         <table class="table">
-          <thead><tr><th>ID</th><th>Nome</th><th>Email</th><th>Reparto</th><th>Azioni</th></tr></thead>
+          <thead><tr><th>ID</th><th>Nome</th><th>Cognome</th><th>Email</th><th>Reparto</th><th>Azioni</th></tr></thead>
           <tbody id="dip-tbody"></tbody>
         </table>
         <div id="dip-form" class="form-card" style="display:none">
           <h3 id="dip-form-title">Nuovo dipendente</h3>
           <input type="hidden" id="dip-id" />
           <label>Nome <input type="text" id="dip-nome" required /></label>
+          <label>Cognome <input type="text" id="dip-cognome" /></label>
           <label>Email <input type="email" id="dip-email" /></label>
           <label>Reparto
             <select id="dip-reparto"></select>

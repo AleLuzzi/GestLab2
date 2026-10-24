@@ -65,11 +65,11 @@ async function deleteResource(endpoint, id, label, reload) {
 }
 
 export const loadDipendenti = () => renderTable("dip-tbody", "/api/v1/dipendenti", (item) => `
-  <td>${esc(item.id)}</td><td>${esc(item.nome)}</td><td>${esc(item.email)}</td>
-  <td>${esc(item.reparto_nome ?? "")}</td><td class="row-actions">
+  <td>${esc(item.id)}</td><td>${esc(item.nome)}</td><td>${esc(item.cognome ?? "")}</td>
+  <td>${esc(item.email)}</td><td>${esc(item.reparto_nome ?? "")}</td><td class="row-actions">
     <button class="btn ghost" data-action="edit-dip" data-id="${esc(item.id)}">Modifica</button>
     <button class="btn danger" data-action="delete-dip" data-id="${esc(item.id)}">Elimina</button>
-  </td>`, "Nessun dipendente", 5);
+  </td>`, "Nessun dipendente", 6);
 
 export const loadArticoli = async () => {
   const tbody = $("articoli-tbody");
@@ -126,6 +126,7 @@ async function editDip(id) {
     if (!item) return;
     $("dip-id").value = item.id;
     $("dip-nome").value = item.nome;
+    $("dip-cognome").value = item.cognome ?? "";
     $("dip-email").value = item.email;
     $("dip-form-title").textContent = `Modifica dipendente #${item.id}`;
     $("dip-error").textContent = "";
@@ -137,6 +138,7 @@ async function editDip(id) {
 function nuovaDip() {
   $("dip-id").value = "";
   $("dip-nome").value = "";
+  $("dip-cognome").value = "";
   $("dip-email").value = "";
   $("dip-form-title").textContent = "Nuovo dipendente";
   $("dip-error").textContent = "";
@@ -148,7 +150,12 @@ function salvaDip() {
   const id = $("dip-id").value;
   const reparto = $("dip-reparto").value;
   return saveResource({ id, endpoint: "/api/v1/dipendenti", formId: "dip-form", errorId: "dip-error", reload: loadDipendenti,
-    payload: { nome: $("dip-nome").value, email: $("dip-email").value, reparto: reparto === "" ? null : Number(reparto) } });
+    payload: {
+      nome: $("dip-nome").value,
+      cognome: $("dip-cognome").value,
+      email: $("dip-email").value,
+      reparto: reparto === "" ? null : Number(reparto),
+    } });
 }
 
 async function editArticolo(id) {

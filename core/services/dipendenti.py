@@ -22,7 +22,7 @@ def trova_dipendente(dipendente_id, tenant_id=None):
     return repo.find_by_id(dipendente_id, tenant_id)
 
 
-def crea_dipendente(nome, email="", reparto=None, tenant_id=None):
+def crea_dipendente(nome, email="", reparto=None, tenant_id=None, cognome=""):
     """Crea e salva un nuovo dipendente.
 
     Args:
@@ -30,15 +30,18 @@ def crea_dipendente(nome, email="", reparto=None, tenant_id=None):
         email: email (opzionale).
         reparto: id reparto (opzionale).
         tenant_id: se valorizzato, assegna il tenant (SaaS).
+        cognome: cognome del dipendente (opzionale).
 
     Returns:
         L'oggetto ``Dipendente`` creato (con ``id`` valorizzato).
     """
-    nu_Dipendente = Dipendente(nome=nome, email=email, reparto=reparto)
+    nu_Dipendente = Dipendente(nome=nome, email=email, reparto=reparto, cognome=cognome)
     return repo.insert(nu_Dipendente, tenant_id)
 
 
-def aggiorna_dipendente(dipendente, nome=None, email=None, reparto=None, tenant_id=None):
+def aggiorna_dipendente(
+    dipendente, nome=None, email=None, reparto=None, tenant_id=None, cognome=None
+):
     """Aggiorna i campi di un dipendente esistente e lo salva."""
     if nome is not None:
         dipendente.nome = nome
@@ -46,6 +49,8 @@ def aggiorna_dipendente(dipendente, nome=None, email=None, reparto=None, tenant_
         dipendente.email = email
     if reparto is not None:
         dipendente.reparto = reparto
+    if cognome is not None:
+        dipendente.cognome = cognome
     return repo.save(dipendente, tenant_id)
 
 

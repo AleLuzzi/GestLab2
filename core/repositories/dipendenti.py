@@ -19,7 +19,7 @@ def fetch_all(tenant_id=None):
         c = conn.cursor()
         if tenant_id is not None:
             c.execute(
-                "SELECT d.id, d.nome, d.email, d.reparto, r.reparto "
+                "SELECT d.id, d.nome, d.email, d.reparto, r.reparto, d.cognome "
                 "FROM dipendenti d "
                 "LEFT JOIN reparti r ON d.reparto = r.ID "
                 "WHERE d.tenant_id = %s",
@@ -35,7 +35,7 @@ def find_by_id(dipendente_id, tenant_id=None):
         c = conn.cursor()
         if tenant_id is not None:
             c.execute(
-                "SELECT d.id, d.nome, d.email, d.reparto, r.reparto "
+                "SELECT d.id, d.nome, d.email, d.reparto, r.reparto, d.cognome "
                 "FROM dipendenti d "
                 "LEFT JOIN reparti r ON d.reparto = r.ID "
                 "WHERE d.id = %s AND d.tenant_id = %s",
@@ -54,9 +54,9 @@ def insert(value, tenant_id=None):
         c = conn.cursor()
         if tenant_id is not None:
             c.execute(
-                "INSERT INTO dipendenti (nome, email, reparto, tenant_id) "
-                "VALUES (%s, %s, %s, %s)",
-                (value.nome, value.email, value.reparto, tenant_id),
+                "INSERT INTO dipendenti (nome, email, reparto, cognome, tenant_id) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (value.nome, value.email, value.reparto, value.cognome, tenant_id),
             )
             if hasattr(c, "lastrowid") and c.lastrowid:
                 value.id = c.lastrowid
@@ -72,9 +72,9 @@ def save(value, tenant_id=None):
         c = conn.cursor()
         if tenant_id is not None:
             c.execute(
-                "UPDATE dipendenti SET nome = %s, email = %s, reparto = %s "
+                "UPDATE dipendenti SET nome = %s, email = %s, reparto = %s, cognome = %s "
                 "WHERE id = %s AND tenant_id = %s",
-                (value.nome, value.email, value.reparto, value.id, tenant_id),
+                (value.nome, value.email, value.reparto, value.cognome, value.id, tenant_id),
             )
             conn.commit()
             return value

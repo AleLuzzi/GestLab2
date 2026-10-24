@@ -55,12 +55,14 @@ class UtenteCreate(BaseModel):
 
 class DipendenteCreate(BaseModel):
     nome: str = Field(..., min_length=1)
+    cognome: str = ""
     email: str = ""
     reparto: int | None = None
 
 
 class DipendenteUpdate(BaseModel):
     nome: str | None = None
+    cognome: str | None = None
     email: str | None = None
     reparto: int | None = None
 
@@ -68,6 +70,7 @@ class DipendenteUpdate(BaseModel):
 class DipendenteOut(BaseModel):
     id: int | None = None
     nome: str
+    cognome: str = ""
     email: str
     reparto: int | None = None
     reparto_nome: str | None = None

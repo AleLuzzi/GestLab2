@@ -191,7 +191,7 @@ def lista_dipendenti(user: dict = Depends(auth.get_current_user)):
     """Elenco dipendenti del tenant corrente."""
     dipendenti = dipendenti_service.lista_dipendenti(user["tenant_id"])
     return [
-        DipendenteOut(id=d.id, nome=d.nome, email=d.email, reparto=d.reparto,
+        DipendenteOut(id=d.id, nome=d.nome, cognome=d.cognome, email=d.email, reparto=d.reparto,
                       reparto_nome=d.reparto_nome)
         for d in dipendenti
     ]
@@ -204,9 +204,19 @@ def crea_dipendente(
 ):
     """Crea un nuovo dipendente nel tenant corrente."""
     nuovo = dipendenti_service.crea_dipendente(
-        payload.nome, payload.email, payload.reparto, user["tenant_id"]
+        nome=payload.nome,
+        email=payload.email,
+        reparto=payload.reparto,
+        tenant_id=user["tenant_id"],
+        cognome=payload.cognome,
     )
-    return DipendenteOut(id=nuovo.id, nome=nuovo.nome, email=nuovo.email, reparto=nuovo.reparto)
+    return DipendenteOut(
+        id=nuovo.id,
+        nome=nuovo.nome,
+        cognome=nuovo.cognome,
+        email=nuovo.email,
+        reparto=nuovo.reparto,
+    )
 
 
 @app.put("/api/v1/dipendenti/{dipendente_id}", response_model=DipendenteOut)
@@ -223,11 +233,13 @@ def aggiorna_dipendente(
     dipendenti_service.aggiorna_dipendente(
         dipendente,
         nome=payload.nome,
+        cognome=payload.cognome,
         email=payload.email,
         reparto=payload.reparto,
         tenant_id=user["tenant_id"],
     )
     return DipendenteOut(id=dipendente.id, nome=dipendente.nome,
+                         cognome=dipendente.cognome,
                          email=dipendente.email, reparto=dipendente.reparto)
 
 

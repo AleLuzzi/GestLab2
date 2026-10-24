@@ -8,20 +8,21 @@ diventeranno i modelli su cui aggiungere il ``tenant_id``.
 
 
 class Dipendente:
-    """Record dipendente (tabella `dipendenti`, campi: id, nome, email, reparto).
+    """Record dipendente (tabella `dipendenti`).
 
     `reparto_nome` e' il nome del reparto risolto tramite JOIN con `reparti`
     (non persistito su `dipendenti`, solo per la visualizzazione).
     """
 
-    __slots__ = ("id", "nome", "email", "reparto", "reparto_nome")
+    __slots__ = ("id", "nome", "email", "reparto", "reparto_nome", "cognome")
 
-    def __init__(self, id=None, nome="", email="", reparto=None, reparto_nome=None):
+    def __init__(self, id=None, nome="", email="", reparto=None, reparto_nome=None, cognome=""):
         self.id = id
         self.nome = nome
         self.email = email
         self.reparto = reparto
         self.reparto_nome = reparto_nome
+        self.cognome = cognome
 
     @classmethod
     def from_row(cls, row):
@@ -32,6 +33,7 @@ class Dipendente:
         - (id, nome, email)
         - (id, nome, email, reparto)
         - (id, nome, email, reparto, reparto_nome)
+        - (id, nome, email, reparto, reparto_nome, cognome)
         """
         if len(row) == 2:
             return cls(row[0], row[1], "", None)
@@ -39,33 +41,38 @@ class Dipendente:
             return cls(row[0], row[1], row[2], None)
         if len(row) == 4:
             return cls(row[0], row[1], row[2], row[3])
-        return cls(row[0], row[1], row[2], row[3], row[4])
+        if len(row) == 5:
+            return cls(row[0], row[1], row[2], row[3], row[4])
+        return cls(row[0], row[1], row[2], row[3], row[4], row[5])
 
     def params_insert(self):
-        """Valori per INSERT INTO dipendenti (nome, email, reparto)."""
-        return (self.nome, self.email, self.reparto)
+        """Valori per INSERT INTO dipendenti."""
+        return (self.nome, self.email, self.reparto, self.cognome)
 
     def params_update(self):
-        """Valori per UPDATE dipendenti SET nome=%s, email=%s, reparto=%s WHERE id=%s."""
-        return (self.nome, self.email, self.reparto, self.id)
+        """Valori per UPDATE dipendenti."""
+        return (self.nome, self.email, self.reparto, self.cognome, self.id)
 
     @classmethod
     def fetch_all(cls, cursor):
         """Recupera tutti i dipendenti presenti nel database."""
-        cursor.execute("SELECT id, nome, email, reparto FROM dipendenti")
+        cursor.execute("SELECT id, nome, email, reparto, NULL, cognome FROM dipendenti")
         return [cls.from_row(row) for row in cursor.fetchall()]
 
     @classmethod
     def find_by_id(cls, cursor, f_id):
         """Cerca un singolo dipendente tramite il suo ID."""
-        cursor.execute("SELECT id, nome, email, reparto FROM dipendenti WHERE id = %s", (f_id,))
+        cursor.execute(
+            "SELECT id, nome, email, reparto, NULL, cognome FROM dipendenti WHERE id = %s",
+            (f_id,),
+        )
         row = cursor.fetchone()
         return cls.from_row(row) if row else None
 
     def save(self, cursor, conn):
         """Esegue l'aggiornamento (UPDATE) del record corrente."""
         cursor.execute(
-            "UPDATE dipendenti SET nome = %s, email = %s, reparto = %s WHERE id = %s",
+            "UPDATE dipendenti SET nome = %s, email = %s, reparto = %s, cognome = %s WHERE id = %s",
             self.params_update(),
         )
         conn.commit()
@@ -86,7 +93,8 @@ class Dipendente:
         """Esegue l'inserimento (INSERT) del nuovo dipendente."""
         try:
             cursor.execute(
-                "INSERT INTO dipendenti (nome, email, reparto) VALUES (%s, %s, %s)",
+                "INSERT INTO dipendenti (nome, email, reparto, cognome) "
+                "VALUES (%s, %s, %s, %s)",
                 self.params_insert(),
             )
             if hasattr(cursor, "lastrowid") and cursor.lastrowid:
