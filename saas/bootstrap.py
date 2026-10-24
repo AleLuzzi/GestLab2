@@ -79,6 +79,52 @@ def _parse_sql_statements(sql_content):
     return statements
 
 
+def _migra_progressivi_tenant(cursor):
+    """Consolida i progressivi tenant e garantisce un solo record per tenant."""
+    cursor.execute(
+        "SELECT tenant_id, MAX(prog_acq), MAX(prog_ven), COUNT(*) "
+        "FROM progressivi WHERE tenant_id IS NOT NULL "
+        "GROUP BY tenant_id HAVING COUNT(*) > 1"
+    )
+    duplicati = cursor.fetchall()
+
+    for tenant_id, prog_acq, prog_ven, numero_record in duplicati:
+        cursor.execute(
+            "UPDATE progressivi SET prog_acq = %s, prog_ven = %s "
+            "WHERE tenant_id = %s",
+            (prog_acq, prog_ven, tenant_id),
+        )
+        cursor.execute(
+            "DELETE FROM progressivi WHERE tenant_id = %s LIMIT %s",
+            (tenant_id, numero_record - 1),
+        )
+        if cursor.rowcount != numero_record - 1:
+            raise RuntimeError(
+                f"Impossibile consolidare i progressivi del tenant {tenant_id}"
+            )
+
+    cursor.execute("SHOW INDEX FROM progressivi")
+    indici = cursor.fetchall()
+    indici_tenant_univoci = {}
+    for indice in indici:
+        nome = indice[2]
+        non_univoco = indice[1]
+        posizione = indice[3]
+        colonna = indice[4]
+        if not non_univoco:
+            indici_tenant_univoci.setdefault(nome, []).append((posizione, colonna))
+
+    indice_presente = any(
+        colonne == [(1, "tenant_id")]
+        for colonne in indici_tenant_univoci.values()
+    )
+    if not indice_presente:
+        cursor.execute(
+            "ALTER TABLE progressivi "
+            "ADD UNIQUE KEY uq_progressivi_tenant_id (tenant_id)"
+        )
+
+
 def crea_tabelle():
     """Esegue init_database.sql per creare tutte le tabelle (idempotente)."""
     if not os.path.exists(SCHEMA_FILE):
@@ -113,7 +159,8 @@ def crea_tabelle():
                     print(f"        SQL: {stmt[:100]}...")
                 else:
                     print(f"  [ok]  Statement {i} (tabella già esistente)")
-        
+
+        _migra_progressivi_tenant(c)
         conn.commit()
     
     print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati, {errors} errori")

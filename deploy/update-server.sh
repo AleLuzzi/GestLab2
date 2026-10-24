@@ -49,6 +49,8 @@ if [[ -f "$APP_DIR/requirements-web.txt" ]]; then
   sudo -u "$APP_USER" "$APP_DIR/.venv/bin/pip" install -r "$APP_DIR/requirements-web.txt"
 fi
 
+sudo -u "$APP_USER" bash -c "cd '$APP_DIR' && set -a && . /etc/gestlab/gestlab.env && set +a && . .venv/bin/activate && python -m saas.bootstrap"
+
 systemctl restart gestlab
 sleep 2
 curl -fsS http://127.0.0.1:8000/health

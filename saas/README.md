@@ -23,6 +23,10 @@ prima di avviare il server. In caso di errore, comunicare all'assistenza il
 riferimento mostrato nell'interfaccia: consente di trovare il traceback senza
 registrare token o dati del documento.
 
+Il bootstrap consolida eventuali record `progressivi` duplicati per tenant,
+conservando il valore massimo di ciascun contatore, e crea l'indice univoco
+necessario anche sui database già esistenti.
+
 > La console web (`web/`) è una SPA vanilla (HTML/CSS/JS, nessuna build) servita
 > direttamente dal backend FastAPI. Include login, dashboard, gestione dipendenti,
 > lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di

@@ -6,4 +6,7 @@ su una istanza Amazon Lightsail, seguendo la procedura descritta in
 
 Guida d'uso: [`docs_migrazione/PUBBLICAZIONE_AWS_AUTOMATICA.md`](../docs_migrazione/PUBBLICAZIONE_AWS_AUTOMATICA.md).
 
+Lo script `update-server.sh` esegue il bootstrap prima del riavvio del servizio,
+applicando anche gli aggiornamenti dello schema ai database esistenti.
+
 Non committare `gestlab.env` ne' i file `.pem`.

@@ -4,7 +4,6 @@ import {
 } from "../features/anagrafiche.js";
 import { loadDashboard } from "../features/dashboard.js";
 import { openIngressoMerce } from "../features/ingresso-merce.js";
-import { loadLotti } from "../features/lotti.js";
 import { loadMenu } from "../features/menu.js";
 import { loadPrintJobs } from "../features/printing.js";
 import { loadProgressivi } from "../features/progressivi.js";
@@ -43,7 +42,6 @@ function switchView(view) {
     reparti: loadReparti,
     fornitori: loadFornitori,
     progressivi: loadProgressivi,
-    lotti: loadLotti,
     menu: loadMenu,
     printjobs: loadPrintJobs,
     tracciabilita: loadTracciabilita,
@@ -61,5 +59,7 @@ export function initNavigation() {
     button.addEventListener("click", () => switchView(button.dataset.view)));
   document.querySelectorAll(".config-card").forEach((card) =>
     card.addEventListener("click", () => switchView(card.dataset.view)));
+  document.querySelectorAll(".landing-action[data-view]").forEach((button) =>
+    button.addEventListener("click", () => switchView(button.dataset.view)));
   return showLanding;
 }

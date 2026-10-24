@@ -59,6 +59,10 @@
               <span class="action-title">Configurazioni</span>
               <span class="action-subtitle">Dipendenti, reparti, merceologie, articoli, fornitori e progressivi</span>
             </button>
+            <button class="landing-action" data-view="tracciabilita" type="button">
+              <span class="action-title">Tracciabilità</span>
+              <span class="action-subtitle">Consulta la tracciabilità di lotti e lavorazioni</span>
+            </button>
           </div>
         </div>
       </section>
@@ -94,21 +98,9 @@
             <span class="config-icon">🔢</span>
             <span class="config-name">Progressivi</span>
           </button>
-          <button class="config-card" data-view="tracciabilita" type="button">
-            <span class="config-icon">🔎</span>
-            <span class="config-name">Tracciabilità</span>
-          </button>
           <button class="config-card admin-only" data-view="admin" type="button">
             <span class="config-icon">🛡️</span>
             <span class="config-name">Admin</span>
-          </button>
-          <button class="config-card" data-view="menu" type="button">
-            <span class="config-icon">🍽️</span>
-            <span class="config-name">Menu</span>
-          </button>
-          <button class="config-card" data-view="lotti" type="button">
-            <span class="config-icon">📋</span>
-            <span class="config-name">Lotti aperti</span>
           </button>
         </div>
       </section>
@@ -199,7 +191,7 @@
           <div class="stat-card"><h3>Reparti</h3><p id="stat-reparti" class="stat">—</p></div>
           <div class="stat-card"><h3>Fornitori</h3><p id="stat-fornitori" class="stat">—</p></div>
           <div class="stat-card"><h3>Merceologie</h3><p id="stat-merc" class="stat">—</p></div>
-          <div class="stat-card"><h3>Lotti aperti</h3><p id="stat-lotti" class="stat">—</p></div>
+          <div class="stat-card"><h3>Lotti in tracciabilità</h3><p id="stat-lotti" class="stat">—</p></div>
           <div class="stat-card"><h3>Job di stampa</h3><p id="stat-jobs" class="stat">—</p></div>
         </div>
         <div class="panel-box">
@@ -374,15 +366,6 @@
             <button id="btn-cancel-progressivi" class="btn ghost" type="button">Annulla</button>
           </div>
         </form>
-      </section>
-
-      <!-- Lotti -->
-      <section id="view-lotti" class="panel">
-        <h2>Lotti aperti</h2>
-        <table class="table">
-          <thead><tr><th>Progressivo</th><th>Fornitore</th><th>Prodotto</th><th>Residuo</th></tr></thead>
-          <tbody id="lotti-tbody"></tbody>
-        </table>
       </section>
 
       <!-- Tracciabilità -->

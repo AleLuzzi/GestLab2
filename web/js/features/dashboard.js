@@ -8,7 +8,7 @@ export async function loadDashboard() {
       api("/api/v1/reparti"),
       api("/api/v1/fornitori"),
       api("/api/v1/merceologie"),
-      api("/api/v1/lotti/aperti"),
+      api("/api/v1/tracciabilita/lotti"),
       api("/api/v1/print-jobs"),
     ]);
     $("stat-dip").textContent = Array.isArray(dip) ? dip.length : 0;
