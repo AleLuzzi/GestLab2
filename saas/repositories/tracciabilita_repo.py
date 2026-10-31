@@ -117,7 +117,7 @@ def lista_lotti(tenant_id, solo_disponibili=False):
         "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, l.progressivo, "
         "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
         "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
-        "l.lavorazione_id "
+        "l.lavorazione_id, a.categoria "
         "FROM lotti l JOIN articoli a "
         "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
         "WHERE l.tenant_id = %s"
@@ -144,6 +144,7 @@ def lista_lotti(tenant_id, solo_disponibili=False):
                 "unita_misura": row[9],
                 "documento_ingresso_id": row[10],
                 "lavorazione_id": row[11],
+                "categoria": row[12],
             }
             for row in cursor.fetchall()
         ]

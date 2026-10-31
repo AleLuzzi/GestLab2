@@ -84,6 +84,27 @@ class TracciabilitaTests(unittest.TestCase):
             any("UPDATE progressivi SET prog_ven" in query for query, _ in cursor.statements)
         )
 
+    def test_lista_lotti_includes_article_category(self):
+        cursor = FakeCursor(
+            lambda query, params: [
+                (7, 3, "Mezzena", "A", 1, "1A", "2026-10-03", Decimal("10"),
+                 Decimal("8"), "kg", None, None, "Suino")
+            ]
+        )
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            lotti = tracciabilita_repo.lista_lotti(42, solo_disponibili=True)
+
+        self.assertEqual(lotti[0]["categoria"], "Suino")
+        query, params = cursor.statements[0]
+        self.assertIn("a.categoria", query)
+        self.assertIn("AND l.quantita_disponibile > 0", query)
+        self.assertEqual(params, (42,))
+
     def test_progressivo_drains_locked_select_before_updating(self):
         class FetchAllCursor(FakeCursor):
             def fetchone(self):

@@ -61,7 +61,7 @@ function riempiSelectLotti(select) {
   lotti.filter((lotto) => Number(lotto.quantita_disponibile) > 0).forEach((lotto) => {
     select.appendChild(creaOpzione(
       lotto.id,
-      `${lotto.codice_lotto} · ${lotto.articolo} — disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)}`,
+      `${lotto.codice_lotto} · ${lotto.articolo}${lotto.categoria ? ` · ${lotto.categoria}` : ""} — disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)}`,
     ));
   });
   select.value = selected;

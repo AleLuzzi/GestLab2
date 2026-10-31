@@ -428,23 +428,31 @@
               <input id="trace-work-description" type="text" maxlength="160" />
             </label>
 
-            <div class="trace-lines-header">
-              <h4>Input</h4>
-              <button id="btn-trace-add-input" class="btn ghost" type="button">+ Aggiungi lotto</button>
-            </div>
-            <div id="trace-work-inputs" class="trace-lines"></div>
+            <div class="trace-work-columns">
+              <div class="trace-work-column">
+                <div class="trace-lines-header">
+                  <h4>Input</h4>
+                  <button id="btn-trace-add-input" class="btn ghost" type="button">+ Aggiungi lotto</button>
+                </div>
+                <div id="trace-work-inputs" class="trace-lines"></div>
+              </div>
 
-            <div class="trace-lines-header">
-              <h4>Output</h4>
-              <button id="btn-trace-add-output" class="btn ghost" type="button">+ Aggiungi prodotto</button>
-            </div>
-            <div id="trace-work-outputs" class="trace-lines"></div>
+              <div class="trace-work-column">
+                <div class="trace-lines-header">
+                  <h4>Output</h4>
+                  <button id="btn-trace-add-output" class="btn ghost" type="button">+ Aggiungi prodotto</button>
+                </div>
+                <div id="trace-work-outputs" class="trace-lines"></div>
+              </div>
 
-            <div class="trace-lines-header">
-              <h4>Scarti</h4>
-              <button id="btn-trace-add-scrap" class="btn ghost" type="button">+ Aggiungi scarto</button>
+              <div class="trace-work-column">
+                <div class="trace-lines-header">
+                  <h4>Scarti</h4>
+                  <button id="btn-trace-add-scrap" class="btn ghost" type="button">+ Aggiungi scarto</button>
+                </div>
+                <div id="trace-work-scraps" class="trace-lines"></div>
+              </div>
             </div>
-            <div id="trace-work-scraps" class="trace-lines"></div>
 
             <div class="row">
               <button class="btn primary" type="submit">Registra lavorazione</button>
