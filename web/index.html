@@ -356,55 +356,57 @@
           <thead><tr><th>ID</th><th>Denominazione</th><th>Ruoli</th><th>Città</th><th>Partita IVA</th><th>Stato</th><th>Azioni</th></tr></thead>
           <tbody id="fornitori-tbody"></tbody>
         </table>
-        <div id="fornitori-form" class="form-card" style="display:none">
-          <h3 id="fornitori-form-title">Nuova anagrafica</h3>
-          <input type="hidden" id="fornitori-id" />
-          <label>Denominazione / ragione sociale <input type="text" id="fornitori-azienda" required maxlength="255" /></label>
-          <label>Tipo soggetto
-            <select id="fornitori-tipo">
-              <option value="azienda">Azienda</option>
-              <option value="persona">Persona fisica</option>
-            </select>
-          </label>
-          <label>Nome <input type="text" id="fornitori-nome" maxlength="100" /></label>
-          <label>Cognome <input type="text" id="fornitori-cognome" maxlength="100" /></label>
-          <fieldset>
-            <legend>Ruoli</legend>
-            <label><input type="checkbox" id="fornitori-role-cliente" /> Cliente</label>
-            <label><input type="checkbox" id="fornitori-role-fornitore" /> Fornitore</label>
-          </fieldset>
-          <div class="row">
-            <label>Partita IVA <input type="text" id="fornitori-partita-iva" maxlength="20" /></label>
-            <label>Codice fiscale <input type="text" id="fornitori-codice-fiscale" maxlength="20" /></label>
+        <dialog id="fornitori-dialog" class="anagrafiche-dialog" aria-labelledby="fornitori-form-title">
+          <div id="fornitori-form" class="form-card">
+            <h3 id="fornitori-form-title">Nuova anagrafica</h3>
+            <input type="hidden" id="fornitori-id" />
+            <label>Denominazione / ragione sociale <input type="text" id="fornitori-azienda" required maxlength="255" /></label>
+            <label>Tipo soggetto
+              <select id="fornitori-tipo">
+                <option value="azienda">Azienda</option>
+                <option value="persona">Persona fisica</option>
+              </select>
+            </label>
+            <label>Nome <input type="text" id="fornitori-nome" maxlength="100" /></label>
+            <label>Cognome <input type="text" id="fornitori-cognome" maxlength="100" /></label>
+            <fieldset>
+              <legend>Ruoli</legend>
+              <label><input type="checkbox" id="fornitori-role-cliente" /> Cliente</label>
+              <label><input type="checkbox" id="fornitori-role-fornitore" /> Fornitore</label>
+            </fieldset>
+            <div class="row">
+              <label>Partita IVA <input type="text" id="fornitori-partita-iva" maxlength="20" /></label>
+              <label>Codice fiscale <input type="text" id="fornitori-codice-fiscale" maxlength="20" /></label>
+            </div>
+            <label>Indirizzo <input type="text" id="fornitori-indirizzo" maxlength="255" /></label>
+            <div class="row">
+              <label>Numero civico <input type="text" id="fornitori-civico" maxlength="20" /></label>
+              <label>CAP <input type="text" id="fornitori-cap" maxlength="20" /></label>
+              <label>Città / Comune <input type="text" id="fornitori-citta" maxlength="100" /></label>
+              <label>Provincia <input type="text" id="fornitori-provincia" maxlength="100" /></label>
+            </div>
+            <label>Paese <input type="text" id="fornitori-paese" maxlength="100" value="Italia" /></label>
+            <div class="row">
+              <label>Email <input type="email" id="fornitori-email" maxlength="255" /></label>
+              <label>Telefono <input type="tel" id="fornitori-telefono" maxlength="30" /></label>
+            </div>
+            <div class="row">
+              <label>Codice destinatario SDI <input type="text" id="fornitori-sdi" maxlength="7" /></label>
+              <label>PEC <input type="email" id="fornitori-pec" maxlength="255" /></label>
+            </div>
+            <fieldset id="fornitori-operativo">
+              <legend>Impostazioni fornitore</legend>
+              <label><input type="checkbox" id="fornitori-flag1" /> Abilitato per ingresso merce</label>
+              <label><input type="checkbox" id="fornitori-flag2" /> Abilitato per inventario</label>
+            </fieldset>
+            <label><input type="checkbox" id="fornitori-attivo" checked /> Anagrafica attiva</label>
+            <div class="row">
+              <button id="btn-save-fornitore" class="btn primary">Salva</button>
+              <button id="btn-cancel-fornitore" class="btn ghost">Annulla</button>
+            </div>
+            <div id="fornitori-error" class="error"></div>
           </div>
-          <label>Indirizzo <input type="text" id="fornitori-indirizzo" maxlength="255" /></label>
-          <div class="row">
-            <label>Numero civico <input type="text" id="fornitori-civico" maxlength="20" /></label>
-            <label>CAP <input type="text" id="fornitori-cap" maxlength="20" /></label>
-            <label>Città / Comune <input type="text" id="fornitori-citta" maxlength="100" /></label>
-            <label>Provincia <input type="text" id="fornitori-provincia" maxlength="100" /></label>
-          </div>
-          <label>Paese <input type="text" id="fornitori-paese" maxlength="100" value="Italia" /></label>
-          <div class="row">
-            <label>Email <input type="email" id="fornitori-email" maxlength="255" /></label>
-            <label>Telefono <input type="tel" id="fornitori-telefono" maxlength="30" /></label>
-          </div>
-          <div class="row">
-            <label>Codice destinatario SDI <input type="text" id="fornitori-sdi" maxlength="7" /></label>
-            <label>PEC <input type="email" id="fornitori-pec" maxlength="255" /></label>
-          </div>
-          <fieldset id="fornitori-operativo">
-            <legend>Impostazioni fornitore</legend>
-            <label><input type="checkbox" id="fornitori-flag1" /> Abilitato per ingresso merce</label>
-            <label><input type="checkbox" id="fornitori-flag2" /> Abilitato per inventario</label>
-          </fieldset>
-          <label><input type="checkbox" id="fornitori-attivo" checked /> Anagrafica attiva</label>
-          <div class="row">
-            <button id="btn-save-fornitore" class="btn primary">Salva</button>
-            <button id="btn-cancel-fornitore" class="btn ghost">Annulla</button>
-          </div>
-          <div id="fornitori-error" class="error"></div>
-        </div>
+        </dialog>
       </section>
 
       <!-- Progressivi -->

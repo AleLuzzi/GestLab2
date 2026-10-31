@@ -330,6 +330,26 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
 .form-card h3 { margin-bottom: 14px; }
 .form-card .row { margin-top: 14px; }
 
+.anagrafiche-dialog {
+  width: min(720px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  color: var(--text);
+}
+.anagrafiche-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+.anagrafiche-dialog .form-card {
+  max-width: none;
+  margin: 0;
+  border: 0;
+}
+
 .code-box { background: var(--bg-3); border: 1px solid var(--border); border-radius: 7px; padding: 12px; margin-top: 12px; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; }
 
 .tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }

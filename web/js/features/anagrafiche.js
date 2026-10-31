@@ -41,14 +41,15 @@ async function loadOptions(selectId, endpoint, labelKey, emptyLabel, missingLabe
   }
 }
 
-async function saveResource({ id, endpoint, payload, formId, errorId, reload }) {
+async function saveResource({ id, endpoint, payload, formId, errorId, reload, onSuccess }) {
   $(errorId).textContent = "";
   try {
     await api(id ? `${endpoint}/${id}` : endpoint, {
       method: id ? "PUT" : "POST",
       body: JSON.stringify(payload),
     });
-    $(formId).style.display = "none";
+    if (onSuccess) onSuccess();
+    else $(formId).style.display = "none";
     await reload();
   } catch (error) {
     $(errorId).textContent = error.message;
@@ -338,6 +339,12 @@ function salvaReparto() {
     payload: { reparto: $("reparti-nome").value, flag1_dip: $("reparti-flag1").checked ? 1 : 0, flag2_prod: $("reparti-flag2").checked ? 1 : 0 } });
 }
 
+function apriDialogFornitore() {
+  const dialog = $("fornitori-dialog");
+  dialog.scrollTop = 0;
+  dialog.showModal();
+}
+
 function nuovoFornitore() {
   $("fornitori-id").value = "";
   $("fornitori-azienda").value = "";
@@ -364,7 +371,7 @@ function nuovoFornitore() {
   aggiornaCampiFornitore();
   $("fornitori-form-title").textContent = "Nuova anagrafica";
   $("fornitori-error").textContent = "";
-  $("fornitori-form").style.display = "block";
+  apriDialogFornitore();
 }
 
 async function editFornitore(id) {
@@ -396,7 +403,7 @@ async function editFornitore(id) {
     aggiornaCampiFornitore();
     $("fornitori-form-title").textContent = `Modifica anagrafica #${item.id}`;
     $("fornitori-error").textContent = "";
-    $("fornitori-form").style.display = "block";
+    apriDialogFornitore();
   } catch (error) { $("fornitori-error").textContent = error.message; }
 }
 
@@ -412,6 +419,7 @@ function salvaFornitore() {
     formId: "fornitori-form",
     errorId: "fornitori-error",
     reload: loadFornitori,
+    onSuccess: () => $("fornitori-dialog").close(),
     payload: {
       denominazione: $("fornitori-azienda").value.trim(),
       tipo_soggetto: $("fornitori-tipo").value,
@@ -462,10 +470,10 @@ async function disattivaSoggetto(id) {
   }
 }
 
-function bindForm(newButtonId, saveButtonId, cancelButtonId, formId, createHandler, saveHandler) {
+function bindForm(newButtonId, saveButtonId, cancelButtonId, formId, createHandler, saveHandler, cancelHandler) {
   $(newButtonId).addEventListener("click", createHandler);
   $(saveButtonId).addEventListener("click", saveHandler);
-  $(cancelButtonId).addEventListener("click", () => { $(formId).style.display = "none"; });
+  $(cancelButtonId).addEventListener("click", cancelHandler ?? (() => { $(formId).style.display = "none"; }));
 }
 
 export function initAnagrafiche() {
@@ -493,7 +501,11 @@ export function initAnagrafiche() {
   bindForm("btn-nuovo-articolo", "btn-save-articolo", "btn-cancel-articolo", "articoli-form", nuovoArticolo, salvaArticolo);
   bindForm("btn-nuovo-merc", "btn-save-merc", "btn-cancel-merc", "merc-form", nuovaMerc, salvaMerc);
   bindForm("btn-nuovo-reparto", "btn-save-reparto", "btn-cancel-reparto", "reparti-form", nuovoReparto, salvaReparto);
-  bindForm("btn-nuovo-fornitore", "btn-save-fornitore", "btn-cancel-fornitore", "fornitori-form", nuovoFornitore, salvaFornitore);
+  bindForm("btn-nuovo-fornitore", "btn-save-fornitore", "btn-cancel-fornitore", "fornitori-form", nuovoFornitore, salvaFornitore,
+    () => $("fornitori-dialog").close());
+  $("fornitori-dialog").addEventListener("click", (event) => {
+    if (event.target === $("fornitori-dialog")) $("fornitori-dialog").close();
+  });
   $("fornitori-role-fornitore").addEventListener("change", aggiornaCampiFornitore);
   $("anagrafiche-search").addEventListener("input", renderSoggetti);
   $("anagrafiche-ruolo").addEventListener("change", renderSoggetti);
