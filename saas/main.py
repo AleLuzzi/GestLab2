@@ -11,6 +11,7 @@ schema condiviso). Il client non deve mai inviare il ``tenant_id``.
 import logging
 import os
 import uuid
+from datetime import date
 from logging.handlers import RotatingFileHandler
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -359,6 +360,7 @@ def crea_articolo(
         payload.nome,
         payload.categoria,
         payload.unita_misura,
+        payload.utilizzabile_come_input,
     )
 
 
@@ -377,6 +379,7 @@ def aggiorna_articolo(
         payload.categoria,
         payload.unita_misura,
         payload.attivo,
+        payload.utilizzabile_come_input,
     )
     if articolo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
@@ -666,12 +669,21 @@ def registra_ingresso_tracciato(
 @app.get("/api/v1/tracciabilita/lotti")
 def lista_lotti_tracciati(
     solo_disponibili: bool = False,
+    data_dal: date | None = None,
+    data_al: date | None = None,
     user: dict = Depends(auth.get_current_user),
 ):
-    """Elenca i lotti del tenant, filtrabili per sola giacenza disponibile."""
+    """Elenca i lotti del tenant, filtrabili per data e giacenza disponibile."""
+    if data_dal is not None and data_al is not None and data_dal > data_al:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            "La data iniziale non può essere successiva alla data finale.",
+        )
     return tracciabilita_repo.lista_lotti(
         user["tenant_id"],
         solo_disponibili=solo_disponibili,
+        data_dal=data_dal,
+        data_al=data_al,
     )
 
 
@@ -723,6 +735,8 @@ def registra_lavorazione_tracciata(
         ) from error
     except tracciabilita_repo.GiacenzaInsufficiente as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.ArticoloNonUtilizzabileComeInput as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
 
 
 # ------------------------------------------------------------------------- #

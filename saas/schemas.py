@@ -109,6 +109,7 @@ class ArticoloCreate(BaseModel):
     codice: str | None = Field(default=None, max_length=60)
     categoria: str | None = Field(default=None, max_length=80)
     unita_misura: str = Field(default="kg", min_length=1, max_length=8)
+    utilizzabile_come_input: bool = True
 
 
 class ArticoloUpdate(BaseModel):
@@ -117,6 +118,7 @@ class ArticoloUpdate(BaseModel):
     categoria: str | None = Field(default=None, max_length=80)
     unita_misura: str = Field(..., min_length=1, max_length=8)
     attivo: bool = True
+    utilizzabile_come_input: bool | None = None
 
 
 class ArticoloOut(BaseModel):
@@ -126,6 +128,7 @@ class ArticoloOut(BaseModel):
     categoria: str | None = None
     unita_misura: str
     attivo: bool
+    utilizzabile_come_input: bool
 
 
 class IngressoTracciatoRigaCreate(BaseModel):

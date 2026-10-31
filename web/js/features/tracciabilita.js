@@ -58,7 +58,14 @@ function riempiSelectArticoli(select) {
 function riempiSelectLotti(select) {
   const selected = select.value;
   select.replaceChildren(creaOpzione("", "Seleziona lotto"));
-  lotti.filter((lotto) => Number(lotto.quantita_disponibile) > 0).forEach((lotto) => {
+  const articoliInput = new Set(
+    articoli
+      .filter((articolo) => articolo.utilizzabile_come_input)
+      .map((articolo) => String(articolo.id)),
+  );
+  lotti.filter((lotto) =>
+    Number(lotto.quantita_disponibile) > 0 && articoliInput.has(String(lotto.articolo_id))
+  ).forEach((lotto) => {
     select.appendChild(creaOpzione(
       lotto.id,
       `${lotto.codice_lotto} · ${lotto.articolo}${lotto.categoria ? ` · ${lotto.categoria}` : ""} — disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)}`,
@@ -318,9 +325,16 @@ export async function loadTracciabilita() {
   impostaMessaggio("trace-work-data-error");
   impostaMessaggio("trace-lots-error");
   const soloDisponibili = $("trace-only-available").checked;
+  const filtri = new URLSearchParams();
+  if (soloDisponibili) filtri.set("solo_disponibili", "true");
+  const dataDal = $("trace-date-from").value;
+  const dataAl = $("trace-date-to").value;
+  if (dataDal) filtri.set("data_dal", dataDal);
+  if (dataAl) filtri.set("data_al", dataAl);
+  const query = filtri.toString();
   const risultati = await Promise.allSettled([
     api("/api/v1/articoli"),
-    api(`/api/v1/tracciabilita/lotti${soloDisponibili ? "?solo_disponibili=true" : ""}`),
+    api(`/api/v1/tracciabilita/lotti${query ? `?${query}` : ""}`),
     api("/api/v1/dipendenti"),
   ]);
 
@@ -424,6 +438,8 @@ export function initTracciabilita() {
   });
   $("trace-search").addEventListener("input", renderLotti);
   $("trace-only-available").addEventListener("change", loadTracciabilita);
+  $("trace-date-from").addEventListener("change", loadTracciabilita);
+  $("trace-date-to").addEventListener("change", loadTracciabilita);
   $("btn-trace-refresh").addEventListener("click", loadTracciabilita);
   configuraFormLavorazione();
 }

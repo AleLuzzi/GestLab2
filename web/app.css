@@ -356,10 +356,13 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
   margin: 0;
 }
 .trace-search-field span,
+.trace-date-field span,
 .trace-checkbox {
   color: var(--text-dim);
   font-size: 13px;
 }
+.trace-date-field { min-width: 150px; margin: 0; }
+.trace-date-field input { margin-top: 6px; }
 .trace-checkbox {
   display: inline-flex; align-items: center; gap: 8px; margin: 0;
 }

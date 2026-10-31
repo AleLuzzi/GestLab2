@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS `articoli` (
   `categoria` varchar(80) DEFAULT NULL,
   `unita_misura` varchar(8) NOT NULL DEFAULT 'kg',
   `attivo` tinyint(1) NOT NULL DEFAULT 1,
+  `utilizzabile_come_input` tinyint(1) NOT NULL DEFAULT 1,
   `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_articoli_tenant_id` (`tenant_id`, `id`),
@@ -317,6 +318,7 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   UNIQUE KEY `uq_lotti_tenant_tipo_progressivo` (`tenant_id`, `tipo_lotto`, `progressivo`),
   KEY `idx_lotti_tenant_articolo` (`tenant_id`, `articolo_id`),
   KEY `idx_lotti_tenant_disponibilita` (`tenant_id`, `quantita_disponibile`),
+  KEY `idx_lotti_tenant_data` (`tenant_id`, `data_creazione`),
   CONSTRAINT `chk_lotti_tipo` CHECK (`tipo_lotto` IN ('A', 'V')),
   CONSTRAINT `chk_lotti_quantita` CHECK (
     `quantita_iniziale` > 0 AND `quantita_disponibile` >= 0

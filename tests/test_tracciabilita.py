@@ -2,13 +2,18 @@
 
 import unittest
 from contextlib import contextmanager
+from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
 from fastapi import HTTPException
 
 from saas.repositories import tracciabilita_repo
-from saas.main import registra_ingresso_tracciato
+from saas.main import (
+    lista_lotti_tracciati,
+    registra_ingresso_tracciato,
+    registra_lavorazione_tracciata,
+)
 from saas.schemas import IngressoTracciatoCreate, LavorazioneCreate
 
 
@@ -105,6 +110,35 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertIn("AND l.quantita_disponibile > 0", query)
         self.assertEqual(params, (42,))
 
+    def test_lista_lotti_filters_by_inclusive_date_range(self):
+        cursor = FakeCursor(lambda query, params: [])
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            tracciabilita_repo.lista_lotti(
+                42,
+                data_dal="2026-10-01",
+                data_al="2026-10-31",
+            )
+
+        query, params = cursor.statements[0]
+        self.assertIn("AND l.data_creazione >= %s", query)
+        self.assertIn("AND l.data_creazione <= %s", query)
+        self.assertEqual(params, (42, "2026-10-01", "2026-10-31"))
+
+    def test_lista_lotti_endpoint_rejects_reversed_date_range(self):
+        with self.assertRaises(HTTPException) as raised:
+            lista_lotti_tracciati(
+                data_dal=date(2026, 10, 31),
+                data_al=date(2026, 10, 1),
+                user={"tenant_id": 42},
+            )
+
+        self.assertEqual(raised.exception.status_code, 422)
+
     def test_progressivo_drains_locked_select_before_updating(self):
         class FetchAllCursor(FakeCursor):
             def fetchone(self):
@@ -195,8 +229,10 @@ class TracciabilitaTests(unittest.TestCase):
         def handle(query, params):
             if query.startswith("SELECT nome, cognome FROM dipendenti"):
                 return [("Ada", "Lovelace")]
-            if query.startswith("SELECT id, quantita_disponibile FROM lotti"):
-                return [(7, Decimal("5.000"))]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), True)]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
             if query.startswith("SELECT prog_ven"):
@@ -283,8 +319,10 @@ class TracciabilitaTests(unittest.TestCase):
         def handle(query, params):
             if query.startswith("SELECT nome, cognome FROM dipendenti"):
                 return [("Ada", "Lovelace")]
-            if query.startswith("SELECT id, quantita_disponibile FROM lotti"):
-                return [(7, Decimal("1.500"))]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("1.500"), True)]
             return []
 
         cursor = FakeCursor(handle)
@@ -313,6 +351,64 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 0)
         self.assertEqual(conn.rollbacks, 1)
         self.assertFalse(any("INSERT INTO lavorazioni" in query for query, _ in cursor.statements))
+
+    def test_work_rejects_input_article_not_enabled_for_processing(self):
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), False)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.ArticoloNonUtilizzabileComeInput):
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    descrizione="Trasformazione",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
+                    ],
+                    output=[
+                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("1")})()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(any("INSERT INTO lavorazioni" in query for query, _ in cursor.statements))
+
+    def test_work_endpoint_returns_validation_error_for_disabled_input_article(self):
+        payload = LavorazioneCreate(
+            data="2026-10-03",
+            operatore_id=5,
+            input=[{"lotto_id": 7, "quantita": "2"}],
+            output=[{"articolo_id": 9, "quantita": "1"}],
+        )
+
+        with patch.object(
+            tracciabilita_repo,
+            "registra_lavorazione",
+            side_effect=tracciabilita_repo.ArticoloNonUtilizzabileComeInput(
+                "Articolo non abilitato come input."
+            ),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                registra_lavorazione_tracciata(payload, {"tenant_id": 42})
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertEqual(raised.exception.detail, "Articolo non abilitato come input.")
 
 
 if __name__ == "__main__":

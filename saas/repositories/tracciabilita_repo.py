@@ -22,11 +22,16 @@ class GiacenzaInsufficiente(Exception):
     """La quantità richiesta supera la giacenza disponibile."""
 
 
+class ArticoloNonUtilizzabileComeInput(Exception):
+    """L'articolo del lotto non è abilitato come input di lavorazione."""
+
+
 def lista_articoli(tenant_id):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, codice, nome, categoria, unita_misura, attivo "
+            "SELECT id, codice, nome, categoria, unita_misura, attivo, "
+            "utilizzabile_come_input "
             "FROM articoli WHERE tenant_id = %s ORDER BY nome, id",
             (tenant_id,),
         )
@@ -38,19 +43,22 @@ def lista_articoli(tenant_id):
                 "categoria": row[3],
                 "unita_misura": row[4],
                 "attivo": bool(row[5]),
+                "utilizzabile_come_input": bool(row[6]),
             }
             for row in cursor.fetchall()
         ]
 
 
-def crea_articolo(tenant_id, codice, nome, categoria, unita_misura):
+def crea_articolo(
+    tenant_id, codice, nome, categoria, unita_misura, utilizzabile_come_input=True
+):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO articoli "
-            "(tenant_id, codice, nome, categoria, unita_misura) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (tenant_id, codice, nome, categoria, unita_misura),
+            "(tenant_id, codice, nome, categoria, unita_misura, utilizzabile_come_input) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (tenant_id, codice, nome, categoria, unita_misura, int(utilizzabile_come_input)),
         )
         articolo_id = cursor.lastrowid
         conn.commit()
@@ -61,20 +69,41 @@ def crea_articolo(tenant_id, codice, nome, categoria, unita_misura):
         "categoria": categoria,
         "unita_misura": unita_misura,
         "attivo": True,
+        "utilizzabile_come_input": utilizzabile_come_input,
     }
 
 
-def aggiorna_articolo(tenant_id, articolo_id, codice, nome, categoria, unita_misura, attivo):
+def aggiorna_articolo(
+    tenant_id,
+    articolo_id,
+    codice,
+    nome,
+    categoria,
+    unita_misura,
+    attivo,
+    utilizzabile_come_input=None,
+):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE articoli SET codice = %s, nome = %s, categoria = %s, "
-            "unita_misura = %s, attivo = %s "
+            "unita_misura = %s, attivo = %s, "
+            "utilizzabile_come_input = COALESCE(%s, utilizzabile_come_input) "
             "WHERE tenant_id = %s AND id = %s",
-            (codice, nome, categoria, unita_misura, int(attivo), tenant_id, articolo_id),
+            (
+                codice,
+                nome,
+                categoria,
+                unita_misura,
+                int(attivo),
+                None if utilizzabile_come_input is None else int(utilizzabile_come_input),
+                tenant_id,
+                articolo_id,
+            ),
         )
         cursor.execute(
-            "SELECT id, codice, nome, categoria, unita_misura, attivo "
+            "SELECT id, codice, nome, categoria, unita_misura, attivo, "
+            "utilizzabile_come_input "
             "FROM articoli WHERE tenant_id = %s AND id = %s",
             (tenant_id, articolo_id),
         )
@@ -90,6 +119,7 @@ def aggiorna_articolo(tenant_id, articolo_id, codice, nome, categoria, unita_mis
         "categoria": row[3],
         "unita_misura": row[4],
         "attivo": bool(row[5]),
+        "utilizzabile_come_input": bool(row[6]),
     }
 
 
@@ -112,7 +142,7 @@ def disattiva_articolo(tenant_id, articolo_id):
         return esistente
 
 
-def lista_lotti(tenant_id, solo_disponibili=False):
+def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
     query = (
         "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, l.progressivo, "
         "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
@@ -123,6 +153,12 @@ def lista_lotti(tenant_id, solo_disponibili=False):
         "WHERE l.tenant_id = %s"
     )
     params = [tenant_id]
+    if data_dal is not None:
+        query += " AND l.data_creazione >= %s"
+        params.append(data_dal)
+    if data_al is not None:
+        query += " AND l.data_creazione <= %s"
+        params.append(data_al)
     if solo_disponibili:
         query += " AND l.quantita_disponibile > 0"
     query += " ORDER BY l.data_creazione DESC, l.id DESC"
@@ -402,14 +438,22 @@ def registra_lavorazione(
             lotto_ids = sorted(quantita_input)
             placeholders = ", ".join(["%s"] * len(lotto_ids))
             cursor.execute(
-                "SELECT id, quantita_disponibile FROM lotti "
-                f"WHERE tenant_id = %s AND id IN ({placeholders}) "
-                "ORDER BY id FOR UPDATE",
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input "
+                "FROM lotti l JOIN articoli a "
+                "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
+                f"WHERE l.tenant_id = %s AND l.id IN ({placeholders}) "
+                "ORDER BY l.id FOR UPDATE",
                 (tenant_id, *lotto_ids),
             )
-            lotti = {row[0]: Decimal(str(row[1])) for row in cursor.fetchall()}
+            righe_lotti = cursor.fetchall()
+            lotti = {row[0]: Decimal(str(row[1])) for row in righe_lotti}
             if len(lotti) != len(lotto_ids):
                 raise LottoNonTrovato
+            for row in righe_lotti:
+                if not row[2]:
+                    raise ArticoloNonUtilizzabileComeInput(
+                        f"L'articolo del lotto {row[0]} non è abilitato come input di lavorazione."
+                    )
             for lotto_id, quantita in quantita_input.items():
                 if lotti[lotto_id] < quantita:
                     raise GiacenzaInsufficiente(

@@ -60,6 +60,13 @@ Le nuove rotte usano il tenant del token autenticato; il client non deve
 inviare `tenant_id`.
 
 - La gestione CRUD del catalogo articoli è disponibile in Configurazioni.
+- Ogni articolo può essere escluso dagli input delle lavorazioni lasciandolo
+  attivo per ingressi, tracciabilità e vendita. La proprietà
+  `utilizzabile_come_input` è attiva per default; disattivandola, i lotti
+  disponibili dell'articolo non compaiono tra gli input e il backend rifiuta
+  comunque la registrazione di una lavorazione che li utilizzi.
+  Per database già esistenti, applicare prima
+  `saas/migrations/20261031_articoli_input_lavorazione.sql`.
 - I documenti e i lotti in ingresso si registrano solo da Ingresso merce; la
   conferma usa `POST /api/v1/tracciabilita/ingressi`.
 - La schermata Tracciabilità consente di consultare i lotti e registrare le

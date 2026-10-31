@@ -238,7 +238,7 @@
           <button id="btn-nuovo-articolo" class="btn primary" type="button">Nuovo articolo</button>
         </div>
         <table class="table">
-          <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>Stato</th><th>Azioni</th></tr></thead>
+          <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>Stato</th><th>Input lavorazione</th><th>Azioni</th></tr></thead>
           <tbody id="articoli-tbody"></tbody>
         </table>
         <div id="articoli-form" class="form-card" style="display:none">
@@ -255,6 +255,7 @@
             </select>
           </label>
           <label><input type="checkbox" id="articoli-attivo" checked /> Articolo attivo</label>
+          <label><input type="checkbox" id="articoli-utilizzabile-input" checked /> Utilizzabile come input di lavorazione</label>
           <div class="row">
             <button id="btn-save-articolo" class="btn primary" type="button">Salva</button>
             <button id="btn-cancel-articolo" class="btn ghost" type="button">Annulla</button>
@@ -390,8 +391,16 @@
               <span>Filtra lotti</span>
               <input id="trace-search" type="search" placeholder="Codice, lotto, articolo" />
             </label>
+            <label class="trace-date-field">
+              <span>Data dal</span>
+              <input id="trace-date-from" type="date" />
+            </label>
+            <label class="trace-date-field">
+              <span>Data al</span>
+              <input id="trace-date-to" type="date" />
+            </label>
             <label class="trace-checkbox">
-              <input id="trace-only-available" type="checkbox" /> Solo disponibili
+              <input id="trace-only-available" type="checkbox" checked /> Solo disponibili
             </label>
           </div>
           <table class="table trace-table">
