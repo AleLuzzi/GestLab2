@@ -701,11 +701,16 @@ def registra_lavorazione_tracciata(
             tenant_id=user["tenant_id"],
             data=payload.data,
             descrizione=payload.descrizione,
-            operatore=payload.operatore,
+            operatore_id=payload.operatore_id,
             input_lavorazione=payload.input,
             output=payload.output,
             scarti=payload.scarti,
         )
+    except tracciabilita_repo.DipendenteNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "L'operatore non esiste nel tenant corrente",
+        ) from error
     except tracciabilita_repo.ArticoloNonTrovato as error:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,

@@ -40,7 +40,11 @@ Pancia e creare il lotto `V` delle Salsicce Fresche.
 - Nuova installazione: usare lo schema aggiornato in
   [`saas/init_database.sql`](../saas/init_database.sql).
 - Installazione esistente: applicare una sola volta
-  [`saas/migrations/20261003_stock_traceability.sql`](../saas/migrations/20261003_stock_traceability.sql).
+  [`saas/migrations/20261003_stock_traceability.sql`](../saas/migrations/20261003_stock_traceability.sql)
+  e
+  [`saas/migrations/20261031_work_operator_id.sql`](../saas/migrations/20261031_work_operator_id.sql).
+  La seconda migrazione aggiunge l'identificativo dell'operatore alle lavorazioni
+  già esistenti.
 
 La migrazione non converte i record storici: le tabelle legacy non contengono
 sempre l'identificativo dell'articolo e le relazioni necessarie per ricostruire

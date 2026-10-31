@@ -105,10 +105,18 @@ class TracciabilitaTests(unittest.TestCase):
     def test_input_schema_requires_at_least_one_input_and_output(self):
         payload = LavorazioneCreate(
             data="2026-10-03",
+            operatore_id=5,
             input=[{"lotto_id": 1, "quantita": "2.500"}],
             output=[{"articolo_id": 2, "quantita": "1.250"}],
         )
         self.assertEqual(payload.input[0].quantita, Decimal("2.500"))
+
+        with self.assertRaises(ValueError):
+            LavorazioneCreate(
+                data="2026-10-03",
+                input=[{"lotto_id": 1, "quantita": "2.500"}],
+                output=[{"articolo_id": 2, "quantita": "1.250"}],
+            )
 
         with self.assertRaises(ValueError):
             LavorazioneCreate(
@@ -164,6 +172,8 @@ class TracciabilitaTests(unittest.TestCase):
 
     def test_work_creates_V_lots_and_consumption_ledger(self):
         def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
             if query.startswith("SELECT id, quantita_disponibile FROM lotti"):
                 return [(7, Decimal("5.000"))]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
@@ -184,7 +194,7 @@ class TracciabilitaTests(unittest.TestCase):
                 tenant_id=42,
                 data="2026-10-03",
                 descrizione="Trasformazione",
-                operatore=None,
+                operatore_id=5,
                 input_lavorazione=[
                     type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
                 ],
@@ -206,6 +216,12 @@ class TracciabilitaTests(unittest.TestCase):
 
         self.assertEqual(result["lotti"][0]["codice_lotto"], "11V")
         self.assertTrue(
+            any(
+                "operatore_id, operatore" in query and params[-2:] == (5, "Ada Lovelace")
+                for query, params in cursor.statements
+            )
+        )
+        self.assertTrue(
             any("VALUES (%s, %s, 'CONSUMO'" in query for query, _ in cursor.statements)
         )
         self.assertTrue(
@@ -214,12 +230,43 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
 
+    def test_work_rejects_operator_outside_tenant(self):
+        cursor = FakeCursor(lambda query, params: [])
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.DipendenteNonTrovato):
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    descrizione="Trasformazione",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
+                    ],
+                    output=[
+                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("1")})()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(any("INSERT INTO lavorazioni" in query for query, _ in cursor.statements))
+
     def test_work_rolls_back_if_requested_quantity_exceeds_stock(self):
-        cursor = FakeCursor(
-            lambda query, params: [(7, Decimal("1.500"))]
-            if query.startswith("SELECT id, quantita_disponibile FROM lotti")
-            else []
-        )
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith("SELECT id, quantita_disponibile FROM lotti"):
+                return [(7, Decimal("1.500"))]
+            return []
+
+        cursor = FakeCursor(handle)
         conn = FakeConnection(cursor)
 
         @contextmanager
@@ -232,7 +279,7 @@ class TracciabilitaTests(unittest.TestCase):
                     tenant_id=42,
                     data="2026-10-03",
                     descrizione="Trasformazione",
-                    operatore=None,
+                    operatore_id=5,
                     input_lavorazione=[
                         type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
                     ],

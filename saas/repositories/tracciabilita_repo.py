@@ -14,6 +14,10 @@ class LottoNonTrovato(Exception):
     """Lotto inesistente o non appartenente al tenant."""
 
 
+class DipendenteNonTrovato(Exception):
+    """Dipendente inesistente o non appartenente al tenant."""
+
+
 class GiacenzaInsufficiente(Exception):
     """La quantità richiesta supera la giacenza disponibile."""
 
@@ -154,13 +158,16 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
             "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
             "l.lavorazione_id, d.data_ingresso, d.numero_ddt, d.fornitore, "
-            "w.data_lavorazione, w.descrizione, w.operatore "
+            "w.data_lavorazione, w.descrizione, "
+            "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore) "
             "FROM lotti l "
             "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "LEFT JOIN documenti_ingresso d "
             "ON d.tenant_id = l.tenant_id AND d.id = l.documento_ingresso_id "
             "LEFT JOIN lavorazioni w "
             "ON w.tenant_id = l.tenant_id AND w.id = l.lavorazione_id "
+            "LEFT JOIN dipendenti dp "
+            "ON dp.tenant_id = w.tenant_id AND dp.ID = w.operatore_id "
             "WHERE l.tenant_id = %s AND l.id = %s",
             (tenant_id, lotto_id),
         )
@@ -369,7 +376,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore, righe):
 
 
 def registra_lavorazione(
-    tenant_id, data, descrizione, operatore, input_lavorazione, output, scarti
+    tenant_id, data, descrizione, operatore_id, input_lavorazione, output, scarti
 ):
     """Consuma i lotti di input e crea un lotto V per ogni prodotto ottenuto."""
     quantita_input = defaultdict(Decimal)
@@ -379,6 +386,18 @@ def registra_lavorazione(
     with connection() as conn:
         cursor = conn.cursor()
         try:
+            cursor.execute(
+                "SELECT nome, cognome FROM dipendenti "
+                "WHERE ID = %s AND tenant_id = %s",
+                (operatore_id, tenant_id),
+            )
+            dipendente = cursor.fetchone()
+            if dipendente is None:
+                raise DipendenteNonTrovato
+            operatore = " ".join(
+                parte for parte in dipendente if parte
+            )
+
             lotto_ids = sorted(quantita_input)
             placeholders = ", ".join(["%s"] * len(lotto_ids))
             cursor.execute(
@@ -409,9 +428,9 @@ def registra_lavorazione(
 
             cursor.execute(
                 "INSERT INTO lavorazioni "
-                "(tenant_id, data_lavorazione, descrizione, operatore) "
-                "VALUES (%s, %s, %s, %s)",
-                (tenant_id, data, descrizione, operatore),
+                "(tenant_id, data_lavorazione, descrizione, operatore_id, operatore) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (tenant_id, data, descrizione, operatore_id, operatore),
             )
             lavorazione_id = cursor.lastrowid
 

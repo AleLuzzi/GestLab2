@@ -159,7 +159,7 @@ class LavorazioneScartoCreate(BaseModel):
 class LavorazioneCreate(BaseModel):
     data: date
     descrizione: str = Field(default="", max_length=255)
-    operatore: str | None = Field(default=None, max_length=120)
+    operatore_id: int = Field(..., gt=0)
     input: list[LavorazioneInputCreate] = Field(..., min_length=1)
     output: list[LavorazioneOutputCreate] = Field(..., min_length=1)
     scarti: list[LavorazioneScartoCreate] = Field(default_factory=list)

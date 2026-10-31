@@ -3,6 +3,7 @@ import { $, esc } from "../core/dom.js";
 
 let articoli = [];
 let lotti = [];
+let dipendenti = [];
 let lottiCaricati = false;
 
 function dataLocaleISO() {
@@ -66,9 +67,20 @@ function riempiSelectLotti(select) {
   select.value = selected;
 }
 
+function riempiSelectDipendenti(select) {
+  const selected = select.value;
+  select.replaceChildren(creaOpzione("", "Seleziona operatore"));
+  dipendenti.forEach((dipendente) => {
+    const nome = [dipendente.nome, dipendente.cognome].filter(Boolean).join(" ");
+    select.appendChild(creaOpzione(dipendente.id, nome));
+  });
+  select.value = selected;
+}
+
 function aggiornaSelettoriRighe() {
   document.querySelectorAll('.trace-line select[data-field="articolo_id"]').forEach(riempiSelectArticoli);
   document.querySelectorAll('.trace-line select[data-field="lotto_id"]').forEach(riempiSelectLotti);
+  riempiSelectDipendenti($("trace-work-operator"));
 }
 
 function creaRiga(containerId, fields, selectOptions, removeLabel) {
@@ -309,13 +321,15 @@ export async function loadTracciabilita() {
   const risultati = await Promise.allSettled([
     api("/api/v1/articoli"),
     api(`/api/v1/tracciabilita/lotti${soloDisponibili ? "?solo_disponibili=true" : ""}`),
+    api("/api/v1/dipendenti"),
   ]);
 
+  const erroriDati = [];
   if (risultati[0].status === "fulfilled") {
     articoli = risultati[0].value;
   } else {
     articoli = [];
-    impostaMessaggio("trace-work-data-error", `Impossibile caricare gli articoli per le lavorazioni: ${risultati[0].reason?.message || risultati[0].reason}`);
+    erroriDati.push(`articoli: ${risultati[0].reason?.message || risultati[0].reason}`);
   }
   if (risultati[1].status === "fulfilled") {
     lotti = risultati[1].value;
@@ -327,6 +341,16 @@ export async function loadTracciabilita() {
     impostaMessaggio("trace-lots-error", `Impossibile caricare i lotti: ${risultati[1].reason?.message || risultati[1].reason}`);
     $("trace-lots-tbody").innerHTML = '<tr><td colspan="6" class="empty">Errore nel caricamento dei lotti.</td></tr>';
   }
+  if (risultati[2].status === "fulfilled") {
+    dipendenti = risultati[2].value;
+  } else {
+    dipendenti = [];
+    erroriDati.push(`dipendenti: ${risultati[2].reason?.message || risultati[2].reason}`);
+  }
+  impostaMessaggio(
+    "trace-work-data-error",
+    erroriDati.length ? `Impossibile caricare i dati per le lavorazioni (${erroriDati.join("; ")}).` : "",
+  );
   aggiornaSelettoriRighe();
 }
 
@@ -370,7 +394,7 @@ function configuraFormLavorazione() {
         body: JSON.stringify({
           data: $("trace-work-date").value,
           descrizione: $("trace-work-description").value.trim(),
-          operatore: $("trace-work-operator").value.trim() || null,
+          operatore_id: Number($("trace-work-operator").value),
           input,
           output,
           scarti,
