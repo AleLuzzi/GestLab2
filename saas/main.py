@@ -49,11 +49,15 @@ from saas.schemas import (
     LavorazioneCreate,
     RefreshRequest,
     ScontrinoCreate,
+    SoggettoCreate,
+    SoggettoOut,
+    SoggettoUpdate,
     TenantCreate,
     TokenResponse,
     UtenteCreate,
 )
 
+from core.repositories.soggetti import FornitoreConStoricoError
 from core.services import dipendenti as dipendenti_service
 from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
@@ -64,6 +68,8 @@ from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
 from core.services import ingresso_merce as ingresso_merce_service
+from core.services import soggetti as soggetti_service
+from core.repositories.ingresso_merce_repo import FornitoreNonValido
 _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LOG_DIR = os.environ.get("GESTLAB_LOG_DIR", os.path.join(_PROJECT_DIR, "logs"))
 os.makedirs(_LOG_DIR, exist_ok=True)
@@ -462,6 +468,92 @@ def elimina_reparto(
 #  Fornitori
 # ------------------------------------------------------------------------- #
 
+@app.get("/api/v1/soggetti", response_model=list[SoggettoOut])
+def lista_soggetti(user: dict = Depends(auth.get_current_user)):
+    """Elenco anagrafiche del tenant corrente."""
+    return soggetti_service.lista_soggetti(user["tenant_id"])
+
+
+@app.post(
+    "/api/v1/soggetti",
+    response_model=SoggettoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_soggetto(
+    payload: SoggettoCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea un'anagrafica con uno o entrambi i ruoli."""
+    try:
+        return soggetti_service.crea_soggetto(user["tenant_id"], payload.model_dump())
+    except ValueError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
+
+
+@app.put("/api/v1/soggetti/{soggetto_id}", response_model=SoggettoOut)
+def aggiorna_soggetto(
+    soggetto_id: int,
+    payload: SoggettoUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna i dati anagrafici e i ruoli di un soggetto."""
+    esistente = soggetti_service.trova_soggetto(user["tenant_id"], soggetto_id)
+    if not esistente:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Anagrafica non trovata")
+
+    dati = {
+        campo: esistente[campo]
+        for campo in (
+            "denominazione",
+            "tipo_soggetto",
+            "nome",
+            "cognome",
+            "partita_iva",
+            "codice_fiscale",
+            "indirizzo",
+            "numero_civico",
+            "cap",
+            "citta",
+            "provincia",
+            "paese",
+            "email",
+            "telefono",
+            "codice_destinatario",
+            "pec",
+            "ruolo_cliente",
+            "ruolo_fornitore",
+            "flag1_ing_merce",
+            "flag2_inventario",
+            "attivo",
+        )
+    }
+    dati.update(payload.model_dump(exclude_unset=True))
+    try:
+        aggiornato = soggetti_service.aggiorna_soggetto(
+            user["tenant_id"], soggetto_id, dati
+        )
+    except FornitoreConStoricoError as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
+    if not aggiornato:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Anagrafica non trovata")
+    return aggiornato
+
+
+@app.delete(
+    "/api/v1/soggetti/{soggetto_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def disattiva_soggetto(
+    soggetto_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Disattiva l'anagrafica senza cancellare lo storico documentale."""
+    if not soggetti_service.disattiva_soggetto(user["tenant_id"], soggetto_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Anagrafica non trovata")
+
+
 @app.get("/api/v1/fornitori", response_model=list[FornitoreOut])
 def lista_fornitori(user: dict = Depends(auth.get_current_user)):
     """Elenco fornitori del tenant corrente."""
@@ -469,6 +561,7 @@ def lista_fornitori(user: dict = Depends(auth.get_current_user)):
     return [
         FornitoreOut(
             id=f.id,
+            soggetto_id=f.soggetto_id,
             azienda=f.azienda,
             flag1_ing_merce=f.flag1_ing_merce,
             flag2_inventario=f.flag2_inventario,
@@ -491,6 +584,7 @@ def crea_fornitore(
     )
     return FornitoreOut(
         id=nuovo.id,
+        soggetto_id=nuovo.soggetto_id,
         azienda=nuovo.azienda,
         flag1_ing_merce=nuovo.flag1_ing_merce,
         flag2_inventario=nuovo.flag2_inventario,
@@ -517,6 +611,7 @@ def aggiorna_fornitore(
     )
     return FornitoreOut(
         id=fornitore.id,
+        soggetto_id=fornitore.soggetto_id,
         azienda=fornitore.azienda,
         flag1_ing_merce=fornitore.flag1_ing_merce,
         flag2_inventario=fornitore.flag2_inventario,
@@ -617,14 +712,20 @@ def conferma_ingresso_merce(
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
     """Salva tutte le righe dell'ingresso nel tenant autenticato."""
-    movimenti = ingresso_merce_service.salva_movimenti(
-        prog_acq=payload.prog_acq,
-        data=payload.data,
-        num_ddt=payload.num_ddt,
-        fornitore=payload.fornitore,
-        righe=payload.righe,
-        tenant_id=user["tenant_id"],
-    )
+    try:
+        movimenti = ingresso_merce_service.salva_movimenti(
+            prog_acq=payload.prog_acq,
+            data=payload.data,
+            num_ddt=payload.num_ddt,
+            fornitore_id=payload.fornitore_id,
+            righe=payload.righe,
+            tenant_id=user["tenant_id"],
+        )
+    except FornitoreNonValido as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Fornitore non trovato, disattivato o non abilitato all'ingresso merce",
+        ) from error
     return {"inseriti": len(movimenti)}
 
 
@@ -642,9 +743,14 @@ def registra_ingresso_tracciato(
             tenant_id=user["tenant_id"],
             data=payload.data,
             numero_ddt=payload.numero_ddt,
-            fornitore=payload.fornitore,
+            fornitore_id=payload.fornitore_id,
             righe=payload.righe,
         )
+    except FornitoreNonValido as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Fornitore non trovato, disattivato o non abilitato all'ingresso merce",
+        ) from error
     except tracciabilita_repo.ArticoloNonTrovato as error:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,

@@ -47,19 +47,20 @@ def salva_movimento(movimento):
     return mov_repo.save(movimento)
 
 
-def salva_movimenti(prog_acq, data, num_ddt, fornitore, righe, tenant_id):
+def salva_movimenti(prog_acq, data, num_ddt, fornitore_id, righe, tenant_id):
     """Salva atomicamente le righe di un ingresso per il tenant corrente."""
     movimenti = [
         MovIngressoMerce(
             prog_acq=prog_acq,
             data=data,
             num_ddt=num_ddt,
-            fornitore=fornitore,
+            fornitore="",
             taglio=riga.taglio,
             peso_i=str(riga.peso),
             peso_f=str(riga.peso),
             lotto_chiuso="no",
             id_merc=riga.id_merc,
+            fornitore_id=fornitore_id,
         )
         for riga in righe
     ]

@@ -2,6 +2,7 @@ import { api } from "../api/client.js";
 import { $, esc } from "../core/dom.js";
 
 let articoliCache = [];
+let soggettiCache = [];
 
 async function renderTable(tbodyId, endpoint, columns, emptyLabel, colSpan) {
   const tbody = $(tbodyId);
@@ -114,12 +115,51 @@ export const loadReparti = () => renderTable("reparti-tbody", "/api/v1/reparti",
     <button class="btn danger" data-action="delete-reparto" data-id="${esc(item.id)}">Elimina</button>
   </td>`, "Nessun reparto", 5);
 
-export const loadFornitori = () => renderTable("fornitori-tbody", "/api/v1/fornitori", (item) => `
-  <td>${esc(item.id)}</td><td>${esc(item.azienda)}</td><td>${esc(item.flag1_ing_merce ? "Sì" : "No")}</td>
-  <td>${esc(item.flag2_inventario ? "Sì" : "No")}</td><td class="row-actions">
-    <button class="btn ghost" data-action="edit-fornitore" data-id="${esc(item.id)}">Modifica</button>
-    <button class="btn danger" data-action="delete-fornitore" data-id="${esc(item.id)}">Elimina</button>
-  </td>`, "Nessun fornitore", 5);
+function renderSoggetti() {
+  const search = $("anagrafiche-search").value.trim().toLocaleLowerCase("it");
+  const ruolo = $("anagrafiche-ruolo").value;
+  const stato = $("anagrafiche-stato").value;
+  const filtered = soggettiCache.filter((item) => {
+    const matchesText = [
+      item.denominazione,
+      item.codice_fiscale,
+      item.partita_iva,
+    ].some((value) => String(value ?? "").toLocaleLowerCase("it").includes(search));
+    const matchesRole = !ruolo || item[`ruolo_${ruolo}`];
+    const matchesStatus = !stato || item.attivo === (stato === "attivo");
+    return matchesText && matchesRole && matchesStatus;
+  });
+  const tbody = $("fornitori-tbody");
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nessuna anagrafica trovata</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map((item) => {
+    const ruoli = [
+      item.ruolo_cliente ? "Cliente" : "",
+      item.ruolo_fornitore ? "Fornitore" : "",
+    ].filter(Boolean).join(" · ");
+    return `<tr>
+      <td>${esc(item.id)}</td><td>${esc(item.denominazione)}</td><td>${esc(ruoli)}</td>
+      <td>${esc(item.citta ?? "")}</td><td>${esc(item.partita_iva ?? "")}</td>
+      <td>${item.attivo ? "Attiva" : "Disattivata"}</td><td class="row-actions">
+        <button class="btn ghost" data-action="edit-fornitore" data-id="${esc(item.id)}">Modifica</button>
+        ${item.attivo
+          ? `<button class="btn danger" data-action="delete-fornitore" data-id="${esc(item.id)}">Disattiva</button>`
+          : `<button class="btn ghost" data-action="activate-soggetto" data-id="${esc(item.id)}">Riattiva</button>`}
+      </td></tr>`;
+  }).join("");
+}
+
+export const loadFornitori = async () => {
+  const tbody = $("fornitori-tbody");
+  try {
+    soggettiCache = await api("/api/v1/soggetti");
+    renderSoggetti();
+  } catch (error) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${esc(error.message)}</td></tr>`;
+  }
+};
 
 async function editDip(id) {
   try {
@@ -301,31 +341,125 @@ function salvaReparto() {
 function nuovoFornitore() {
   $("fornitori-id").value = "";
   $("fornitori-azienda").value = "";
+  $("fornitori-tipo").value = "azienda";
+  $("fornitori-nome").value = "";
+  $("fornitori-cognome").value = "";
+  $("fornitori-role-cliente").checked = false;
+  $("fornitori-role-fornitore").checked = true;
+  $("fornitori-partita-iva").value = "";
+  $("fornitori-codice-fiscale").value = "";
+  $("fornitori-indirizzo").value = "";
+  $("fornitori-civico").value = "";
+  $("fornitori-cap").value = "";
+  $("fornitori-citta").value = "";
+  $("fornitori-provincia").value = "";
+  $("fornitori-paese").value = "Italia";
+  $("fornitori-email").value = "";
+  $("fornitori-telefono").value = "";
+  $("fornitori-sdi").value = "";
+  $("fornitori-pec").value = "";
   $("fornitori-flag1").checked = false;
   $("fornitori-flag2").checked = false;
-  $("fornitori-form-title").textContent = "Nuovo fornitore";
+  $("fornitori-attivo").checked = true;
+  aggiornaCampiFornitore();
+  $("fornitori-form-title").textContent = "Nuova anagrafica";
   $("fornitori-error").textContent = "";
   $("fornitori-form").style.display = "block";
 }
 
 async function editFornitore(id) {
   try {
-    const item = (await api("/api/v1/fornitori")).find((row) => row.id === id);
+    const item = (await api("/api/v1/soggetti")).find((row) => row.id === id);
     if (!item) return;
     $("fornitori-id").value = item.id;
-    $("fornitori-azienda").value = item.azienda;
+    $("fornitori-azienda").value = item.denominazione;
+    $("fornitori-tipo").value = item.tipo_soggetto;
+    $("fornitori-nome").value = item.nome ?? "";
+    $("fornitori-cognome").value = item.cognome ?? "";
+    $("fornitori-role-cliente").checked = item.ruolo_cliente;
+    $("fornitori-role-fornitore").checked = item.ruolo_fornitore;
+    $("fornitori-partita-iva").value = item.partita_iva ?? "";
+    $("fornitori-codice-fiscale").value = item.codice_fiscale ?? "";
+    $("fornitori-indirizzo").value = item.indirizzo ?? "";
+    $("fornitori-civico").value = item.numero_civico ?? "";
+    $("fornitori-cap").value = item.cap ?? "";
+    $("fornitori-citta").value = item.citta ?? "";
+    $("fornitori-provincia").value = item.provincia ?? "";
+    $("fornitori-paese").value = item.paese ?? "";
+    $("fornitori-email").value = item.email ?? "";
+    $("fornitori-telefono").value = item.telefono ?? "";
+    $("fornitori-sdi").value = item.codice_destinatario ?? "";
+    $("fornitori-pec").value = item.pec ?? "";
     $("fornitori-flag1").checked = Boolean(item.flag1_ing_merce);
     $("fornitori-flag2").checked = Boolean(item.flag2_inventario);
-    $("fornitori-form-title").textContent = `Modifica fornitore #${item.id}`;
+    $("fornitori-attivo").checked = item.attivo;
+    aggiornaCampiFornitore();
+    $("fornitori-form-title").textContent = `Modifica anagrafica #${item.id}`;
     $("fornitori-error").textContent = "";
     $("fornitori-form").style.display = "block";
   } catch (error) { $("fornitori-error").textContent = error.message; }
 }
 
+function aggiornaCampiFornitore() {
+  $("fornitori-operativo").hidden = !$("fornitori-role-fornitore").checked;
+}
+
 function salvaFornitore() {
   const id = $("fornitori-id").value;
-  return saveResource({ id, endpoint: "/api/v1/fornitori", formId: "fornitori-form", errorId: "fornitori-error", reload: loadFornitori,
-    payload: { azienda: $("fornitori-azienda").value, flag1_ing_merce: $("fornitori-flag1").checked ? 1 : 0, flag2_inventario: $("fornitori-flag2").checked ? 1 : 0 } });
+  return saveResource({
+    id,
+    endpoint: "/api/v1/soggetti",
+    formId: "fornitori-form",
+    errorId: "fornitori-error",
+    reload: loadFornitori,
+    payload: {
+      denominazione: $("fornitori-azienda").value.trim(),
+      tipo_soggetto: $("fornitori-tipo").value,
+      nome: $("fornitori-nome").value.trim() || null,
+      cognome: $("fornitori-cognome").value.trim() || null,
+      partita_iva: $("fornitori-partita-iva").value.trim() || null,
+      codice_fiscale: $("fornitori-codice-fiscale").value.trim() || null,
+      indirizzo: $("fornitori-indirizzo").value.trim() || null,
+      numero_civico: $("fornitori-civico").value.trim() || null,
+      cap: $("fornitori-cap").value.trim() || null,
+      citta: $("fornitori-citta").value.trim() || null,
+      provincia: $("fornitori-provincia").value.trim() || null,
+      paese: $("fornitori-paese").value.trim() || null,
+      email: $("fornitori-email").value.trim() || null,
+      telefono: $("fornitori-telefono").value.trim() || null,
+      codice_destinatario: $("fornitori-sdi").value.trim() || null,
+      pec: $("fornitori-pec").value.trim() || null,
+      ruolo_cliente: $("fornitori-role-cliente").checked,
+      ruolo_fornitore: $("fornitori-role-fornitore").checked,
+      flag1_ing_merce: $("fornitori-flag1").checked,
+      flag2_inventario: $("fornitori-flag2").checked,
+      attivo: $("fornitori-attivo").checked,
+    },
+  });
+}
+
+async function riattivaSoggetto(id) {
+  try {
+    const item = (await api("/api/v1/soggetti")).find((row) => row.id === id);
+    if (!item) return;
+    await api(`/api/v1/soggetti/${item.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ ...item, attivo: true }),
+    });
+    await loadFornitori();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function disattivaSoggetto(id) {
+  if (!confirm(`Disattivare l'anagrafica #${id}?`)) return;
+  try {
+    await api(`/api/v1/soggetti/${id}`, { method: "DELETE" });
+    await loadFornitori();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 function bindForm(newButtonId, saveButtonId, cancelButtonId, formId, createHandler, saveHandler) {
@@ -346,7 +480,8 @@ export function initAnagrafiche() {
     "edit-reparto": editReparto,
     "delete-reparto": (id) => deleteResource("/api/v1/reparti", id, "il reparto", loadReparti),
     "edit-fornitore": editFornitore,
-    "delete-fornitore": (id) => deleteResource("/api/v1/fornitori", id, "il fornitore", loadFornitori),
+    "delete-fornitore": disattivaSoggetto,
+    "activate-soggetto": riattivaSoggetto,
   };
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-action]");
@@ -359,4 +494,8 @@ export function initAnagrafiche() {
   bindForm("btn-nuovo-merc", "btn-save-merc", "btn-cancel-merc", "merc-form", nuovaMerc, salvaMerc);
   bindForm("btn-nuovo-reparto", "btn-save-reparto", "btn-cancel-reparto", "reparti-form", nuovoReparto, salvaReparto);
   bindForm("btn-nuovo-fornitore", "btn-save-fornitore", "btn-cancel-fornitore", "fornitori-form", nuovoFornitore, salvaFornitore);
+  $("fornitori-role-fornitore").addEventListener("change", aggiornaCampiFornitore);
+  $("anagrafiche-search").addEventListener("input", renderSoggetti);
+  $("anagrafiche-ruolo").addEventListener("change", renderSoggetti);
+  $("anagrafiche-stato").addEventListener("change", renderSoggetti);
 }

@@ -115,7 +115,7 @@ function renderFornitori() {
 
   fornitori.forEach((fornitore) => {
     const option = document.createElement("option");
-    option.value = String(fornitore.id);
+    option.value = String(fornitore.soggetto_id);
     option.textContent = fornitore.azienda;
     select.appendChild(option);
   });
@@ -348,7 +348,7 @@ export function initIngressoMerce() {
         body: JSON.stringify({
           data: $("ingress-data").value,
           numero_ddt: $("ingress-ddt").value.trim(),
-          fornitore: nomeFornitoreSelezionato(),
+          fornitore_id: Number($("ingress-fornitore").value),
           righe: righeIngresso.map((riga) => ({
             articolo_id: Number(riga.articoloId),
             quantita: riga.quantita.toFixed(3),

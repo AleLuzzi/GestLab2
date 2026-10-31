@@ -29,6 +29,11 @@ class FakeCursor:
 
     def execute(self, query, params):
         self.statements.append((query, params))
+        if not query.startswith("SELECT") and not query.startswith("UPDATE progressivi"):
+            self.rowcount = 1
+
+    def fetchone(self):
+        return (1, "Fornitore")
 
 
 class FakeConnection:
@@ -53,7 +58,7 @@ class IngressoMerceTests(unittest.TestCase):
             prog_acq="12A",
             data="2026-10-03",
             num_ddt="DDT123",
-            fornitore="Fornitore",
+            fornitore_id=1,
             righe=[{"taglio": "Costata", "peso": "12.5", "id_merc": 10}],
         )
         self.assertEqual(payload.data, datetime.date(2026, 10, 3))
@@ -62,7 +67,7 @@ class IngressoMerceTests(unittest.TestCase):
             IngressoMerceCreate(
                 prog_acq="12A",
                 data="2026-10-03",
-                fornitore="Fornitore",
+                fornitore_id=1,
                 righe=[{"taglio": "Costata", "peso": "0", "id_merc": 10}],
             )
 
@@ -74,7 +79,7 @@ class IngressoMerceTests(unittest.TestCase):
         )()
         with patch.object(ingresso_merce_repo, "insert_many", return_value=[]) as insert:
             ingresso_merce.salva_movimenti(
-                "12A", datetime.date(2026, 10, 3), "DDT123", "Fornitore", [row], 42
+                "12A", datetime.date(2026, 10, 3), "DDT123", 1, [row], 42
             )
 
         movimenti, tenant_id = insert.call_args.args
@@ -83,15 +88,16 @@ class IngressoMerceTests(unittest.TestCase):
         self.assertIsInstance(movimenti[0], MovIngressoMerce)
         self.assertEqual(
             movimenti[0].params_insert(),
-            ("12A", datetime.date(2026, 10, 3), "DDT123", "Fornitore",
+            ("12A", datetime.date(2026, 10, 3), "DDT123", "",
              "Costata", "12.5", "12.5", "no", 10),
         )
+        self.assertEqual(movimenti[0].fornitore_id, 1)
 
     def test_api_passes_authenticated_tenant_to_service(self):
         payload = IngressoMerceCreate(
             prog_acq="12A",
             data="2026-10-03",
-            fornitore="Fornitore",
+            fornitore_id=1,
             righe=[{"taglio": "Costata", "peso": "12.5", "id_merc": 10}],
         )
         with patch(
@@ -121,17 +127,18 @@ class IngressoMerceTests(unittest.TestCase):
             peso_f="12.5",
             lotto_chiuso="no",
             id_merc=10,
+            fornitore_id=1,
         )
         with patch.object(ingresso_merce_repo, "connection", fake_connection):
             saved = ingresso_merce_repo.insert_many([movement, movement], tenant_id=42)
 
         self.assertEqual(len(saved), 2)
         self.assertIn("tenant_id", cursor.query)
-        self.assertEqual(cursor.rows[0][-1], 42)
-        self.assertEqual(cursor.rows[1][-1], 42)
-        self.assertIn("UPDATE progressivi", cursor.statements[1][0])
-        self.assertIn("prog_acq = prog_acq + 1", cursor.statements[1][0])
-        self.assertEqual(cursor.statements[1][1], (42,))
+        self.assertEqual(cursor.rows[0][-2], 42)
+        self.assertEqual(cursor.rows[1][-2], 42)
+        self.assertIn("UPDATE progressivi", cursor.statements[2][0])
+        self.assertIn("prog_acq = prog_acq + 1", cursor.statements[2][0])
+        self.assertEqual(cursor.statements[2][1], (42,))
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
 

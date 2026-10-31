@@ -4,6 +4,8 @@ from collections import defaultdict
 from decimal import Decimal
 
 from core.db import connection
+from core.repositories import soggetti as soggetti_repo
+from core.repositories.ingresso_merce_repo import FornitoreNonValido
 
 
 class ArticoloNonTrovato(Exception):
@@ -195,6 +197,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
             "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
             "l.lavorazione_id, d.data_ingresso, d.numero_ddt, d.fornitore, "
+            "d.fornitore_id, "
             "w.data_lavorazione, w.descrizione, "
             "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore) "
             "FROM lotti l "
@@ -234,6 +237,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "data": row[12],
                 "numero_ddt": row[13],
                 "fornitore": row[14],
+                "fornitore_id": row[15],
             }
         cursor.execute(
             "SELECT tipo, quantita_delta, creato_il FROM movimenti_lotto "
@@ -301,9 +305,9 @@ def dettaglio_lotto(tenant_id, lotto_id):
             ]
             risultato["lavorazione"] = {
                 "id": row[11],
-                "data": row[15],
-                "descrizione": row[16],
-                "operatore": row[17],
+                "data": row[16],
+                "descrizione": row[17],
+                "operatore": row[18],
                 "input": input_rows,
                 "output": output_rows,
                 "scarti": scarti,
@@ -334,11 +338,17 @@ def _prossimo_progressivo(cursor, tenant_id, tipo_lotto):
     return numero
 
 
-def registra_ingresso(tenant_id, data, numero_ddt, fornitore, righe):
+def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
     """Registra un documento e crea un lotto A distinto per ogni sua riga."""
     with connection() as conn:
         cursor = conn.cursor()
         try:
+            fornitore = soggetti_repo.fornitore_abilitato(
+                cursor, tenant_id, fornitore_id
+            )
+            if not fornitore:
+                raise FornitoreNonValido
+
             articolo_ids = sorted({riga.articolo_id for riga in righe})
             placeholders = ", ".join(["%s"] * len(articolo_ids))
             cursor.execute(
@@ -352,9 +362,15 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore, righe):
 
             cursor.execute(
                 "INSERT INTO documenti_ingresso "
-                "(tenant_id, data_ingresso, numero_ddt, fornitore) "
-                "VALUES (%s, %s, %s, %s)",
-                (tenant_id, data, numero_ddt, fornitore),
+                "(tenant_id, data_ingresso, numero_ddt, fornitore, fornitore_id) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (
+                    tenant_id,
+                    data,
+                    numero_ddt,
+                    fornitore["denominazione"],
+                    fornitore_id,
+                ),
             )
             documento_id = cursor.lastrowid
             lotti_creati = []

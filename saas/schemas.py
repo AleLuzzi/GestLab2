@@ -139,7 +139,7 @@ class IngressoTracciatoRigaCreate(BaseModel):
 class IngressoTracciatoCreate(BaseModel):
     data: date
     numero_ddt: str = Field(default="", max_length=40)
-    fornitore: str = Field(..., min_length=1, max_length=120)
+    fornitore_id: int = Field(..., gt=0)
     righe: list[IngressoTracciatoRigaCreate] = Field(..., min_length=1)
 
 
@@ -209,9 +209,109 @@ class FornitoreUpdate(BaseModel):
 
 class FornitoreOut(BaseModel):
     id: int | None = None
+    soggetto_id: int | None = None
     azienda: str
     flag1_ing_merce: int = 0
     flag2_inventario: int = 0
+
+
+class SoggettoCreate(BaseModel):
+    denominazione: str = Field(..., min_length=1, max_length=255)
+    tipo_soggetto: str = Field(default="azienda", max_length=20)
+    nome: str | None = Field(default=None, max_length=100)
+    cognome: str | None = Field(default=None, max_length=100)
+    partita_iva: str | None = Field(default=None, max_length=20)
+    codice_fiscale: str | None = Field(default=None, max_length=20)
+    indirizzo: str | None = Field(default=None, max_length=255)
+    numero_civico: str | None = Field(default=None, max_length=20)
+    cap: str | None = Field(default=None, max_length=20)
+    citta: str | None = Field(default=None, max_length=100)
+    provincia: str | None = Field(default=None, max_length=100)
+    paese: str | None = Field(default="Italia", max_length=100)
+    email: str | None = Field(default=None, max_length=255)
+    telefono: str | None = Field(default=None, max_length=30)
+    codice_destinatario: str | None = Field(default=None, max_length=7)
+    pec: str | None = Field(default=None, max_length=255)
+    ruolo_cliente: bool = False
+    ruolo_fornitore: bool = False
+    flag1_ing_merce: bool = False
+    flag2_inventario: bool = False
+    attivo: bool = True
+
+    @field_validator("denominazione")
+    @classmethod
+    def denominazione_non_vuota(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("La denominazione è obbligatoria.")
+        return value
+
+    @field_validator("tipo_soggetto")
+    @classmethod
+    def tipo_soggetto_valido(cls, value):
+        if value not in {"azienda", "persona"}:
+            raise ValueError("Il tipo soggetto deve essere 'azienda' o 'persona'.")
+        return value
+
+
+class SoggettoUpdate(BaseModel):
+    denominazione: str | None = Field(default=None, min_length=1, max_length=255)
+    tipo_soggetto: str | None = Field(default=None, max_length=20)
+    nome: str | None = Field(default=None, max_length=100)
+    cognome: str | None = Field(default=None, max_length=100)
+    partita_iva: str | None = Field(default=None, max_length=20)
+    codice_fiscale: str | None = Field(default=None, max_length=20)
+    indirizzo: str | None = Field(default=None, max_length=255)
+    numero_civico: str | None = Field(default=None, max_length=20)
+    cap: str | None = Field(default=None, max_length=20)
+    citta: str | None = Field(default=None, max_length=100)
+    provincia: str | None = Field(default=None, max_length=100)
+    paese: str | None = Field(default=None, max_length=100)
+    email: str | None = Field(default=None, max_length=255)
+    telefono: str | None = Field(default=None, max_length=30)
+    codice_destinatario: str | None = Field(default=None, max_length=7)
+    pec: str | None = Field(default=None, max_length=255)
+    ruolo_cliente: bool | None = None
+    ruolo_fornitore: bool | None = None
+    flag1_ing_merce: bool | None = None
+    flag2_inventario: bool | None = None
+    attivo: bool | None = None
+
+    @field_validator("denominazione")
+    @classmethod
+    def denominazione_non_vuota(cls, value):
+        if value is None:
+            raise ValueError("La denominazione è obbligatoria.")
+        value = value.strip()
+        if not value:
+            raise ValueError("La denominazione è obbligatoria.")
+        return value
+
+    @field_validator("tipo_soggetto")
+    @classmethod
+    def tipo_soggetto_valido(cls, value):
+        if value is None or value not in {"azienda", "persona"}:
+            raise ValueError("Il tipo soggetto deve essere 'azienda' o 'persona'.")
+        return value
+
+    @field_validator(
+        "ruolo_cliente",
+        "ruolo_fornitore",
+        "flag1_ing_merce",
+        "flag2_inventario",
+        "attivo",
+    )
+    @classmethod
+    def booleani_non_nulli(cls, value):
+        if value is None:
+            raise ValueError("I campi booleani non possono essere nulli.")
+        return value
+
+
+class SoggettoOut(SoggettoCreate):
+    id: int
+    tenant_id: int
+    fornitore_legacy_id: int | None = None
 
 
 # ------------------------------------------------------------------------- #
@@ -249,7 +349,7 @@ class IngressoMerceCreate(BaseModel):
     prog_acq: str = Field(..., min_length=1, max_length=5)
     data: date
     num_ddt: str = Field(default="", max_length=8)
-    fornitore: str = Field(..., min_length=1, max_length=50)
+    fornitore_id: int = Field(..., gt=0)
     righe: list[IngressoMerceRigaCreate] = Field(..., min_length=1)
 
 

@@ -73,6 +73,44 @@ CREATE TABLE IF NOT EXISTS `print_jobs` (
 -- 3. BUSINESS TABLES (multi-tenant, with tenant_id filtering)
 -- ---------------------------------------------------------------------------
 
+CREATE TABLE IF NOT EXISTS `soggetti` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `denominazione` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+  `tipo_soggetto` varchar(20) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'azienda',
+  `nome` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cognome` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `partita_iva` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `codice_fiscale` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `indirizzo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `numero_civico` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `cap` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `citta` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `provincia` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `paese` varchar(100) COLLATE utf8mb4_general_ci DEFAULT 'Italia',
+  `email` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `telefono` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `codice_destinatario` varchar(7) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pec` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attivo` tinyint(1) NOT NULL DEFAULT 1,
+  `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `aggiornato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_soggetti_tenant_id` (`tenant_id`, `id`),
+  KEY `idx_soggetti_partita_iva` (`tenant_id`, `partita_iva`),
+  CONSTRAINT `fk_soggetti_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `soggetti_ruoli` (
+  `tenant_id` bigint NOT NULL,
+  `soggetto_id` bigint NOT NULL,
+  `ruolo` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`tenant_id`, `soggetto_id`, `ruolo`),
+  CONSTRAINT `fk_soggetti_ruoli_soggetto` FOREIGN KEY (`tenant_id`, `soggetto_id`)
+    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 CREATE TABLE IF NOT EXISTS `reparti` (
   `ID` int NOT NULL AUTO_INCREMENT,
   `reparto` varchar(15) DEFAULT NULL,
@@ -96,12 +134,18 @@ CREATE TABLE IF NOT EXISTS `dipendenti` (
 
 CREATE TABLE IF NOT EXISTS `fornitori` (
   `ID` int NOT NULL AUTO_INCREMENT,
+  -- Compatibility mirror; the canonical value is soggetti.denominazione.
   `azienda` varchar(50) DEFAULT NULL,
   `flag1_ing_merce` int DEFAULT NULL,
   `flag2_inventario` int NOT NULL,
   `tenant_id` bigint DEFAULT NULL,
+  `soggetto_id` bigint DEFAULT NULL,
   PRIMARY KEY (`ID`),
-  KEY `idx_tenant_id` (`tenant_id`)
+  KEY `idx_tenant_id` (`tenant_id`),
+  UNIQUE KEY `uq_fornitori_tenant_id` (`tenant_id`, `ID`),
+  UNIQUE KEY `uq_fornitori_soggetto` (`tenant_id`, `soggetto_id`),
+  CONSTRAINT `fk_fornitori_soggetto` FOREIGN KEY (`tenant_id`, `soggetto_id`)
+    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `merceologie` (
@@ -189,7 +233,11 @@ CREATE TABLE IF NOT EXISTS `ingresso_merce` (
   `lotto_chiuso` varchar(2) DEFAULT NULL,
   `id_merc` int NOT NULL,
   `tenant_id` bigint DEFAULT NULL,
-  KEY `idx_tenant_id` (`tenant_id`)
+  `fornitore_id` bigint DEFAULT NULL,
+  KEY `idx_tenant_id` (`tenant_id`),
+  KEY `idx_ingresso_merce_fornitore` (`tenant_id`, `fornitore_id`),
+  CONSTRAINT `fk_ingresso_merce_fornitore` FOREIGN KEY (`tenant_id`, `fornitore_id`)
+    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `progressivi` (
@@ -209,12 +257,16 @@ CREATE TABLE IF NOT EXISTS `documenti_ingresso` (
   `data_ingresso` date NOT NULL,
   `numero_ddt` varchar(40) NOT NULL DEFAULT '',
   `fornitore` varchar(120) NOT NULL,
+  `fornitore_id` bigint DEFAULT NULL,
   `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_documenti_ingresso_tenant_id` (`tenant_id`, `id`),
   KEY `idx_documenti_ingresso_data` (`tenant_id`, `data_ingresso`),
+  KEY `idx_documenti_ingresso_fornitore` (`tenant_id`, `fornitore_id`),
   CONSTRAINT `fk_documenti_ingresso_tenant` FOREIGN KEY (`tenant_id`)
-    REFERENCES `tenant` (`id`) ON DELETE CASCADE
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_documenti_ingresso_fornitore` FOREIGN KEY (`tenant_id`, `fornitore_id`)
+    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lavorazioni` (

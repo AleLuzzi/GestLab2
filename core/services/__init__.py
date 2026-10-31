@@ -16,6 +16,7 @@ from . import (
     printing,
     progressivi,
     reparti,
+    soggetti,
     tagli,
     vendite,
 )
@@ -25,6 +26,7 @@ __all__ = [
     "progressivi",
     "reparti",
     "fornitori",
+    "soggetti",
     "tagli",
     "lotti",
     "ingresso_merce",

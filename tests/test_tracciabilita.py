@@ -57,7 +57,7 @@ class TracciabilitaTests(unittest.TestCase):
     def test_unexpected_ingress_error_is_logged_and_returns_reference(self):
         payload = IngressoTracciatoCreate(
             data="2026-10-03",
-            fornitore="Fornitore",
+            fornitore_id=1,
             righe=[{"articolo_id": 3, "quantita": "8.250"}],
         )
 
@@ -184,12 +184,14 @@ class TracciabilitaTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             IngressoTracciatoCreate(
                 data="2026-10-03",
-                fornitore="Fornitore",
+                fornitore_id=1,
                 righe=[{"articolo_id": 1, "quantita": "0"}],
             )
 
     def test_incoming_creates_A_lot_and_stock_movement_atomically(self):
         def handle(query, params):
+            if query.startswith("SELECT s.id, s.denominazione FROM soggetti s"):
+                return [(1, "Fornitore")]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(3, "kg")]
             if query.startswith("SELECT prog_acq"):
@@ -208,7 +210,7 @@ class TracciabilitaTests(unittest.TestCase):
                 tenant_id=42,
                 data="2026-10-03",
                 numero_ddt="DDT-1",
-                fornitore="Fornitore",
+                fornitore_id=1,
                 righe=[
                     type(
                         "Riga",
@@ -224,6 +226,39 @@ class TracciabilitaTests(unittest.TestCase):
         )
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
+        document_insert = next(
+            (params for query, params in cursor.statements
+             if query.startswith("INSERT INTO documenti_ingresso")),
+            None,
+        )
+        self.assertEqual(document_insert[3:], ("Fornitore", 1))
+
+    def test_incoming_rejects_supplier_outside_tenant_or_without_permission(self):
+        cursor = FakeCursor(lambda _query, _params: [])
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.FornitoreNonValido):
+                tracciabilita_repo.registra_ingresso(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    numero_ddt="DDT-1",
+                    fornitore_id=1,
+                    righe=[
+                        type(
+                            "Riga",
+                            (),
+                            {"articolo_id": 3, "quantita": Decimal("8.250")},
+                        )()
+                    ],
+                )
+
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
 
     def test_work_creates_V_lots_and_consumption_ledger(self):
         def handle(query, params):

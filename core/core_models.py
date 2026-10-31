@@ -180,18 +180,22 @@ class Progressivi:
 class Fornitore:
     """Record fornitore (tabella `fornitori`)."""
 
-    __slots__ = ("id", "azienda", "flag1_ing_merce", "flag2_inventario")
+    __slots__ = ("id", "azienda", "flag1_ing_merce", "flag2_inventario", "soggetto_id")
 
-    def __init__(self, id=None, azienda="", flag1_ing_merce=0, flag2_inventario=0):
+    def __init__(
+        self, id=None, azienda="", flag1_ing_merce=0, flag2_inventario=0, soggetto_id=None
+    ):
         self.id = id
         self.azienda = azienda
         self.flag1_ing_merce = int(flag1_ing_merce)
         self.flag2_inventario = int(flag2_inventario)
+        self.soggetto_id = soggetto_id
 
     @classmethod
     def from_row(cls, row):
         """Costruisce da una riga `SELECT * FROM fornitori`."""
-        return cls(row[0], row[1], row[2], row[3])
+        soggetto_id = row[4] if len(row) > 4 else None
+        return cls(row[0], row[1], row[2], row[3], soggetto_id)
 
     def params_insert(self):
         """Valori per INSERT INTO fornitori(azienda, flag1_ing_merce, flag2_inventario)."""
@@ -476,11 +480,12 @@ class MovIngressoMerce:
 
     __slots__ = (
         "prog_acq", "data", "num_ddt", "fornitore", "taglio",
-        "peso_i", "peso_f", "lotto_chiuso", "id_merc",
+        "peso_i", "peso_f", "lotto_chiuso", "id_merc", "fornitore_id",
     )
 
     def __init__(self, prog_acq=None, data=None, num_ddt="", fornitore=None,
-                 taglio="", peso_i=None, peso_f=None, lotto_chiuso="no", id_merc=None):
+                 taglio="", peso_i=None, peso_f=None, lotto_chiuso="no", id_merc=None,
+                 fornitore_id=None):
         self.prog_acq = prog_acq
         self.data = data
         self.num_ddt = num_ddt
@@ -490,6 +495,7 @@ class MovIngressoMerce:
         self.peso_f = peso_f
         self.lotto_chiuso = lotto_chiuso
         self.id_merc = id_merc
+        self.fornitore_id = fornitore_id
 
     @classmethod
     def from_row(cls, row):
@@ -498,13 +504,16 @@ class MovIngressoMerce:
             return None
         if len(row) == 9:
             data = row
+            fornitore_id = None
         elif len(row) == 10:
-            data = row[1:]
+            data = row[:9]
+            fornitore_id = row[9]
         else:
             raise ValueError(f"Riga non supportata per ingresso_merce: len(row)={len(row)}")
         return cls(
             prog_acq=data[0], data=data[1], num_ddt=data[2], fornitore=data[3],
             taglio=data[4], peso_i=data[5], peso_f=data[6], lotto_chiuso=data[7], id_merc=data[8],
+            fornitore_id=fornitore_id,
         )
 
     def params_insert(self):
@@ -523,13 +532,22 @@ class MovIngressoMerce:
     @classmethod
     def fetch_by_progressivo(cls, cursor, progressivo_acq):
         """Recupera tutti i movimenti di un dato `progressivo_acq`."""
-        cursor.execute("SELECT * FROM ingresso_merce WHERE progressivo_acq = %s", (progressivo_acq,))
+        cursor.execute(
+            "SELECT progressivo_acq, data_acq, documento, fornitore, prodotto, "
+            "quantita, residuo, lotto_chiuso, id_merc, fornitore_id "
+            "FROM ingresso_merce WHERE progressivo_acq = %s",
+            (progressivo_acq,),
+        )
         return [cls.from_row(row) for row in cursor.fetchall()]
 
     @classmethod
     def fetch_all(cls, cursor):
         """Recupera tutti i movimenti ordinati per data decrescente."""
-        cursor.execute("SELECT * FROM ingresso_merce ORDER BY data_acq DESC, progressivo_acq DESC")
+        cursor.execute(
+            "SELECT progressivo_acq, data_acq, documento, fornitore, prodotto, "
+            "quantita, residuo, lotto_chiuso, id_merc, fornitore_id "
+            "FROM ingresso_merce ORDER BY data_acq DESC, progressivo_acq DESC"
+        )
         return [cls.from_row(row) for row in cursor.fetchall()]
 
     @classmethod
@@ -543,7 +561,9 @@ class MovIngressoMerce:
             params = tuple(key)
         cursor.execute(
             """
-            SELECT * FROM ingresso_merce
+            SELECT progressivo_acq, data_acq, documento, fornitore, prodotto,
+                   quantita, residuo, lotto_chiuso, id_merc, fornitore_id
+            FROM ingresso_merce
             WHERE progressivo_acq = %s
               AND data_acq = %s
               AND documento = %s
@@ -562,23 +582,26 @@ class MovIngressoMerce:
     def save(self, cursor, conn):
         """Aggiorna il record corrente tramite `progressivo_acq`."""
         update_values = self.params_insert()
-        query_params = update_values + (self.prog_acq,)
         cursor.execute(
             """
             UPDATE ingresso_merce
             SET progressivo_acq = %s, data_acq = %s, documento = %s, fornitore = %s,
-                prodotto = %s, quantita = %s, residuo = %s, lotto_chiuso = %s, id_merc = %s
+                prodotto = %s, quantita = %s, residuo = %s, lotto_chiuso = %s,
+                id_merc = %s, fornitore_id = %s
             WHERE progressivo_acq = %s
             """,
-            query_params,
+            update_values + (self.fornitore_id, self.prog_acq),
         )
         conn.commit()
 
     def insert(self, cursor, conn):
         """Esegue INSERT del nuovo record."""
         cursor.execute(
-            "INSERT INTO ingresso_merce VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-            self.params_insert(),
+            "INSERT INTO ingresso_merce "
+            "(progressivo_acq, data_acq, documento, fornitore, prodotto, quantita, "
+            "residuo, lotto_chiuso, id_merc, tenant_id, fornitore_id) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL,%s)",
+            self.params_insert() + (self.fornitore_id,),
         )
         conn.commit()
 

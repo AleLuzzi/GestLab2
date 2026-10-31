@@ -61,6 +61,10 @@ saas/
 | POST | `/auth/refresh` | pubblico | Rinnova i token |
 | POST | `/api/v1/tenant` | admin | Crea tenant |
 | POST | `/api/v1/utenti` | admin | Crea utente nel tenant |
+| GET | `/api/v1/soggetti` | autenticato | Elenco anagrafiche clienti/fornitori |
+| POST | `/api/v1/soggetti` | admin/operatore | Crea anagrafica e assegna uno o entrambi i ruoli |
+| PUT | `/api/v1/soggetti/{id}` | admin/operatore | Aggiorna dati, ruoli e stato dell'anagrafica |
+| DELETE | `/api/v1/soggetti/{id}` | admin | Disattiva l'anagrafica senza cancellare lo storico |
 | GET | `/api/v1/dipendenti` | autenticato | Elenco dipendenti |
 | POST | `/api/v1/dipendenti` | admin/operatore | Crea dipendente |
 | PUT | `/api/v1/dipendenti/{id}` | admin/operatore | Aggiorna dipendente |
@@ -75,6 +79,23 @@ saas/
 | GET | `/agent/next-job` | token dispositivo | L'agent preleva il prossimo job |
 | POST | `/agent/{id}/done` | token dispositivo | L'agent segnala stampa completata |
 | POST | `/agent/{id}/error` | token dispositivo | L'agent segnala errore |
+
+## Anagrafiche clienti e fornitori
+
+I dati comuni sono memorizzati in `soggetti`; `soggetti_ruoli` consente di
+assegnare al medesimo soggetto il ruolo cliente, fornitore o entrambi. Le
+impostazioni di ingresso merce e inventario restano specifiche dei fornitori.
+I due flussi di ingresso accettano `fornitore_id` e salvano anche il nome
+visualizzato sul documento come snapshot storico.
+
+Per un database già esistente, il solo aggiornamento di
+`saas/init_database.sql` non aggiunge colonne alle tabelle create. Dopo un
+backup, applicare una volta
+`saas/migrations/20261031_soggetti_clienti_fornitori.sql` al database
+preesistente. Lo script conserva le denominazioni storiche e collega gli
+ingressi solo alle corrispondenze univoche; non eseguirlo su un database
+ricreato dal nuovo schema. Il bootstrap non esegue automaticamente questa
+migrazione.
 
 ## Coda di stampa e Local Print Agent
 

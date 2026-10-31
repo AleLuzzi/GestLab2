@@ -10,6 +10,7 @@ __all__ = [
     "lotti",
     "reparti",
     "fornitori",
+    "soggetti",
     "dipendenti",
     "tagli",
     "ingresso_merce_repo",
