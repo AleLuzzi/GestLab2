@@ -199,71 +199,9 @@ CREATE TABLE IF NOT EXISTS `progressivi` (
   UNIQUE KEY `uq_progressivi_tenant_id` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
-CREATE TABLE IF NOT EXISTS `lotti_vendita` (
-  `progressivo_ven` varchar(10) DEFAULT NULL,
-  `data_ven` date DEFAULT NULL,
-  `lotto_acq` varchar(10) DEFAULT NULL,
-  `prodotto` varchar(30) DEFAULT NULL,
-  `quantita` varchar(10) DEFAULT NULL,
-  `prod_origine` varchar(10) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `lotti_vendita_cucina` (
-  `Id` int NOT NULL AUTO_INCREMENT,
-  `progressivo_ven_c` varchar(10) DEFAULT NULL,
-  `prodotto` varchar(30) DEFAULT NULL,
-  `quantita` varchar(10) DEFAULT NULL,
-  `data_prod` date DEFAULT NULL,
-  `settimana` int DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
 -- ---------------------------------------------------------------------------
--- 4. REFERENCE/LEGACY TABLES
+-- 4. TRACEABILITY TABLES
 -- ---------------------------------------------------------------------------
-
-CREATE TABLE IF NOT EXISTS `ingredienti_base` (
-  `Id` int NOT NULL AUTO_INCREMENT,
-  `ingrediente_base` varchar(50) DEFAULT NULL,
-  `cod_ean` char(13) DEFAULT NULL,
-  `flag1_allergene` int DEFAULT NULL,
-  `merceologia` varchar(12) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `ingredienti` (
-  `settimana` int DEFAULT NULL,
-  `prodotto` varchar(30) DEFAULT NULL,
-  `quantita` varchar(6) DEFAULT NULL,
-  `data_utilizzo` date DEFAULT NULL,
-  `cod_ean` char(13) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `inventari` (
-  `Id` int NOT NULL AUTO_INCREMENT,
-  `data_rilevazione` varchar(10) DEFAULT NULL,
-  `prodID` int DEFAULT NULL,
-  `mercID` int DEFAULT NULL,
-  `peso_rilevato` varchar(10) DEFAULT NULL,
-  PRIMARY KEY (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `classi` (
-  `Id` int DEFAULT NULL,
-  `classe` varchar(14) DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
-CREATE TABLE IF NOT EXISTS `merceologie_old` (
-  `Id` int NOT NULL,
-  `merceologia` varchar(23) DEFAULT NULL,
-  `Id_Reparto` int DEFAULT NULL,
-  `flag1_inv` int DEFAULT NULL,
-  `flag2_taglio` int DEFAULT NULL,
-  `flag3_ing_base` int DEFAULT NULL,
-  PRIMARY KEY (`Id`),
-  KEY `Id` (`Id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
 
 CREATE TABLE IF NOT EXISTS `documenti_ingresso` (
   `id` bigint NOT NULL AUTO_INCREMENT,

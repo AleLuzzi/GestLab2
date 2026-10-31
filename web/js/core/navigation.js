@@ -55,9 +55,13 @@ export function initNavigation() {
   $("btn-back-home").addEventListener("click", showLanding);
   $("btn-back-from-ingresso").addEventListener("click", showLanding);
   $("btn-back-progressivi").addEventListener("click", () => switchView("configurazioni"));
+  $("btn-back-dipendenti").addEventListener("click", () => switchView("configurazioni"));
+  ["articoli", "merceologie", "reparti", "fornitori", "admin"].forEach((view) => {
+    $(`btn-back-${view}`).addEventListener("click", () => switchView("configurazioni"));
+  });
   document.querySelectorAll(".nav-item").forEach((button) =>
     button.addEventListener("click", () => switchView(button.dataset.view)));
-  document.querySelectorAll(".config-card").forEach((card) =>
+  document.querySelectorAll(".config-card[data-view]").forEach((card) =>
     card.addEventListener("click", () => switchView(card.dataset.view)));
   document.querySelectorAll(".landing-action[data-view]").forEach((button) =>
     button.addEventListener("click", () => switchView(button.dataset.view)));

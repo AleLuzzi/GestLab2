@@ -28,9 +28,10 @@ dei test e delle dipendenze prima di cancellare file.
   sono sorgenti tracciati, una copia vendorizzata necessaria o residui locali.
 - Il print agent SaaS (`saas/print_agent.py`) gestisce la stampa locale senza
   dipendere dalla UI Kivy: non va eliminato insieme alla UI.
-- I test `test_nuovo_lotto.py` e `test_ingresso_merce.py` verificano servizi,
-  repository, validazione e API, non sono da considerare test desktop solo per
-  il nome.
+- `test_ingresso_merce.py` verifica servizi, repository, validazione e API.
+  `test_nuovo_lotto.py` copriva invece il salvataggio dei lotti di vendita,
+  flusso escluso dal perimetro SaaS e non implementato nel codice corrente;
+  i relativi test obsoleti sono stati rimossi.
 
 ## Regole di sicurezza per la migrazione
 
@@ -136,9 +137,9 @@ flussi siano equivalenti sul piano operativo.
 - Esito: 30 test individuati; 27 passati e 3 errori, tutti in
   `tests/test_nuovo_lotto.py`. I test si aspettano
   `core.repositories.lotti.salva_lotti_vendita`, che non è presente nel
-  repository corrente. È un test legacy non allineato al codice, non una
-  dipendenza runtime desktop della SaaS; resta una anomalia nota e non è stata
-  cancellata né mascherata.
+  repository corrente. Era un test legacy non allineato al codice, non una
+  dipendenza runtime desktop della SaaS; i test sono stati successivamente
+  rimossi perché verificavano esclusivamente il flusso di vendita escluso.
 - `tests/test_saas_e2e.py` ricrea tabelle SaaS e non può essere eseguito sul DB
   configurato normalmente. È stato corretto il setup del test per sospendere i
   controlli FK durante il reset; il test legacy dei tagli è stato tolto
@@ -158,10 +159,9 @@ di escludere dal prodotto SaaS i flussi mancanti elencati sopra; non vanno
 trattati come funzioni da implementare prima della dismissione desktop. Il DB
 e2e temporaneo è stato isolato e la verifica automatica SaaS è passata.
 
-Il test legacy `test_nuovo_lotto.py` resta un'anomalia nota: i suoi tre errori
-sono stati riprodotti e risultano indipendenti dalla UI Kivy. Viene mantenuto
-per non eliminare copertura di logica condivisa; il gate di rimozione è stato
-esplicitamente derogato dall'utente, non considerato superato dai test.
+Il test legacy `test_nuovo_lotto.py` è stato rimosso: le sue tre verifiche
+coprivano un flusso di vendita non implementato e fuori dal perimetro SaaS,
+senza esercitare logica condivisa attiva.
 
 ## Fase 1 — Rendere la SaaS il percorso ufficiale
 
@@ -293,8 +293,7 @@ cancellato.
 Eseguire dall'ambiente pulito e, per i test con DB, su un database isolato:
 
 1. tutti i test unitari esistenti (`test_dipendenti.py`,
-   `test_ingresso_merce.py`, `test_nuovo_lotto.py`,
-   `test_tracciabilita.py`);
+   `test_ingresso_merce.py`, `test_tracciabilita.py`);
 2. bootstrap e test SaaS (`test_bootstrap.py`, `test_saas_e2e.py`) secondo le
    loro modalità documentate e senza puntare a dati reali;
 3. avvio dell'app FastAPI e verifica di `/health`, `/`, `/docs`, login e asset
@@ -341,10 +340,8 @@ già un harness adeguato.
   della web app, ma non sostituisce le prove su iPad/Safari e sulle periferiche.
 - Bootstrap dello schema ed e2e eseguiti su un database MySQL temporaneo
   isolato: **25 controlli superati**, database poi eliminato.
-- Suite unit eseguita escludendo il test legacy rotto: **27 test superati**.
-  `test_nuovo_lotto.py` è stato verificato separatamente e mantiene i 3 errori
-  già presenti nella baseline perché `core.repositories.lotti` non espone
-  `salva_lotti_vendita`; non sono stati introdotti dalla rimozione desktop.
+- Dopo la rimozione dei test obsoleti di vendita lotti, la suite unit completa
+  ha superato **27 test**.
 - `TestClient` non è stato usato perché l'ambiente pulito non include
   `httpx2`; lo smoke test è stato effettuato via richieste HTTP reali a Uvicorn,
   senza aggiungere dipendenze di test ai manifest runtime.

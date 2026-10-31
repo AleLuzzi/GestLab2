@@ -112,9 +112,8 @@ Tables are organized in sections:
    - `reparti`, `dipendenti`, `fornitori`, `merceologie`, `prodotti`, etc.
    - All include `tenant_id` column with `idx_tenant_id` index
 
-4. **Reference/Legacy Tables**
-   - `ingredienti_base`, `inventari`, `lotti_vendita_cucina`, etc.
-   - Kept for backward compatibility; may be archived later
+4. **Traceability Tables**
+   - `documenti_ingresso`, `lavorazioni`, `lotti`, and related movement/detail tables
 
 ## Migration Path for Existing Databases
 

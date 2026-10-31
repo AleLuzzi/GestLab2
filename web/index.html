@@ -94,10 +94,6 @@
             <span class="config-icon">🏢</span>
             <span class="config-name">Fornitori</span>
           </button>
-          <button class="config-card" data-view="progressivi" type="button">
-            <span class="config-icon">🔢</span>
-            <span class="config-name">Progressivi</span>
-          </button>
           <button class="config-card admin-only" data-view="admin" type="button">
             <span class="config-icon">🛡️</span>
             <span class="config-name">Admin</span>
@@ -208,7 +204,10 @@
       <section id="view-dipendenti" class="panel">
         <div class="panel-head">
           <h2>Dipendenti</h2>
-          <button id="btn-nuovo-dip" class="btn primary">Nuovo dipendente</button>
+          <div class="row">
+            <button id="btn-back-dipendenti" class="btn ghost" type="button">Torna a Configurazioni</button>
+            <button id="btn-nuovo-dip" class="btn primary">Nuovo dipendente</button>
+          </div>
         </div>
         <table class="table">
           <thead><tr><th>ID</th><th>Nome</th><th>Cognome</th><th>Email</th><th>Reparto</th><th>Azioni</th></tr></thead>
@@ -235,7 +234,10 @@
       <section id="view-articoli" class="panel">
         <div class="panel-head">
           <h2>Articoli</h2>
-          <button id="btn-nuovo-articolo" class="btn primary" type="button">Nuovo articolo</button>
+          <div class="row">
+            <button id="btn-back-articoli" class="btn ghost" type="button">Torna a Configurazioni</button>
+            <button id="btn-nuovo-articolo" class="btn primary" type="button">Nuovo articolo</button>
+          </div>
         </div>
         <table class="table">
           <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>Stato</th><th>Input lavorazione</th><th>Azioni</th></tr></thead>
@@ -268,7 +270,10 @@
       <section id="view-merceologie" class="panel">
         <div class="panel-head">
           <h2>Merceologie</h2>
-          <button id="btn-nuovo-merc" class="btn primary">Nuova merceologia</button>
+          <div class="row">
+            <button id="btn-back-merceologie" class="btn ghost" type="button">Torna a Configurazioni</button>
+            <button id="btn-nuovo-merc" class="btn primary">Nuova merceologia</button>
+          </div>
         </div>
         <table class="table">
           <thead><tr><th>ID</th><th>Nome</th><th>Reparto</th><th>Abilitato Inventario</th><th>Abilitato Taglio</th><th>Abilitato Ingrediente Base</th><th>Azioni</th></tr></thead>
@@ -296,7 +301,10 @@
       <section id="view-reparti" class="panel">
         <div class="panel-head">
           <h2>Reparti</h2>
-          <button id="btn-nuovo-reparto" class="btn primary">Nuovo reparto</button>
+          <div class="row">
+            <button id="btn-back-reparti" class="btn ghost" type="button">Torna a Configurazioni</button>
+            <button id="btn-nuovo-reparto" class="btn primary">Nuovo reparto</button>
+          </div>
         </div>
         <table class="table">
           <thead><tr><th>ID</th><th>Nome</th><th>Abilitato dipendenti</th><th>Abilitato prodotti</th><th>Azioni</th></tr></thead>
@@ -320,7 +328,10 @@
       <section id="view-fornitori" class="panel">
         <div class="panel-head">
           <h2>Fornitori</h2>
-          <button id="btn-nuovo-fornitore" class="btn primary">Nuovo fornitore</button>
+          <div class="row">
+            <button id="btn-back-fornitori" class="btn ghost" type="button">Torna a Configurazioni</button>
+            <button id="btn-nuovo-fornitore" class="btn primary">Nuovo fornitore</button>
+          </div>
         </div>
         <table class="table">
           <thead><tr><th>ID</th><th>Azienda</th><th>Abilitato ingresso merce</th><th>Abilitato inventario</th><th>Azioni</th></tr></thead>
@@ -377,9 +388,15 @@
         </div>
 
         <div class="trace-toolbar">
-          <div class="tabs" aria-label="Sezioni tracciabilità">
-            <button class="tab-btn" type="button" data-trace-tab="lotti" aria-selected="false">Lotti</button>
-            <button class="tab-btn active" type="button" data-trace-tab="lavorazione" aria-selected="true">Lavorazione</button>
+          <div class="config-grid trace-nav-grid" aria-label="Sezioni tracciabilità">
+            <button class="config-card trace-nav-card" type="button" data-trace-tab="lotti" aria-selected="false">
+              <span class="config-icon">📦</span>
+              <span class="config-name">Lotti</span>
+            </button>
+            <button class="config-card trace-nav-card active" type="button" data-trace-tab="lavorazione" aria-selected="true">
+              <span class="config-icon">⚙️</span>
+              <span class="config-name">Lavorazione</span>
+            </button>
           </div>
         </div>
 
@@ -537,7 +554,10 @@
 
       <!-- Admin -->
       <section id="view-admin" class="panel">
-        <h2>Admin</h2>
+        <div class="panel-head">
+          <h2>Admin</h2>
+          <button id="btn-back-admin" class="btn ghost" type="button">Torna a Configurazioni</button>
+        </div>
         <div class="form-card">
           <h3>Crea utente nel tenant</h3>
           <label>Email <input type="email" id="usr-email" /></label>
