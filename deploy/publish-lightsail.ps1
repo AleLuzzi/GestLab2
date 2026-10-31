@@ -14,7 +14,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Region = "eu-west-3a",
+    [string]$Region = "eu-central-1",
     [string]$InstanceName = "gestlab-test",
     [string]$StaticIpName = "",
     [string]$BundleId = "nano_3_0",

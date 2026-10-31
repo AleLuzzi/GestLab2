@@ -1,23 +1,21 @@
 # Piano di Integrazione Stampa (DDT, Scontrini) e Lettori Barcode in SaaS
 
 Documento di dettaglio che integra il piano generale `SAAS_MIGRATION_PLAN.md`
-(trasformazione GestLab2 da desktop a SaaS multi-tenant) con tre funzionalità
-critiche del laboratorio:
+con le funzionalità di stampa e barcode previste per la console SaaS:
 
 1. **Stampa Documenti di Trasporto (DDT)** — formato A4, carta bianca.
 2. **Stampa Scontrini / Ricevute** — stampa termica (ESC/POS), formati fiscali.
 3. **Lettori Barcode** — lettura EAN/QR sul punto vendita e in cucina.
 
-Questi tre elementi sono tra i più delicati in migrazione cloud perché
-dipendono da **hardware locale** (stampanti, lettori) e da **vincoli normativi**
-(scontrino, DDT). Il documento chiarisce come preservarli in un'architettura
-SaaS senza sacrificare l'esperienza dell'utente finale.
+Questi tre elementi dipendono da **hardware locale** (stampanti, lettori) e da
+**vincoli normativi** (scontrino, DDT). La console web è l'unica UI applicativa
+supportata; l'hardware è gestito da un Local Print Agent indipendente.
 
 ---
 
 ## 1. Perché stampa e barcode sono casi speciali nel SaaS
 
-| Aspetto | App desktop (Tkinter/Kivy) | SaaS web |
+| Aspetto | UI desktop legacy | SaaS web |
 |---|---|---|
 | Stampante DYMO/termica | Accesso diretto via `win32print`/`win32api` | Il browser NON accede direttamente all'hardware |
 | Scontrino fiscale | Generazione + stampa locale | Serve stampa locale o cloud printing |
@@ -27,54 +25,45 @@ SaaS senza sacrificare l'esperienza dell'utente finale.
 
 **Conclusione:** per queste funzionalità serve un **modello ibrido**:
 - **SaaS cloud** per la gestione dati, autenticazione, multi-tenant, report.
-- **Thin local agent o print spooler** per l'hardware fisico (stampanti, bilancia).
+- **Local Print Agent** per l'hardware fisico (stampanti; eventuale bilancia se
+  rientra nei requisiti supportati).
 
 ---
 
-## 2. Architettura consigliata: "SaaS + local print agent"
+## 2. Architettura scelta: "SaaS + Local Print Agent"
 
 ```
-┌──────────────────────────┐        ┌──────────────────────────┐
-│   Browser (Web App)      │        │   Client "sottile" local │
-│   - UI vendita/cucina    │        │   (Kivy refactorizzato)  │
-│   - inserimento EAN      │        │   oppure Tray Agent)     │
-└───────────┬──────────────┘        └───────────┬──────────────┘
-            │  HTTPS + JWT                        │  HTTPS + JWT
-            ▼                                    ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Backend SaaS (FastAPI/Django)              │
-│  - Auth multi-tenant          - API stoccaggio stampa       │
-│  - Gestione dipendenti/lotti  - Coda stampa (print queue)   │
-│  - Generazione PDF (DDT)      - Gestione scontrini          │
-├─────────────────────────────────────────────────────────────┤
-│  DB cloud multi-tenant (PostgreSQL) + Object Storage (S3)   │
-└─────────────────────────────────────────────────────────────┘
-            │ print job (job id)                       ▲ token
-            ▼                                          │
-┌──────────────────────────┐        ┌──────────────────────────┐
-│  Local Print Agent       │        │  Lettore Barcode (USB)   │
-│  - poll/websocket coda   │        │  Input HID = tastiera    │
-│  - stampa DYMO/termica   │        │  → Web App o Agent locale│
-│  - invio file bilancia   │        │  → lookup EAN su API     │
-└──────────────────────────┘        └──────────────────────────┘
+┌─────────────────────┐      HTTPS/JWT      ┌─────────────────────┐
+│ Browser / Web App   │ ──────────────────► │ FastAPI SaaS        │
+│ UI applicativa      │                      │ API + print queue   │
+└──────────┬──────────┘                      └──────────┬──────────┘
+           │ Scanner USB/HID                            │ job + token
+           └──── input tastiera                          ▼
+                                          ┌────────────────────────┐
+                                          │ Local Print Agent      │
+                                          │ PC del punto vendita   │
+                                          └───────────┬────────────┘
+                                                      │ USB/rete locale
+                                                      ▼
+                                             Stampante / hardware
 ```
 
 **Componenti chiave:**
 
 1. **Backend SaaS** — genera i documenti (PDF DDT, dati scontrino, etichette DYMO)
    e li mette in una **coda di stampa** per tenant.
-2. **Local Print Agent** — piccolo processo (o client Kivy refactorizzato) sul
-   PC del punto vendita: autenticato via JWT, **polling o WebSocket** sulla coda,
-   inoltra i job alla stampante fisica.
-3. **Lettore barcode** — funziona ovunque perché è un **keyboard-wedge** (digit
-   + `Enter`). La Web App o l'Agent catturano la stringa e chiamano l'API di lookup.
+2. **Local Print Agent** — processo sul PC del punto vendita, autenticato con
+   il token del dispositivo: esegue polling sulla coda e inoltra i job alla
+   stampante fisica. Non ospita né sostituisce la UI.
+3. **Lettore barcode** — uno scanner HID invia codice e `Enter` come una
+   tastiera; la console web cattura il valore e interroga l'API.
 
 ---
 
 ## 3. Stampa Documenti di Trasporto (DDT)
 
-### 3.1 Stato attuale (Tkinter)
-In `lotti_vendita.py` esiste già generazione PDF con **ReportLab**:
+### 3.1 Implementazione desktop legacy
+La UI desktop legacy in `lotti_vendita.py` generava PDF con **ReportLab**:
 - `SimpleDocTemplate` + `Table` per il dettaglio lotto.
 - `win32api.ShellExecute(None, "print", "traccia.pdf", ...)` per la stampa.
 - L'intestazione DDT (numero documento, fornitore, data) è già in
@@ -108,7 +97,7 @@ In `lotti_vendita.py` esiste già generazione PDF con **ReportLab**:
 
 ## 4. Stampa Scontrini / Ricevute
 
-### 4.1 Stato attuale
+### 4.1 Implementazione desktop legacy
 - Nel progetto originale esistono moduli di **etichette DYMO** (`lotti_vendita_cucina.py`)
   via ReportLab `canvas` su formato `54 x 101 mm`.
 - Non c'è ancora un modulo scontrino fiscale completo; va introdotto.
@@ -147,7 +136,7 @@ In `lotti_vendita.py` esiste già generazione PDF con **ReportLab**:
 
 ## 5. Lettori Barcode
 
-### 5.1 Stato attuale
+### 5.1 Dispositivo e console web
 - In `ingredienti.py` c'è il campo **EAN** (inserimento codice + pezzi/quantità).
 - Il lettore barcode è un dispositivo **USB/HID keyboard-wedge**: quando legge
   un codice invia i caratteri + `Enter`, esattamente come una tastiera.
@@ -236,16 +225,14 @@ condiviso) oppure essere replicata per schema (modello B). Vedi
 
 | # | Step | Priorità | Collegamento |
 |---|---|---|---|
-| 1 | Refactoring `controller_db.py` (pool + repository + `tenant_id`) | Alta | Fase 1/2 piano generale |
-| 2 | Backend FastAPI/Django con API auth + tenant | Alta | Fase 1 |
-| 3 | Service layer stampa: `services/printing.py` (DDT, etichette, scontrini) | Alta | Nuovo |
-| 4 | Service layer barcode: `services/barcode.py` (lookup EAN) | Alta | Nuovo |
-| 5 | Coda `print_jobs` + endpoint `POST /api/v1/print-jobs` | Media | Nuovo |
-| 6 | **Local Print Agent** (polling coda + stampa locale) | Media | Nuovo |
-| 7 | Web App: campo barcode HID + UI vendita | Media | Nuovo |
-| 8 | Migrazione dati per tenant + export | Media | Fase 9 |
-| 9 | Sicurezza, GDPR, audit (scontrini) | Media | Fase 5 |
-| 10 | Test, pilot, go-live | Bassa | Fase 10 |
+| # | Step | Stato |
+|---|---|---|
+| 1 | Layer DB, servizi e API multi-tenant | Presente; hardening continuo |
+| 2 | Generazione documenti, barcode EAN e coda `print_jobs` | Presente; collaudo funzionale da completare |
+| 3 | Local Print Agent | Presente; test sulle stampanti target pendente |
+| 4 | Console web e scanner HID | Implementazione presente; prova iPad/scanner pendente |
+| 5 | Vendita lotti e composizione menu | Fuori dal perimetro SaaS concordato |
+| 6 | Privacy, audit, migrazione dati e go-live | Da verificare per il rilascio |
 
 ---
 
@@ -260,8 +247,8 @@ condiviso) oppure essere replicata per schema (modello B). Vedi
    Agent**; senza di esso la stampa non è automatica nel SaaS.
 4. **Scontrino fiscale** → se richiesto, la stampa RT non può essere remota:
    richiede modulo certificato o server RT dedicato.
-5. **Lettore barcode HID** → gestire focus, debounce e validazione EAN; in caso
-   di client Kivy refactorizzato, gestire l'input come tastiera.
+5. **Lettore barcode HID** → gestire focus, debounce e validazione EAN nella
+   console web.
 
 ---
 
@@ -270,8 +257,8 @@ condiviso) oppure essere replicata per schema (modello B). Vedi
 - **Generazione PDF DDT**: ReportLab (già usato) — `services/printing/ddt.py`.
 - **Etichette DYMO**: ReportLab `canvas` su formato `54x101mm` oppure ZPL.
 - **Scontrini termici**: `python-escpos` (USB/network) o raw `win32print`.
-- **Local Print Agent**: Python leggero (FastAPI/WebSocket client + win32print)
-  oppure client Kivy refactorizzato (strada "Opzione B" del piano generale).
+- **Local Print Agent**: processo Python leggero che interroga la coda e usa il
+  backend locale di stampa; non dipende da Kivy.
 - **Barcode**: zero driver (HID keyboard-wedge); validazione EAN-13.
 - **Coda stampa**: DB `print_jobs` + polling/WebSocket; per volumi alti
   valutare Redis/Celery come worker.

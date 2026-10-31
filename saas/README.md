@@ -2,12 +2,14 @@
 
 Backend FastAPI multi-tenant che riutilizza il core applicativo (`core.services`,
 `core.repositories`) e l'architettura unificata della fusione GestLab2 + Laboratorio.
+La console web è l'unica interfaccia applicativa supportata; Kivy/Tkinter sono
+componenti legacy e non sono richiesti per lo sviluppo SaaS.
 
 ## Avvio
 
 ```bash
 # installa le dipendenze
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-web.txt
 
 # avvia il server di sviluppo
 python -m uvicorn saas.main:app --reload
@@ -31,6 +33,10 @@ necessario anche sui database già esistenti.
 > direttamente dal backend FastAPI. Include login, dashboard, gestione dipendenti,
 > lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di
 > stampa e pannello admin (utenti + dispositivi).
+
+La console attuale consente la consultazione dei lotti aperti e del menu. La
+chiusura/vendita lotti, la composizione del menu e il CRUD legacy dei tagli
+sono fuori dal perimetro SaaS scelto. L'interfaccia non supporta l'uso offline.
 
 ## Struttura
 
@@ -104,6 +110,7 @@ chiave `agent_token`) o dalla variabile d'ambiente `GESTLAB_AGENT_TOKEN`.
 
 Il `tenant_id` viene estratto dal JWT lato server (mai dal client). I
 repository del core (`core/repositories`) e i servizi (`core/services`)
-filtrano i dati per `tenant_id` (modello A: schema condiviso). Il
-`tenant_id` è **facoltativo** (`None` = nessun filtro, utile per la UI
-desktop Kivy/Tkinter esistente).
+filtrano i dati per `tenant_id` (modello A: schema condiviso). Gli endpoint SaaS
+ricavano il `tenant_id` dal token autenticato e non devono accettarlo dal client.
+Il parametro facoltativo `tenant_id=None` resta solo per compatibilità interna
+con componenti legacy; non è il percorso di accesso SaaS.

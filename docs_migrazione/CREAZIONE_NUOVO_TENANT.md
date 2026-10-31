@@ -7,7 +7,7 @@ Questa guida ti spiega come creare un nuovo tenant (cliente) nel sistema GestLab
 ## 📋 Prerequisiti
 
 - Accesso al backend SaaS di GestLab
-- Python 3.7+ installato
+- Python 3.10+ installato
 - Le variabili d'ambiente configurate (credenziali database)
 
 ---
@@ -258,7 +258,7 @@ python saas/crea_tenant.py
 
 Ora l'utente admin può accedere al sistema:
 
-1. Apri l'applicazione web/desktop
+1. Apri la console web SaaS
 2. Vai alla schermata di login
 3. Inserisci:
    - **Email:** admin@santanna.it

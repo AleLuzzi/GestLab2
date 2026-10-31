@@ -1,196 +1,131 @@
-# Istruzioni d'Uso — GestLab (SaaS + Desktop)
+# Istruzioni d'uso — GestLab SaaS
 
-Documento operativo per l'accesso alla **console web SaaS** (con credenziali)
-e per l'esecuzione della **versione desktop**.
-
----
+La console web SaaS è l'unica interfaccia applicativa supportata per lo
+sviluppo e l'uso di GestLab. Si accede da browser, inclusi i browser dei
+tablet supportati; non è richiesta l'installazione di Kivy o di un'app
+desktop. L'interfaccia richiede una connessione al server e non offre modalità
+offline.
 
 ## 1. Requisiti
 
-- **Python 3.10+** installato e nel PATH.
-- **MySQL** attivo e raggiungibile (le credenziali sono in `config.ini`,
-  sezione `[DataBase]`).
-- Installare le dipendenze:
+- Python 3.10+ per sviluppo e server.
+- MySQL/MariaDB raggiungibile, configurato tramite variabili d'ambiente o
+  `.env`; `config.ini` resta un fallback locale legacy.
+- Dipendenze backend:
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-web.txt
 ```
 
-> Se si usa un ambiente virtuale (consigliato):
-> ```bash
-> python -m venv venv
-> venv\Scripts\activate        # Windows
-> python -m pip install -r requirements.txt
-> ```
+In un ambiente virtuale (consigliato):
 
----
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements-web.txt
+```
 
-## 2. Console Web SaaS
+## 2. Avvio locale
 
-### 2.1 Avvio del server
+Dalla cartella principale del repository:
 
 ```bash
 python -m uvicorn saas.main:app --reload
 ```
 
-Il server parte su **http://localhost:8000/**.
+Il server usa `http://localhost:8000/`.
 
 | Risorsa | URL |
 |---|---|
-| **Console web** | http://localhost:8000/ |
-| API docs (OpenAPI) | http://localhost:8000/docs |
+| Console web | http://localhost:8000/ |
+| Documentazione API | http://localhost:8000/docs |
 | Health check | http://localhost:8000/health |
 
-### 2.2 Bootstrap del DB (prima volta)
+## 3. Preparare il database
 
-Al primo avvio è necessario creare tutte le tabelle (business + SaaS) e
-l'utente admin iniziale. Esegui (una sola volta, da terminale nella cartella
-del progetto):
+Per una nuova installazione, configura un database MySQL/MariaDB vuoto e
+dedicato, poi esegui:
 
 ```bash
 python -m saas.bootstrap
 ```
 
-Il comando:
-- Legge il file `saas/init_database.sql` (schema unificato).
-- Crea tutte le tabelle di business (dipendenti, fornitori, prodotti, reparti,
-  ecc.) con il supporto multi-tenant (colonna `tenant_id`).
-- Crea le tabelle SaaS (`tenant`, `utenti`, `dispositivi_stampa`, `print_jobs`).
-- Crea un tenant di default e un utente **admin** iniziale.
+Il bootstrap crea lo schema business e SaaS e un tenant/admin iniziale. Per
+istruzioni su credenziali iniziali e variabili d'ambiente consulta
+`core/env.py` e le guide di deploy. Non usare credenziali di sviluppo in
+produzione.
 
-> Il comando è **idempotente**: se le tabelle o l'utente esistono già, non li
-> ricrea. Puoi eseguirlo più volte senza problemi.
+**Non puntare i test a un database con dati da conservare.** Il test
+`tests/test_saas_e2e.py` ricrea alcune tabelle SaaS; va eseguito soltanto su
+un database usa-e-getta e isolato.
 
-> **Nota**: in precedenza erano necessari i comandi `bootstrap` + `migrate_tenant`.
-> Ora la migrazione è gestita direttamente dal file `init_database.sql`.
+## 4. Funzioni disponibili
 
-### 2.3 Credenziali di accesso
+La console web espone, in base al ruolo:
 
-Le credenziali iniziali (create dal bootstrap) sono:
+- ingresso merce;
+- consultazione dei lotti aperti e tracciabilità;
+- consultazione del menu;
+- gestione di dipendenti, reparti, merceologie e fornitori;
+- stampa di DDT, scontrini e etichette tramite la coda di stampa;
+- lookup barcode EAN;
+- amministrazione di utenti e dispositivi di stampa.
 
-| Campo | Valore |
-|---|---|
-| **Email** | `admin@gestlab.it` |
-| **Password** | `Admin123!` |
+La composizione del menu, la chiusura/vendita lotti e il CRUD legacy dei
+tagli non fanno parte del perimetro SaaS attuale e non sono funzioni supportate
+da queste istruzioni.
 
-Ruolo: **admin** (può gestire utenti, tenant e dispositivi di stampa).
+## 5. Barcode e stampa locale
 
-> ⚠️ **Importante**: queste sono credenziali di **sviluppo/test**. In
-> produzione vanno cambiate e gestite tramite variabili d'ambiente / Secret
-> Manager (vedi `core/env.py`). Puoi sovrascriverle al bootstrap con:
-> ```bash
-> $env:GESTLAB_ADMIN_EMAIL="admin@mio.laboratorio.it"
-> $env:GESTLAB_ADMIN_PASSWORD="PasswordFortissima1!"
-> python -m saas.bootstrap
-> ```
+Uno scanner USB/HID che si comporta come una tastiera può inserire il codice
+nel campo barcode della console. L'effettivo comportamento va verificato con
+lo scanner e il browser scelti, in particolare focus e tastiera virtuale su
+tablet.
 
-### 2.4 Come entrare
+Per stampare automaticamente su hardware locale:
 
-1. Apri nel browser: **http://localhost:8000/**
-2. Inserisci **Email** e **Password** indicate sopra.
-3. Clicca **Accedi**.
-4. Nella dashboard hai a disposizione (in base al ruolo):
-   - **Dipendenti**: crea, modifica, elimina (admin/operatore).
-   - **Lotti aperti**: elenco dei lotti del tenant corrente.
-   - **Menu**: prodotti raggruppati per merceologia.
-   - **Stampa**: genera DDT (PDF), scontrino (ESC/POS), etichetta DYMO (PDF).
-   - **Barcode**: lookup prodotto tramite codice EAN.
-   - **Coda di stampa**: lista dei job di stampa del tenant.
-   - **Admin**: crea utenti e registra dispositivi di stampa (Local Print Agent).
-
-### 2.5 Creare un altro utente / tenant
-
-Dal pannello **Admin** (solo ruolo `admin`) puoi creare nuovi **utenti** nel
-tuo tenant. Per creare un **nuovo tenant** si usa l'API:
-
-```bash
-curl -X POST http://localhost:8000/api/v1/tenant \
-  -H "Authorization: Bearer <TOKEN_ADMIN>" \
-  -H "Content-Type: application/json" \
-  -d '{"nome": "Nuovo Laboratorio", "piano": "basic"}'
-```
-
-### 2.6 Registrare un Local Print Agent
-
-Per la stampa automatica su hardware locale (DYMO, scontrino termico):
-
-1. Dal pannello **Admin** → **Dispositivi**, registra un dispositivo
-   (ottieni un token).
-2. Avvia l'agent sul PC del punto vendita:
+1. un admin registra un dispositivo dalla console e genera il token;
+2. sul PC collegato alla stampante si installano le dipendenze backend;
+3. si avvia il Local Print Agent:
 
 ```bash
 python -m saas.print_agent --token <TOKEN_DISPOSITIVO> --interval 5
 ```
 
-Il Local Print Agent fa polling sulla coda `print_jobs` e stampa i documenti
-sull'hardware fisico.
+L'agent contatta il backend e invia i job alla stampante configurata sul
+dispositivo locale. Non è un client desktop Kivy e non sostituisce la console
+web. Per l'installazione e la configurazione dettagliate, consultare
+`SAAS_PRINTING_BARCODE_PLAN.md`.
 
----
+## 6. Eseguire i test
 
-## 3. Versione Desktop
-
-La versione desktop è la UI **KivyMD** (l'app originale GestLab2), che usa i
-repository del core condiviso. Resta utile per il lavoro locale offline.
-
-### 3.1 Avvio
+Test unitari:
 
 ```bash
-python main.py
+python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-### 3.2 Prerequisiti desktop
-
-Serve KivyMD (già in `requirements.txt`). Se manca:
-
-```bash
-python -m pip install kivy==2.3.1 kivymd==2.0.0
-```
-
-### 3.3 Funzioni disponibili nel menu desktop
-
-| Funzione | Descrizione |
-|---|---|
-| **Ingresso Merce** | Registrazione movimenti di ingresso merce |
-| **Nuovo Lotto** | Crea un nuovo lotto (riusa Ingresso Merce) |
-| **Chiudi Lotti** | Chiude i lotti aperti |
-| **Vendita Lotti** | Gestione lotti in vendita |
-| **Nuovo Menu** | Composizione del menu (primi, secondi, contorni) |
-| **Anagrafica Dipendenti** | CRUD dipendenti (richiede le tabelle DB) |
-
-> **Nota**: la UI desktop legge direttamente dal DB MySQL locale (via
-> `core/db.py`), senza tenant (filtro `tenant_id=None`). È pensata per uso
-> locale/di sviluppo.
-
----
-
-## 4. Test end-to-end
-
-Per verificare che tutto funzioni (bootstrap DB, auth, stampa, barcode,
-coda di stampa):
+Test end-to-end SaaS: usare esclusivamente un database temporaneo dedicato,
+poiché il test elimina e ricrea tabelle SaaS:
 
 ```bash
 python tests/test_saas_e2e.py
 ```
 
-Il test crea/usa le tabelle multi-tenant e un admin di test
-(`admin@test.local` / `Prova123!`). Non va confuso con l'admin di produzione
-creato dal bootstrap (`admin@gestlab.it` / `Admin123!`).
+Non eseguire il comando e2e finché la configurazione DB attiva non è stata
+verificata come isolata e usa-e-getta.
 
----
+## 7. Configurazione
 
-## 5. Configurazione (config.ini / .env)
+- Le variabili d'ambiente prevalgono su `.env`; `config.ini` è un fallback
+  locale legacy (`core/env.py`).
+- Non committare file `.env`, configurazioni con credenziali o token.
+- Per produzione usare segreti dedicati all'ambiente e HTTPS.
 
-- **`config.ini`** — sezione `[DataBase]` con le credenziali MySQL locali.
-- **`.env`** (opzionale) — per i segreti in produzione (JWT secret, ecc.).
-  Priorità: variabili d'ambiente → `.env` → `config.ini` (vedi `core/env.py`).
+## 8. Limiti e collaudo tablet
 
----
-
-## 6. Risoluzione problemi
-
-| Problema | Soluzione |
-|---|---|
-| `MySQL Connection ...` | Verifica che MySQL sia attivo e le credenziali in `config.ini` |
-| `ModuleNotFoundError` | Esegui `python -m pip install -r requirements.txt` |
-| Porta 8000 occupata | Usa `--port 8001`: `python -m uvicorn saas.main:app --reload --port 8001` |
-| Login fallito | Verifica credenziali; se serve, riesegui `python -m saas.bootstrap` per (ri)creare l'admin |
+La rimozione della UI desktop non equivale a certificare ogni browser o
+dispositivo. Prima di dichiarare supportato un tablet, verificare su quel
+modello/browser: login, navigazione, moduli e tastiera virtuale, uso in
+orientamento previsto, barcode HID, messaggi in caso di rete non disponibile
+e flusso di stampa tramite Local Print Agent.

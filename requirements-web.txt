@@ -1,5 +1,4 @@
-# Dipendenze del backend SaaS (senza UI desktop Kivy/KivyMD).
-# Usare questo file sul server Lightsail / in produzione web.
+# Dipendenze runtime SaaS usate anche dal deploy Lightsail.
 
 # Database
 mysql-connector-python

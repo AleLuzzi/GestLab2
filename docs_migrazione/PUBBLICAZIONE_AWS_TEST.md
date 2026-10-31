@@ -8,7 +8,8 @@ Ubuntu) vedere [`PUBBLICAZIONE_AWS_AUTOMATICA.md`](PUBBLICAZIONE_AWS_AUTOMATICA.
 Questa guida resta il riferimento manuale.
 
 > Questa guida riguarda `saas.main:app` e la console web nella cartella `web/`.
-> La UI desktop Kivy (`main.py`) non viene eseguita sul server web.
+> La UI web è l'interfaccia applicativa supportata; non è necessario installare
+> Kivy/KivyMD sul server.
 
 ## 1. Scelta dell'architettura
 
