@@ -1,7 +1,4 @@
-# UI desktop (KivyMD)
-# Per il backend web su Lightsail usare requirements-web.txt (senza Kivy).
-kivy==2.3.1
-kivymd==2.0.0
+# Dipendenze runtime per la console SaaS e il Local Print Agent.
 
 # Database
 mysql-connector-python

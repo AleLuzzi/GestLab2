@@ -17,7 +17,7 @@ locali, il Print Agent sul PC né i test funzionali in console.
 | `deploy/update-server.sh` | Aggiorna il codice e riavvia il servizio |
 | `deploy/destroy-lightsail.ps1` | Elimina istanza e Static IP |
 | `deploy/gestlab.env.example` | Modello delle variabili; copiare in `gestlab.env` |
-| `requirements-web.txt` | Dipendenze backend senza Kivy/KivyMD |
+| `requirements-web.txt` | Dipendenze backend e console web |
 
 Non vengono pubblicati `config.ini`, `.env` locale, `venv/` né i file `.pem`.
 
@@ -215,8 +215,9 @@ curl http://127.0.0.1:8000/health
 Verificare `DB_PWD` in `/etc/gestlab/gestlab.env` e che il servizio `mariadb`
 sia attivo. `python -m saas.bootstrap` è idempotente.
 
-**Kivy sul server**  
-Non deve essere installato. Il setup usa `requirements-web.txt`.
+**Dipendenze UI desktop sul server**
+Non sono richieste: il deploy usa `requirements-web.txt` per FastAPI e la
+console web.
 
 ## Relazione con la guida manuale
 

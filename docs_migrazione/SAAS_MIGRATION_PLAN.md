@@ -1,20 +1,28 @@
 # Piano di Migrazione GestLab2 → SaaS
 
-Documento strategico per trasformare **GestLab2** da applicazione desktop
-(KivyMD + MySQL locale) a software **SaaS** multi-tenant accessibile via web.
+Documento strategico per lo sviluppo di **GestLab SaaS**, applicazione
+multi-tenant accessibile via web. La decisione di prodotto è usare la console
+web come unica interfaccia applicativa supportata; Kivy/KivyMD e la UI desktop
+sono legacy e non sono il percorso di sviluppo.
+
+Perimetro concordato: consultazione del menu e dei lotti/tracciabilità,
+ingresso merce, anagrafiche web disponibili, barcode e stampa via agent. La
+chiusura/vendita lotti, la composizione del menu, il CRUD legacy dei tagli e
+l'uso offline sono fuori dal perimetro SaaS attuale.
 
 ---
 
 ## 1. Analisi dello stato attuale
 
-| Componente | Stato attuale | Impatto per il SaaS |
+| Componente | Stato attuale | Lavoro residuo |
 |---|---|---|
-| Frontend | KivyMD desktop (`main.kv`, schermate MD) | Da riprogettare come Web App (o client "fat" che chiama API) |
-| Backend | Inesistente: la logica vive dentro i widget Kivy | Da estrarre in un vero backend con API |
-| Database | MySQL locale, connessione globale singola (`controller_db.py`) | Da migrare su DB cloud con multi-tenancy |
-| Credenziali | In chiaro in `config.ini` (password MySQL, token Facebook) | Da spostare in Secret Manager server-side |
-| Integrazioni | Stampante DYMO locale, token Facebook | Da ripensare per il contesto cloud |
-| Utenti | Nessun concetto di utente/login | Da introdurre autenticazione e ruoli |
+| Frontend | Console web responsive in `web/` servita da FastAPI | Collaudo sui browser/tablet target |
+| Backend | API FastAPI in `saas/` e servizi condivisi in `core/` | Completare solo i flussi inclusi nel prodotto |
+| Database | MySQL/MariaDB con schema multi-tenant | Hardening e operatività di produzione |
+| Credenziali | Variabili d'ambiente/.env con fallback legacy a `config.ini` | Rimuovere il fallback legacy in un intervento dedicato |
+| Stampa/barcode | API e coda stampa; Local Print Agent per hardware locale | Collaudo sulle periferiche target |
+| Utenti | Login, ruoli e tenant implementati | Revisione e hardening prima del go-live |
+| Desktop | UI Kivy/KivyMD rimossa dal repository | Nessun client desktop supportato |
 
 ---
 
@@ -23,37 +31,26 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 ### Fase 0 — Definizione del modello SaaS
 1. **Definire il mercato target**: ogni cliente è un laboratorio/ristorante
    (multi-tenancy per "azienda").
-2. **Scegliere il modello di isolamento dati**:
-   - [ ] **A) Database condiviso, schema condiviso** + colonna `tenant_id`
-     (più economico, richiede massima disciplina nelle query).
+2. **Modello attuale**: **A) Database condiviso, schema condiviso** +
+   colonna `tenant_id` (richiede disciplina nell'applicazione dei filtri).
    - [ ] **B) Database condiviso, schema separato per tenant**
      (bilanciato: isolamento logico + costi contenuti).
    - [ ] **C) Database separato per tenant**
      (isolamento massimo, più costoso, adatto a clienti enterprise).
-3. **Definire ruoli**: `admin` (configurazione, utenti), `operatore`
-   (operatività quotidiana), eventuale `viewer`.
-4. **Definire piani/pricing**: funzionalità per piano, limiti di utenti/lotti.
+3. Ruoli presenti: `admin` e `operatore`; permessi da verificare prima del
+   rilascio.
+4. Piani e limiti commerciali restano da definire.
 
-### Fase 1 — Backend e API REST
-1. **Scegliere lo stack backend** (consigliato: **Python** per riusare la
-   logica esistente):
-   - **FastAPI** (moderno, async, documentazione OpenAPI automatica)
-     oppure **Django + DRF** (admin pronto) o **Flask** (leggero).
-2. **Estrarre la business logic dai widget Kivy** in un *service layer*:
-   - `services/dipendenti.py`, `services/lotti.py`,
-     `services/ingresso_merce.py`, `services/menu.py`, `services/vendite.py`.
-3. **Esporre le API REST**:
-   - `POST /auth/login` → JWT + refresh token
-   - `GET/POST/PUT/DELETE /api/v1/dipendenti`
-   - `GET /api/v1/fornitori`, `/api/v1/prodotti`, `/api/v1/tagli`,
-     `/api/v1/merceologie`
-   - `GET /api/v1/lotti/aperti`, `POST /api/v1/lotti/chiudi`
-   - `POST /api/v1/ingresso-merce`
-   - `GET/POST /api/v1/menu`
-4. **Autenticazione e autorizzazione**: JWT (access+refresh), password
-   hashing (bcrypt/argon2), middleware per tenant + ruolo.
-5. **Validazione input lato server** (Pydantic/Schema).
-6. **Audit log** per le operazioni sensibili (es. eliminazione dipendenti).
+### Fase 1 — Backend e API REST (realizzazione corrente)
+
+Il backend è FastAPI (`saas.main:app`), con autenticazione JWT/ruoli,
+validazione Pydantic e servizi/repository condivisi in `core/`. Sono presenti
+API per login, tenant/utenti, anagrafiche supportate, ingresso merce, lotti
+aperti, menu in consultazione, tracciabilità e stampa/barcode.
+
+Lo stack e il perimetro non sono più scelte aperte: la console web è il client
+ufficiale. Le API o funzioni non comprese nel perimetro concordato non vanno
+date per disponibili solo perché comparivano nel piano iniziale.
 
 ### Fase 2 — Database cloud
 1. **Sostituire la connessione globale singola** di `controller_db.py` con:
@@ -72,14 +69,12 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
    locale → DB cloud), con mapping dello schema e pulizia dati.
 
 ### Fase 3 — Frontend
-> Kivy/KivyMD non è eseguibile in browser. Due strade possibili:
 
-- [ ] **Opzione A — Web App responsive** (consigliata per SaaS vero):
-  React / Vue / Angular, oppure **Flet** o **NiceGUI** se si vuole restare
-  in Python. Accessibile da browser, zero installazione per il cliente.
-- [ ] **Opzione B — Client "fat" Kivy refactorizzato**: l'app desktop diventa
-  un semplice client HTTP che chiama le API remote (login + server config),
-  utile se serve stampa locale DYMO senza modifiche.
+La direzione scelta è la console web responsive già presente in `web/`, servita
+da `saas.main:app`. Non è prevista una seconda UI desktop Kivy. Le operazioni
+che richiedono hardware locale usano il Local Print Agent, indipendente dalla
+UI. L'eventuale supporto offline non è incluso: richiede un requisito e una
+progettazione dedicati.
 
 ### Fase 4 — Infrastruttura cloud
 1. **Containerizzare** il backend con **Docker** (Dockerfile + docker-compose
@@ -149,20 +144,17 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 
 ---
 
-## 3. Criticità specifiche di GestLab2 da risolvere subito
+## 3. Stato delle criticità individuate nel progetto originale
 
-1. **`controller_db.py`**: usa una **connessione globale condivisa** e un
-   cursore unico (`c`). → Va sostituita con pool/ORM + repository pattern.
-   È il refactoring **prioritario** prima di qualsiasi passo cloud.
-2. **`config.ini` contiene segreti** (password DB, token Facebook). → Da
-   eliminare/gestire via environment variables o Secret Manager.
-3. **Logica UI accoppiata al DB**: i moduli (`anag_dipendenti`, `ingresso_merce`,
-   ecc.) chiamano direttamente `db.*` dentro i widget. → Estrarre la logica
-   in service layer e usare **chiamate HTTP asincrone** (lato client).
-4. **Nessun concetto di utente/tenant** nello schema dati. → Aggiungere
-   tabelle `utenti`, `tenant`/`aziende` e colonne `tenant_id`.
-5. **Stampante DYMO locale**: è un vincolo fisico → valutare client sottile
-   o cloud printing.
+1. La connessione globale legacy è stata sostituita dal layer `core/db.py`
+   con connessioni gestite a contesto e repository.
+2. `config.ini` conserva credenziali legacy; rimuovere il fallback e ruotare i
+   segreti resta un intervento separato.
+3. La logica condivisa è esposta tramite `core/services` e repository; le UI
+   Kivy/Tkinter sono state rimosse e non sono client supportati.
+4. Tenant, utenti e filtro tenant sono presenti nello schema/API SaaS.
+5. La stampa locale usa `saas/print_agent.py`; non è prevista una UI Kivy come
+   sostituto dell'agent.
 
 ---
 
@@ -170,18 +162,16 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 
 | # | Step | Priorità |
 |---|---|---|
-| 1 | Refactoring `controller_db.py` (pool + repository) | Alta |
-| 2 | Introduzione modello utenti/tenant nello schema | Alta |
-| 3 | Creazione backend FastAPI/Django con API REST | Alta |
-| 4 | Estrarre service layer dalla logica Kivy | Alta |
-| 5 | Service layer stampa (DDT, etichette DYMO, scontrini) + barcode | Alta |
-| 6 | Coda `print_jobs` + **Local Print Agent** per l'hardware | Media |
-| 7 | Frontend web (o client Kivy refactorizzato) | Media |
-| 8 | Migrazione DB su cloud + secret management | Media |
-| 9 | Docker + CI/CD + deploy | Media |
-| 10 | Sicurezza, GDPR, monitoring | Media |
-| 11 | Pagamenti, onboarding tenant, migrazione dati clienti | Bassa |
-| 12 | Test, pilot, go-live | Bassa |
+| # | Step | Stato |
+|---|---|---|
+| 1 | Layer DB, repository e service layer | Implementato; verifiche specifiche restano |
+| 2 | Tenant, utenti e API FastAPI | Implementato; hardening pre go-live |
+| 3 | Stampa/barcode SaaS e Local Print Agent | Implementato; test hardware pendente |
+| 4 | Console web responsive | Percorso ufficiale; collaudo iPad/Safari pendente |
+| 5 | Infrastruttura Lightsail e guide deploy | Presente; validare staging/produzione |
+| 6 | Hardening sicurezza, GDPR e monitoraggio | Da completare |
+| 7 | Pricing, onboarding e migrazione dati | Da definire |
+| 8 | Pilot e go-live | Da completare |
 
 > Per DDT, scontrini e barcode vedi il documento dettagliato
 > **`SAAS_PRINTING_BARCODE_PLAN.md`**.
@@ -193,9 +183,8 @@ Documento strategico per trasformare **GestLab2** da applicazione desktop
 - **Backend**: Python + FastAPI + SQLAlchemy/Alembic
 - **Auth**: JWT (access+refresh) + bcrypt; opzionale OAuth2
 - **DB**: PostgreSQL gestito (AWS RDS / GCP Cloud SQL / Azure) multi-tenant
-- **Frontend**: React/Vue (web) — o Flet/NiceGUI se si preferisce Python
+- **Frontend**: console responsive HTML/CSS/JavaScript servita da FastAPI
 - **Infra**: Docker + Cloud Run / ECS + Cloudflare/Let's Encrypt + S3/GCS
 - **Background**: Celery / Cloud Tasks
 - **Monitoring**: Sentry + Prometheus/Grafana + Loki
 - **CI/CD**: GitHub Actions / GitLab CI
-

@@ -22,7 +22,6 @@ from core.services import (
     barcode,
     reparti as reparti_service,
     fornitori as fornitori_service,
-    tagli as tagli_service,
 )
 
 RES = "\033[0m"
@@ -55,7 +54,11 @@ def _crea_tabelle(c):
     sono nuove rispetto al DB del progetto originale. Per garantire uno schema
     coerente e idempotente nel test, vengono droppate e ricreate. In
     produzione la creazione e' governata da ``saas/schema_multitenant.sql``.
+    Il controllo FK va sospeso durante il reset perché alcune tabelle business
+    referenziano ``tenant``.
     """
+    c.execute("SET FOREIGN_KEY_CHECKS = 0")
+
     # Drop in ordine di dipendenza (figlie prima dei padri).
     c.execute("DROP TABLE IF EXISTS print_jobs")
     c.execute("DROP TABLE IF EXISTS dispositivi_stampa")
@@ -106,6 +109,7 @@ def _crea_tabelle(c):
         "CONSTRAINT fk_printjobs_dispositivo FOREIGN KEY (dispositivo_id) "
         "REFERENCES dispositivi_stampa(id))"
     )
+    c.execute("SET FOREIGN_KEY_CHECKS = 1")
 
 
 def bootstrap():
@@ -231,25 +235,6 @@ def test_fornitori_service(tenant_id):
     check(fornitori_service.trova_fornitore(nuovo.id, tenant_id) is None, "eliminazione fornitore")
 
 
-def test_tagli_service(tenant_id):
-    print(f"\n{YELLOW}== Tagli service =={RES}")
-    nuovo = tagli_service.crea_taglio("Bovino", 1, tenant_id)
-    check(nuovo is not None and nuovo.taglio == "Bovino", "creazione taglio in tenant")
-
-    trovato = tagli_service.trova_taglio(nuovo.id, tenant_id)
-    check(trovato is not None and trovato.id == nuovo.id, "ricerca taglio per id")
-
-    tagli = tagli_service.lista_tagli(tenant_id)
-    check(any(t.id == nuovo.id for t in tagli), "lista tagli del tenant")
-
-    tagli_service.aggiorna_taglio(trovato, "Bovino 2", 1, tenant_id)
-    aggiornato = tagli_service.trova_taglio(nuovo.id, tenant_id)
-    check(aggiornato is not None and aggiornato.taglio == "Bovino 2", "aggiornamento taglio")
-
-    tagli_service.elimina_taglio(aggiornato, tenant_id)
-    check(tagli_service.trova_taglio(nuovo.id, tenant_id) is None, "eliminazione taglio")
-
-
 def main():
     print(f"{YELLOW}=== Test end-to-end SaaS GestLab (S14) ==={RES}")
     tenant_id = bootstrap()
@@ -258,7 +243,6 @@ def main():
     test_print_job_flow(tenant_id)
     test_reparti_service(tenant_id)
     test_fornitori_service(tenant_id)
-    test_tagli_service(tenant_id)
 
     print(f"\n=== Risultato: {GREEN}{_passed} passati{RES}, {RED}{_failed} falliti{RES} ===")
     if _failed:

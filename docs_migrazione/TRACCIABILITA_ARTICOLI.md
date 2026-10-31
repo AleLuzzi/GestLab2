@@ -2,8 +2,9 @@
 
 ## Modello dati
 
-Il modello SaaS usa `articoli` al posto di `tagli`; i flussi desktop e le altre
-tabelle legacy non sono migrati da questa modifica.
+Il modello SaaS usa `articoli` al posto di `tagli`; i flussi della UI desktop
+legacy e le altre tabelle non sono migrati da questa modifica. Il CRUD dei
+tagli legacy è fuori dal perimetro SaaS concordato.
 
 - `articoli` è l'anagrafica degli articoli di magazzino (materie prime, tagli e
   prodotti finiti). Ogni articolo ha un'unità di misura e appartiene a un

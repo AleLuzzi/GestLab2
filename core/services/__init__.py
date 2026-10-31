@@ -2,7 +2,7 @@
 
 Contiene la business logic applicativa, indipendente dalla UI e dal DB.
 I servizi orchestrano i repository e i modelli di ``core`` e sono riusabili
-sia dalle UI desktop (Tkinter/Kivy) sia dal backend SaaS (FastAPI).
+dal backend SaaS (FastAPI) e da eventuali client futuri.
 """
 
 from . import (

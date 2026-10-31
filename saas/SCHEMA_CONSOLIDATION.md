@@ -64,7 +64,7 @@ The following files are now superseded and archived for reference only:
 
 ```bash
 # Install dependencies
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-web.txt
 
 # Initialize database (creates all tables + initial admin user)
 python -m saas.bootstrap
