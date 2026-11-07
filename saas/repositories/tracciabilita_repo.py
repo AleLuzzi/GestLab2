@@ -1,6 +1,7 @@
 """Repository SaaS per articoli, lotti d'ingresso e lavorazioni."""
 
 from collections import defaultdict
+from datetime import date
 from decimal import Decimal
 
 from core.db import connection
@@ -31,6 +32,21 @@ class GiacenzaInsufficiente(Exception):
 
 class ArticoloNonUtilizzabileComeInput(Exception):
     """L'articolo del lotto non è abilitato come input di lavorazione."""
+
+class LottoScaduto(Exception):
+    """Un lotto con data di scadenza superata non può essere lavorato."""
+
+
+class ConfermaTmcScadutoRichiesta(Exception):
+    """Il TMC superato richiede una conferma esplicita dell'operatore."""
+
+
+def _data_valore(value):
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str) and value:
+        return date.fromisoformat(value[:10])
+    return None
 
 
 def lista_articoli(tenant_id):
@@ -191,7 +207,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
         "l.codice_lotto, l.data_creazione, l.data_scadenza, l.lotto_fornitore, "
         "l.origine, l.temperatura_ingresso, l.quantita_iniziale, "
         "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
-        "l.lavorazione_id, a.categoria, l.note_lotto "
+        "l.lavorazione_id, a.categoria, l.note_lotto, l.data_tmc "
         "FROM lotti l JOIN articoli a "
         "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
         "WHERE l.tenant_id = %s"
@@ -225,6 +241,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                 origine = _row_value(row, 9)
                 temperatura = _row_value(row, 10)
                 note_lotto = _row_value(row, 17)
+                data_tmc = _row_value(row, 18)
             elif row_len >= 17:
                 quantita_iniziale = _row_value(row, 11)
                 quantita_disponibile = _row_value(row, 12)
@@ -237,6 +254,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                 origine = _row_value(row, 9)
                 temperatura = _row_value(row, 10)
                 note_lotto = None
+                data_tmc = None
             else:
                 quantita_iniziale = _row_value(row, 7)
                 quantita_disponibile = _row_value(row, 8)
@@ -249,6 +267,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                 origine = None
                 temperatura = None
                 note_lotto = None
+                data_tmc = None
 
             rows.append(
                 {
@@ -266,6 +285,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                     "lavorazione_id": lavorazione_id,
                     "categoria": categoria,
                     "data_scadenza": data_scadenza,
+                    "data_tmc": data_tmc,
                     "lotto_fornitore": lotto_fornitore,
                     "origine": origine,
                     "temperatura_ingresso": str(temperatura) if temperatura is not None else None,
@@ -282,14 +302,15 @@ def lotti_disponibili_vendita(tenant_id):
         cursor.execute(
             "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, "
             "l.codice_lotto, l.data_scadenza, l.quantita_disponibile, "
-            "l.unita_misura "
+            "l.unita_misura, l.data_tmc "
             "FROM lotti l JOIN articoli a "
             "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "WHERE l.tenant_id = %s AND a.attivo = 1 AND l.attivo = 1 "
             "AND l.quantita_disponibile > 0 "
             "AND (l.data_scadenza IS NULL OR l.data_scadenza >= CURRENT_DATE) "
-            "ORDER BY CASE WHEN l.data_scadenza IS NULL THEN 1 ELSE 0 END, "
-            "l.data_scadenza ASC, l.data_creazione ASC, l.id ASC",
+            "ORDER BY CASE WHEN COALESCE(l.data_scadenza, l.data_tmc) IS NULL "
+            "THEN 1 ELSE 0 END, COALESCE(l.data_scadenza, l.data_tmc) ASC, "
+            "l.data_creazione ASC, l.id ASC",
             (tenant_id,),
         )
         return [
@@ -302,6 +323,7 @@ def lotti_disponibili_vendita(tenant_id):
                 "data_scadenza": row[5],
                 "quantita_disponibile": str(row[6]),
                 "unita_misura": row[7],
+                "data_tmc": _row_value(row, 8),
             }
             for row in cursor.fetchall()
         ]
@@ -320,7 +342,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "d.fornitore_id, "
             "w.data_lavorazione, w.descrizione, "
             "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore), "
-            "l.note_lotto "
+            "l.note_lotto, l.data_tmc "
             "FROM lotti l "
             "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "LEFT JOIN documenti_ingresso d "
@@ -345,6 +367,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "codice_lotto": row[5],
             "data_creazione": row[6],
             "data_scadenza": row[7],
+            "data_tmc": _row_value(row, 24),
             "lotto_fornitore": row[8],
             "origine": row[9],
             "temperatura_ingresso": str(row[10]) if row[10] is not None else None,
@@ -505,6 +528,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                 numero = _prossimo_progressivo(cursor, tenant_id, "A")
                 codice = f"{numero}A"
                 data_scadenza = getattr(riga, "data_scadenza", None)
+                data_tmc = getattr(riga, "data_tmc", None)
                 lotto_fornitore = getattr(riga, "lotto_fornitore", None)
                 origine = getattr(riga, "origine", None)
                 temperatura_ingresso = getattr(riga, "temperatura_ingresso", None)
@@ -512,7 +536,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                 cursor.execute(
                     "INSERT INTO lotti "
                     "(tenant_id, articolo_id, tipo_lotto, progressivo, codice_lotto, "
-                    "data_creazione, data_scadenza, lotto_fornitore, origine, "
+                    "data_creazione, data_scadenza, data_tmc, lotto_fornitore, origine, "
                     "temperatura_ingresso, note_lotto, quantita_iniziale, quantita_disponibile, "
                     "unita_misura, documento_ingresso_id) "
                     "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
@@ -523,6 +547,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                         codice,
                         data,
                         data_scadenza,
+                        data_tmc,
                         lotto_fornitore,
                         origine,
                         temperatura_ingresso,
@@ -589,9 +614,15 @@ def registra_lavorazione(
             )
 
             lotto_ids = sorted(quantita_input)
+            input_senza_conferma_tmc = {
+                riga.lotto_id
+                for riga in input_lavorazione
+                if not getattr(riga, "conferma_tmc_scaduto", False)
+            }
             placeholders = ", ".join(["%s"] * len(lotto_ids))
             cursor.execute(
-                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input "
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input, "
+                "l.data_scadenza, l.data_tmc, CURRENT_DATE "
                 "FROM lotti l JOIN articoli a "
                 "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
                 f"WHERE l.tenant_id = %s AND l.id IN ({placeholders}) "
@@ -606,6 +637,22 @@ def registra_lavorazione(
                 if not row[2]:
                     raise ArticoloNonUtilizzabileComeInput(
                         f"L'articolo del lotto {row[0]} non è abilitato come input di lavorazione."
+                    )
+                oggi = _data_valore(_row_value(row, 5))
+                data_scadenza = _data_valore(_row_value(row, 3))
+                data_tmc = _data_valore(_row_value(row, 4))
+                if oggi is not None and data_scadenza is not None and data_scadenza < oggi:
+                    raise LottoScaduto(
+                        f"Il lotto {row[0]} ha una data di scadenza superata."
+                    )
+                if (
+                    oggi is not None
+                    and data_tmc is not None
+                    and data_tmc < oggi
+                    and row[0] in input_senza_conferma_tmc
+                ):
+                    raise ConfermaTmcScadutoRichiesta(
+                        f"Il lotto {row[0]} ha il TMC superato: confermare esplicitamente l'utilizzo."
                     )
             for lotto_id, quantita in quantita_input.items():
                 if lotti[lotto_id] < quantita:
@@ -658,15 +705,19 @@ def registra_lavorazione(
                 cursor.execute(
                     "INSERT INTO lotti "
                     "(tenant_id, articolo_id, tipo_lotto, progressivo, codice_lotto, "
-                    "data_creazione, quantita_iniziale, quantita_disponibile, "
+                    "data_creazione, data_scadenza, data_tmc, origine, "
+                    "quantita_iniziale, quantita_disponibile, "
                     "unita_misura, lavorazione_id) "
-                    "VALUES (%s, %s, 'V', %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, 'V', %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         tenant_id,
                         riga.articolo_id,
                         numero,
                         codice,
                         data,
+                        getattr(riga, "data_scadenza", None),
+                        getattr(riga, "data_tmc", None),
+                        getattr(riga, "origine", None),
                         riga.quantita,
                         riga.quantita,
                         articoli[riga.articolo_id],

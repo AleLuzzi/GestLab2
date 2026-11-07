@@ -3,6 +3,11 @@ import { $ } from "../core/dom.js";
 
 let lottiVendita = [];
 
+function dataLocaleISO() {
+  const oggi = new Date();
+  return `${oggi.getFullYear()}-${String(oggi.getMonth() + 1).padStart(2, "0")}-${String(oggi.getDate()).padStart(2, "0")}`;
+}
+
 function creaOpzione(value, label) {
   const option = document.createElement("option");
   option.value = String(value);
@@ -32,8 +37,12 @@ function lottiPerArticolo(articoloId) {
 function aggiornaRiepilogo() {
   const lotto = lottiPerArticolo($("sales-article").value)
     .find((item) => String(item.id) === $("sales-lot").value);
+  const dataLotto = lotto?.data_scadenza || lotto?.data_tmc;
+  const tipoData = lotto?.data_scadenza ? "Scadenza" : lotto?.data_tmc ? "TMC" : "Data";
+  const tmcSuperato = lotto?.data_tmc
+    && String(lotto.data_tmc).slice(0, 10) < dataLocaleISO();
   $("sales-lot-summary").textContent = lotto
-    ? `Disponibili: ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)} · Scadenza: ${formattaData(lotto.data_scadenza)}`
+    ? `Disponibili: ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)} · ${tipoData}: ${formattaData(dataLotto)}${tmcSuperato ? " · TMC superato: richiede conferma" : ""}`
     : "";
 }
 
@@ -43,11 +52,12 @@ function aggiornaLotti(articoloId, lottoPreferito = "") {
   selettoreLotto.replaceChildren(creaOpzione("", lotti.length ? "Seleziona lotto" : "Nessun lotto disponibile"));
 
   lotti.forEach((lotto, index) => {
-    const scadenza = formattaData(lotto.data_scadenza);
+    const dataLotto = lotto.data_scadenza || lotto.data_tmc;
+    const tipoData = lotto.data_scadenza ? "scadenza" : lotto.data_tmc ? "TMC" : "data";
     const precedenza = index === 0 ? "FEFO · " : "";
     selettoreLotto.appendChild(creaOpzione(
       lotto.id,
-      `${precedenza}${lotto.codice_lotto} · disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)} · scadenza ${scadenza}`,
+      `${precedenza}${lotto.codice_lotto} · disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)} · ${tipoData} ${formattaData(dataLotto)}`,
     ));
   });
 

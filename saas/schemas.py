@@ -143,8 +143,15 @@ class IngressoTracciatoRigaCreate(BaseModel):
     lotto_fornitore: str | None = Field(default=None, max_length=64)
     origine: str | None = Field(default=None, max_length=255)
     data_scadenza: date | None = None
+    data_tmc: date | None = None
     temperatura_ingresso: Decimal | None = Field(default=None, ge=-100, le=100, max_digits=6, decimal_places=2)
     note_lotto: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def valida_tipo_data(self):
+        if self.data_scadenza is not None and self.data_tmc is not None:
+            raise ValueError("Indicare la scadenza oppure il TMC, non entrambi")
+        return self
 
 
 class IngressoTracciatoCreate(BaseModel):
@@ -157,11 +164,21 @@ class IngressoTracciatoCreate(BaseModel):
 class LavorazioneInputCreate(BaseModel):
     lotto_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    conferma_tmc_scaduto: bool = False
 
 
 class LavorazioneOutputCreate(BaseModel):
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    origine: str | None = Field(default=None, max_length=255)
+    data_scadenza: date | None = None
+    data_tmc: date | None = None
+
+    @model_validator(mode="after")
+    def valida_tipo_data(self):
+        if self.data_scadenza is not None and self.data_tmc is not None:
+            raise ValueError("Indicare la scadenza oppure il TMC, non entrambi")
+        return self
 
 
 class LavorazioneScartoCreate(BaseModel):

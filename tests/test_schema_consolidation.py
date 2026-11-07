@@ -62,6 +62,15 @@ class ConsolidatedSchemaTests(unittest.TestCase):
             r"`note_lotto`\s+varchar\(500\)\s+DEFAULT NULL",
         )
 
+    def test_lot_expiration_and_best_before_are_mutually_exclusive(self):
+        definition = self.tables["lotti"]
+        self.assertRegex(definition, r"`data_scadenza`\s+date DEFAULT NULL")
+        self.assertRegex(definition, r"`data_tmc`\s+date DEFAULT NULL")
+        self.assertRegex(
+            definition,
+            r"CHECK\s*\(`data_scadenza` IS NULL OR `data_tmc` IS NULL\)",
+        )
+
     def test_department_and_operator_relations_are_tenant_scoped(self):
         self.assertIn(
             "FOREIGN KEY (`tenant_id`, `reparto`)", self.tables["dipendenti"]

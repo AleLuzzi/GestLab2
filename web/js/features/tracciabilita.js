@@ -71,19 +71,21 @@ function riempiSelectLotti(select) {
         && (!scadenza || scadenza >= dataLocaleISO());
     })
     .sort((a, b) => {
-      const scadenzaA = a.data_scadenza ? String(a.data_scadenza).slice(0, 10) : "";
-      const scadenzaB = b.data_scadenza ? String(b.data_scadenza).slice(0, 10) : "";
-      if (!scadenzaA && scadenzaB) return 1;
-      if (scadenzaA && !scadenzaB) return -1;
-      return scadenzaA.localeCompare(scadenzaB)
+      const dataA = String(a.data_scadenza || a.data_tmc || "").slice(0, 10);
+      const dataB = String(b.data_scadenza || b.data_tmc || "").slice(0, 10);
+      if (!dataA && dataB) return 1;
+      if (dataA && !dataB) return -1;
+      return dataA.localeCompare(dataB)
         || String(a.data_creazione ?? "").localeCompare(String(b.data_creazione ?? ""))
         || Number(a.id) - Number(b.id);
     });
 
   select.replaceChildren(creaOpzione("", "Seleziona lotto (FEFO)"));
   lottiFefo.forEach((lotto) => {
-    const scadenza = lotto.data_scadenza
-      ? ` · scade il ${formattaData(lotto.data_scadenza)}`
+    const dataTipo = lotto.data_scadenza ? "Scadenza" : lotto.data_tmc ? "TMC" : "";
+    const dataValore = lotto.data_scadenza || lotto.data_tmc;
+    const scadenza = dataValore
+      ? ` · ${dataTipo}: ${formattaData(dataValore)}${lotto.data_tmc && String(lotto.data_tmc).slice(0, 10) < dataLocaleISO() ? " (superato, richiede conferma)" : ""}`
       : " · senza scadenza";
     select.appendChild(creaOpzione(
       lotto.id,
@@ -126,9 +128,11 @@ function creaRiga(containerId, fields, selectOptions, removeLabel) {
       field.options.forEach((option) => input.appendChild(creaOpzione(option.value, option.label)));
     } else {
       input.type = field.type || "number";
-      input.min = field.min || "0.001";
-      input.step = field.step || "0.001";
-      input.inputMode = "decimal";
+      if (input.type === "number") {
+        input.min = field.min || "0.001";
+        input.step = field.step || "0.001";
+        input.inputMode = "decimal";
+      }
     }
     label.appendChild(input);
     row.appendChild(label);
@@ -176,6 +180,18 @@ function aggiungiRigaOutput() {
         options: [{ value: "", label: "Seleziona articolo" }],
       },
       { name: "quantita", label: "Quantità prodotta" },
+      {
+        name: "tipo_data",
+        label: "Tipo di data",
+        required: false,
+        options: [
+          { value: "", label: "Nessuna data" },
+          { value: "scadenza", label: "Scadenza" },
+          { value: "tmc", label: "TMC" },
+        ],
+      },
+      { name: "data", label: "Data", type: "date", required: false },
+      { name: "origine", label: "Origine dichiarata", type: "text", required: false },
     ],
     (select) => riempiSelectArticoli(select),
     "Rimuovi prodotto output",
@@ -293,6 +309,7 @@ function renderDettaglio(dettaglio) {
     ["Lotto fornitore", dettaglio.lotto_fornitore || "—"],
     ["Origine", dettaglio.origine || "—"],
     ["Scadenza", formattaData(dettaglio.data_scadenza)],
+    ["TMC", formattaData(dettaglio.data_tmc)],
     [
       "Temperatura all'ingresso",
       dettaglio.temperatura_ingresso != null
@@ -453,13 +470,42 @@ function configuraFormLavorazione() {
     event.preventDefault();
     const form = event.currentTarget;
     impostaMessaggio("trace-work-error");
-    const input = leggiRighe("trace-work-inputs", ["lotto_id", "quantita"]);
-    const output = leggiRighe("trace-work-outputs", ["articolo_id", "quantita"]);
+    let input = leggiRighe("trace-work-inputs", ["lotto_id", "quantita"]);
+    const outputRighe = leggiRighe(
+      "trace-work-outputs",
+      ["articolo_id", "quantita", "tipo_data", "data", "origine"],
+    );
+    if (outputRighe.some((riga) => riga.tipo_data && !riga.data)) {
+      impostaMessaggio("trace-work-error", "Inserisci la data del tipo selezionato per ogni prodotto.");
+      return;
+    }
+    const output = outputRighe.map(({ tipo_data, data, origine, ...riga }) => ({
+      ...riga,
+      origine: origine || null,
+      data_scadenza: tipo_data === "scadenza" ? data : null,
+      data_tmc: tipo_data === "tmc" ? data : null,
+    }));
     const scarti = leggiRighe("trace-work-scraps", ["descrizione", "quantita", "unita_misura"]);
     if (!input.length || !output.length) {
       impostaMessaggio("trace-work-error", "La lavorazione richiede almeno un lotto in ingresso e un prodotto in uscita.");
       return;
     }
+    const oggi = dataLocaleISO();
+    const lottiTmcSuperato = new Set(
+      input
+        .filter((riga) => {
+          const lotto = lottiDisponibili.find((item) => String(item.id) === String(riga.lotto_id));
+          return lotto?.data_tmc && String(lotto.data_tmc).slice(0, 10) < oggi;
+        })
+        .map((riga) => String(riga.lotto_id)),
+    );
+    if (lottiTmcSuperato.size && !window.confirm(
+      "Uno o più lotti hanno il TMC superato. Confermi esplicitamente il loro utilizzo?",
+    )) return;
+    input = input.map((riga) => ({
+      ...riga,
+      conferma_tmc_scaduto: lottiTmcSuperato.has(String(riga.lotto_id)),
+    }));
     const button = form.querySelector('[type="submit"]');
     button.disabled = true;
     try {

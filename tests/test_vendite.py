@@ -97,8 +97,8 @@ class ChiusuraLottoTests(unittest.TestCase):
 class LottiDisponibiliVenditaTests(unittest.TestCase):
     def test_repository_returns_available_lots_in_fefo_order(self):
         rows = [
-            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg"),
-            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg"),
+            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg", None),
+            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg", "2026-12-10"),
         ]
 
         class FakeCursor:
@@ -134,11 +134,12 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
         self.assertIn("l.attivo = 1", conn._cursor.query)
         self.assertIn("l.quantita_disponibile > 0", conn._cursor.query)
         self.assertIn("l.data_scadenza >= CURRENT_DATE", conn._cursor.query)
-        self.assertIn("l.data_scadenza ASC", conn._cursor.query)
+        self.assertIn("COALESCE(l.data_scadenza, l.data_tmc) ASC", conn._cursor.query)
         self.assertIn("THEN 1 ELSE 0 END", conn._cursor.query)
         self.assertEqual(lotti[0]["id"], 7)
         self.assertEqual(lotti[0]["quantita_disponibile"], "8.500")
         self.assertIsNone(lotti[1]["data_scadenza"])
+        self.assertEqual(lotti[1]["data_tmc"], "2026-12-10")
 
     def test_endpoint_uses_tenant_from_authenticated_user(self):
         expected = [{"id": 7, "codice_lotto": "A-7"}]

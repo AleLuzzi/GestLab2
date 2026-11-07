@@ -98,7 +98,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI. Il bootstrap non crea più `ingresso_merce` e archivia la tabella esistente come `ingresso_merce_legacy_archive`; resta da verificare l'esito sui database in uso. |
 | Lavorazioni multi input/output/scarti → lotti `V` | C | `POST /api/v1/tracciabilita/lavorazioni`, UI [`web/js/features/tracciabilita.js`](../web/js/features/tracciabilita.js). |
 | Dettaglio genealogia lotto (API) | P | `GET /api/v1/tracciabilita/lotti/{id}`. UI albero e PDF NAS/ASL assenti. |
-| Scadenza, TMC, origine, lotto fornitore, temperatura d'ingresso e note lotto | P | `data_scadenza` è presente in `lotti`; il TMC non ha ancora un campo dedicato. Il wizard raccoglie i metadati in ingresso, incluse note descrittive facoltative; regole TMC definite in § 5.1 ma non implementate. |
+| Scadenza, TMC, origine, lotto fornitore, temperatura d'ingresso e note lotto | P | `lotti` e le migrazioni supportano `data_scadenza` e `data_tmc` come date alternative. Il wizard raccoglie il tipo/data in ingresso; le lavorazioni consentono la dichiarazione manuale su ogni output. La scadenza trascorsa è bloccata e il TMC trascorso richiede conferma per l'uso come input. Ingredienti/etichette e conferma in una vendita persistita restano da realizzare. |
 | Ricette / distinta base preparati | A | Ogni lavorazione è ad-hoc. |
 | Allergeni e ingredienti strutturati | A | Etichetta: testo libero in [`web/js/features/printing.js`](../web/js/features/printing.js). |
 | Inventario / rettifica giacenza | P | `movimenti_lotto.tipo = RETTIFICA` nello schema; nessuna UI né API dedicata. |
@@ -235,6 +235,7 @@ deploy con credenziali protette e secret di default rifiutato se
 > - `core/services/vendite.py` non lancia più `NotImplementedError`; la funzione di chiusura azzera giacenza e stato attivo, ma non realizza ancora una vendita né un decremento parziale.
 > - `saas/init_database.sql` include il valore `VENDITA` nel `CHECK` di `movimenti_lotto.tipo` e la migrazione `saas/migrations/20261107_movimenti_lotto_vendita.sql` allinea i DB esistenti.
 > - `saas/init_database.sql`, `saas/schemas.py` e il repository tracciabilità supportano scadenza, lotto fornitore, origine e temperatura d'ingresso; la migrazione `saas/migrations/20261107_lotti_metadata.sql` aggiorna i DB esistenti.
+> - `data_tmc` è supportato da schema e API, con vincolo di esclusività rispetto a `data_scadenza`; `saas/migrations/20261107_lotti_tmc.sql` lo aggiunge senza aggiornare le scadenze già registrate.
 
 ---
 
@@ -245,16 +246,17 @@ sui preparati, senza Excel di appoggio.
 
 ### 5.1 Dati di lotto per la carne e i preparati
 
-I campi `data_scadenza`, `lotto_fornitore`, `origine` e
-`temperatura_ingresso` sono presenti nello schema; il wizard web raccoglie
-lotto fornitore, origine e scadenza. I lotti `V` non ereditano ancora i
-metadati dagli input. La decisione di prodotto per distinguere scadenza e TMC
-è la seguente:
+I campi `data_scadenza`, `data_tmc`, `lotto_fornitore`, `origine` e
+`temperatura_ingresso` sono presenti nello schema; il wizard web raccoglie il
+tipo e la data indicati dal fornitore. I lotti `V` non ereditano i metadati
+dagli input: l'operatore dichiara origine e data per ogni output. La distinzione
+tra scadenza e TMC segue queste regole:
 
-- mantenere `lotti.data_scadenza` per la data di scadenza e aggiungere
+- mantenere `lotti.data_scadenza` per la data di scadenza e
   `lotti.data_tmc` per il termine minimo di conservazione; sono date
-  alternative, mai entrambe valorizzate sullo stesso lotto. Entrambe possono
-  essere vuote solo quando per quel prodotto non è prevista una data;
+  alternative, mai entrambe valorizzate sullo stesso lotto. Schema e API
+  applicano il vincolo; entrambe possono essere vuote solo quando per quel
+  prodotto non è prevista una data;
 - all'ingresso registrare il tipo e la data riportati dal fornitore, senza
   conversioni o inferenze automatiche. I dati esistenti in `data_scadenza`
   restano invariati durante la migrazione;
@@ -276,13 +278,14 @@ metadati dagli input. La decisione di prodotto per distinguere scadenza e TMC
   la genealogia conserva i lotti di provenienza e l'operatore usa tali dati
   per la dichiarazione appropriata. L'origine può restare vuota se non è
   dichiarabile; non va mai inventata o inferita dal sistema;
-- etichetta, dettaglio, FEFO e avvisi mostrano sempre se si tratta di
-  scadenza o TMC. FEFO ordina per data crescente e colloca in coda i lotti
-  senza data;
+- dettaglio, selezione FEFO e avvisi distinguono scadenza e TMC. FEFO ordina
+  per la data applicabile crescente e colloca in coda i lotti senza data;
 - una scadenza trascorsa rende il lotto non selezionabile per lavorazione e
-  vendita; un TMC trascorso genera un avviso distinto e richiede conferma
-  esplicita dell'operatore, senza blocco automatico. Queste regole operative
-  non sostituiscono la valutazione dell'OSA né attestano conformità legale.
+  vendita; il backend rifiuta l'input scaduto in lavorazione. Un TMC trascorso
+  genera un avviso distinto e richiede conferma esplicita dell'operatore per
+  l'uso in lavorazione, senza blocco automatico. Il flusso di vendita
+  persistita non è ancora implementato. Queste regole operative non
+  sostituiscono la valutazione dell'OSA né attestano conformità legale.
 
 L'OSA resta responsabile di stabilire se al prodotto si applica una scadenza o
 un TMC, di definire l'eventuale durata dei prodotti `V` e di determinare

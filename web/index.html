@@ -152,8 +152,15 @@
               <label for="ingress-origine">Origine (se indicata)
                 <input type="text" id="ingress-origine" maxlength="255" autocomplete="off" />
               </label>
-              <label for="ingress-data-scadenza">Data di scadenza (se indicata)
-                <input type="date" id="ingress-data-scadenza" />
+              <label for="ingress-tipo-data">Tipo di data (se indicata)
+                <select id="ingress-tipo-data">
+                  <option value="">Nessuna data</option>
+                  <option value="scadenza">Data di scadenza</option>
+                  <option value="tmc">Termine minimo di conservazione (TMC)</option>
+                </select>
+              </label>
+              <label for="ingress-data-lotto">Data riportata dal fornitore
+                <input type="date" id="ingress-data-lotto" />
               </label>
               <label for="ingress-temperatura">Temperatura all'ingresso (°C, se applicabile)
                 <input type="number" id="ingress-temperatura" min="-100" max="100" step="0.01" inputmode="decimal" placeholder="Es. 2,5" />

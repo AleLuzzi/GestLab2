@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   `codice_lotto` varchar(32) NOT NULL,
   `data_creazione` date NOT NULL,
   `data_scadenza` date DEFAULT NULL,
+  `data_tmc` date DEFAULT NULL,
   `lotto_fornitore` varchar(64) DEFAULT NULL,
   `origine` varchar(255) DEFAULT NULL,
   `temperatura_ingresso` decimal(6,2) DEFAULT NULL,
@@ -319,6 +320,8 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   CONSTRAINT `chk_lotti_quantita` CHECK (
     `quantita_iniziale` > 0 AND `quantita_disponibile` >= 0
   ),
+  CONSTRAINT `chk_lotti_data_scadenza_tmc`
+    CHECK (`data_scadenza` IS NULL OR `data_tmc` IS NULL),
   CONSTRAINT `fk_lotti_articolo` FOREIGN KEY (`tenant_id`, `articolo_id`)
     REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_lotti_documento_ingresso` FOREIGN KEY (`tenant_id`, `documento_ingresso_id`)

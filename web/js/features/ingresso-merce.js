@@ -83,6 +83,7 @@ function aggiornaRiepilogo() {
       riga.lottoFornitore && `Lotto fornitore: ${riga.lottoFornitore}`,
       riga.origine && `Origine: ${riga.origine}`,
       riga.dataScadenza && `Scadenza: ${new Date(`${riga.dataScadenza}T00:00:00`).toLocaleDateString("it-IT")}`,
+      riga.dataTmc && `TMC: ${new Date(`${riga.dataTmc}T00:00:00`).toLocaleDateString("it-IT")}`,
       riga.temperaturaIngresso !== null && `Temperatura: ${riga.temperaturaIngresso} °C`,
       riga.noteLotto && `Note: ${riga.noteLotto}`,
     ].filter(Boolean);
@@ -274,7 +275,13 @@ function aggiungiRighe() {
   const lottoFornitore = $("ingress-lotto-fornitore").value.trim();
   const origine = $("ingress-origine").value.trim();
   const noteLotto = $("ingress-note-lotto").value.trim();
-  const dataScadenza = $("ingress-data-scadenza").value;
+  const tipoData = $("ingress-tipo-data").value;
+  const dataLotto = $("ingress-data-lotto").value;
+  if (tipoData && !dataLotto) {
+    $("ingress-articoli-feedback").textContent = "Inserisci la data indicata dal fornitore.";
+    $("ingress-data-lotto").focus();
+    return;
+  }
   const temperaturaIngresso = inputTemperatura.value === ""
     ? null
     : Number(inputTemperatura.value).toFixed(2);
@@ -292,7 +299,8 @@ function aggiungiRighe() {
       lottoFornitore: lottoFornitore || null,
       origine: origine || null,
       noteLotto: noteLotto || null,
-      dataScadenza: dataScadenza || null,
+      dataScadenza: tipoData === "scadenza" ? dataLotto : null,
+      dataTmc: tipoData === "tmc" ? dataLotto : null,
       temperaturaIngresso,
     });
   });
@@ -314,7 +322,8 @@ function azzeraIngresso() {
   $("ingress-lotto-fornitore").value = "";
   $("ingress-origine").value = "";
   $("ingress-note-lotto").value = "";
-  $("ingress-data-scadenza").value = "";
+  $("ingress-tipo-data").value = "";
+  $("ingress-data-lotto").value = "";
   $("ingress-temperatura").value = "";
   righeIngresso = [];
   categoriaSelezionata = null;
@@ -389,6 +398,7 @@ export function initIngressoMerce() {
             origine: riga.origine,
             note_lotto: riga.noteLotto,
             data_scadenza: riga.dataScadenza,
+            data_tmc: riga.dataTmc,
             temperatura_ingresso: riga.temperaturaIngresso,
           })),
         }),

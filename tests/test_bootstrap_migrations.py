@@ -50,6 +50,48 @@ class BootstrapMigrationsTests(unittest.TestCase):
         self.assertEqual(set(bootstrap.MIGRATION_ORDER), files)
         self.assertEqual(len(bootstrap.MIGRATION_ORDER), len(files))
 
+    def test_tmc_migration_is_additive_and_recognized_only_when_complete(self):
+        migration = "20261107_lotti_tmc.sql"
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("ADD COLUMN `data_tmc` DATE NULL", sql)
+        self.assertIn("CHECK (`data_scadenza` IS NULL OR `data_tmc` IS NULL)", sql)
+        self.assertNotIn("UPDATE `lotti`", sql)
+
+        class TmcSchemaCursor:
+            def __init__(self, columns, create_table=""):
+                self.columns = columns
+                self.create_table = create_table
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query == "SHOW COLUMNS FROM `lotti`":
+                    self.result = [(column,) for column in self.columns]
+                elif query == "SHOW CREATE TABLE `lotti`":
+                    self.result = [("lotti", self.create_table)]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchall(self):
+                return self.result
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                TmcSchemaCursor({"data_scadenza"}), migration
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                TmcSchemaCursor(
+                    {"data_scadenza", "data_tmc"},
+                    "CONSTRAINT `chk_lotti_data_scadenza_tmc` CHECK (...)",
+                ),
+                migration,
+            )
+        )
+
     def test_new_database_records_current_schema_as_migration_baseline(self):
         cursor = MigrationCursor()
         commits = []

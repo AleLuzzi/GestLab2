@@ -228,6 +228,37 @@ class TracciabilitaTests(unittest.TestCase):
         )
         self.assertIn("l.note_lotto", cursor.statements[0][0])
 
+    def test_ingress_rejects_both_expiration_and_best_before_dates(self):
+        with self.assertRaises(ValidationError):
+            IngressoTracciatoCreate(
+                data="2026-10-03",
+                fornitore_id=1,
+                righe=[
+                    {
+                        "articolo_id": 3,
+                        "quantita": "8.250",
+                        "data_scadenza": "2026-12-15",
+                        "data_tmc": "2026-12-20",
+                    }
+                ],
+            )
+
+    def test_work_output_rejects_both_expiration_and_best_before_dates(self):
+        with self.assertRaises(ValidationError):
+            LavorazioneCreate(
+                data="2026-10-03",
+                operatore_id=5,
+                input=[{"lotto_id": 1, "quantita": "2.500"}],
+                output=[
+                    {
+                        "articolo_id": 2,
+                        "quantita": "1.250",
+                        "data_scadenza": "2026-12-15",
+                        "data_tmc": "2026-12-20",
+                    }
+                ],
+            )
+
     def test_progressivo_drains_locked_select_before_updating(self):
         class FetchAllCursor(FakeCursor):
             def fetchone(self):
@@ -356,7 +387,7 @@ class TracciabilitaTests(unittest.TestCase):
             if query.startswith(
                 "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
             ):
-                return [(7, Decimal("5.000"), True)]
+                return [(7, Decimal("5.000"), True, date(2026, 12, 1), None, date(2026, 11, 7))]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
             if query.startswith("SELECT prog_ven"):
@@ -380,7 +411,17 @@ class TracciabilitaTests(unittest.TestCase):
                     type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
                 ],
                 output=[
-                    type("Output", (), {"articolo_id": 9, "quantita": Decimal("1.5")})()
+                    type(
+                        "Output",
+                        (),
+                        {
+                            "articolo_id": 9,
+                            "quantita": Decimal("1.5"),
+                            "origine": "Italia, suino",
+                            "data_scadenza": date(2026, 12, 20),
+                            "data_tmc": None,
+                        },
+                    )()
                 ],
                 scarti=[
                     type(
@@ -407,6 +448,16 @@ class TracciabilitaTests(unittest.TestCase):
         )
         self.assertTrue(
             any("INSERT INTO lavorazione_scarto" in query for query, _ in cursor.statements)
+        )
+        output_insert = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO lotti")
+        )
+        self.assertIn("data_scadenza, data_tmc, origine", output_insert[0])
+        self.assertEqual(
+            output_insert[1][5:8],
+            (date(2026, 12, 20), None, "Italia, suino"),
         )
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
@@ -557,8 +608,179 @@ class TracciabilitaTests(unittest.TestCase):
 
         self.assertEqual(conn.commits, 0)
         self.assertEqual(conn.rollbacks, 1)
-        self.assertFalse(any("INSERT INTO lavorazioni" in query for query, _ in cursor.statements))
 
+    def test_work_rejects_lot_after_expiration(self):
+        oggi = date(2026, 11, 7)
+
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), True, date(2026, 11, 6), None, oggi)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.LottoScaduto):
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data=oggi,
+                    descrizione="Trasformazione",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
+                    ],
+                    output=[
+                        type(
+                            "Output",
+                            (),
+                            {"articolo_id": 9, "quantita": Decimal("1")},
+                        )()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(
+            any(query.startswith("INSERT INTO lavorazioni") for query, _ in cursor.statements)
+        )
+
+    def test_work_requires_confirmation_for_expired_best_before(self):
+        oggi = date(2026, 11, 7)
+
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), True, None, date(2026, 11, 6), oggi)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.ConfermaTmcScadutoRichiesta):
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data=oggi,
+                    descrizione="Trasformazione",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
+                    ],
+                    output=[
+                        type(
+                            "Output",
+                            (),
+                            {"articolo_id": 9, "quantita": Decimal("1")},
+                        )()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(
+            any(query.startswith("INSERT INTO lavorazioni") for query, _ in cursor.statements)
+        )
+
+    def test_work_uses_expired_best_before_only_after_confirmation(self):
+        oggi = date(2026, 11, 7)
+
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), True, None, date(2026, 11, 6), oggi)]
+            if query.startswith("SELECT id, unita_misura FROM articoli"):
+                return [(9, "kg")]
+            if query.startswith("SELECT prog_ven"):
+                return [(10,)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            tracciabilita_repo.registra_lavorazione(
+                tenant_id=42,
+                data=oggi,
+                descrizione="Trasformazione",
+                operatore_id=5,
+                input_lavorazione=[
+                    type(
+                        "Input",
+                        (),
+                        {
+                            "lotto_id": 7,
+                            "quantita": Decimal("2"),
+                            "conferma_tmc_scaduto": True,
+                        },
+                    )()
+                ],
+                output=[
+                    type(
+                        "Output",
+                        (),
+                        {
+                            "articolo_id": 9,
+                            "quantita": Decimal("1"),
+                            "data_tmc": date(2026, 12, 1),
+                            "data_scadenza": None,
+                            "origine": None,
+                        },
+                    )()
+                ],
+                scarti=[],
+            )
+
+        self.assertEqual(conn.commits, 1)
+        self.assertEqual(conn.rollbacks, 0)
+        output_insert = next(
+            params
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO lotti")
+        )
+        self.assertEqual(output_insert[6], date(2026, 12, 1))
+
+    def test_work_endpoint_maps_expiration_rules_to_conflict(self):
+        payload = LavorazioneCreate(
+            data="2026-10-03",
+            operatore_id=5,
+            input=[{"lotto_id": 7, "quantita": "2"}],
+            output=[{"articolo_id": 9, "quantita": "1"}],
+        )
+
+        with patch.object(
+            tracciabilita_repo,
+            "registra_lavorazione",
+            side_effect=tracciabilita_repo.LottoScaduto(
+                "Il lotto 7 ha una data di scadenza superata."
+            ),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                registra_lavorazione_tracciata(payload, {"tenant_id": 42})
+
+        self.assertEqual(raised.exception.status_code, 409)
     def test_work_endpoint_returns_validation_error_for_disabled_input_article(self):
         payload = LavorazioneCreate(
             data="2026-10-03",
@@ -612,7 +834,8 @@ class TracciabilitaTests(unittest.TestCase):
                             "quantita": Decimal("8.250"),
                             "lotto_fornitore": "LF-8842",
                             "origine": "Italia, suino",
-                            "data_scadenza": date(2026, 12, 15),
+                            "data_scadenza": None,
+                            "data_tmc": date(2026, 12, 15),
                             "temperatura_ingresso": Decimal("2.50"),
                             "note_lotto": "Bio; razza: esempio",
                         },
@@ -627,13 +850,15 @@ class TracciabilitaTests(unittest.TestCase):
             params for query, params in cursor.statements if "INSERT INTO lotti" in query
         )
         self.assertIn("data_scadenza", insert_query)
+        self.assertIn("data_tmc", insert_query)
         self.assertIn("lotto_fornitore", insert_query)
         self.assertIn("origine", insert_query)
         self.assertIn("temperatura_ingresso", insert_query)
         self.assertIn("note_lotto", insert_query)
         self.assertEqual(
-            insert_params[5:10],
+            insert_params[5:11],
             (
+                None,
                 date(2026, 12, 15),
                 "LF-8842",
                 "Italia, suino",

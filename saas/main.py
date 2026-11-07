@@ -841,6 +841,10 @@ def registra_lavorazione_tracciata(
         ) from error
     except tracciabilita_repo.GiacenzaInsufficiente as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.LottoScaduto as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.ConfermaTmcScadutoRichiesta as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except tracciabilita_repo.ArticoloNonUtilizzabileComeInput as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
 
