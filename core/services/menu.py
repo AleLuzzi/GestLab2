@@ -1,8 +1,7 @@
-"""Servizio Menu: business logic per il nuovo menu.
+"""Servizio Menu: viste merceologiche del catalogo articoli.
 
-Orchestra il repository ``prodotti`` per recuperare i piatti classificati
-per merceologia (primi, secondi, contorni). Usato dalla UI Nuovo Menu e dal
-backend SaaS (endpoint /menu).
+Orchestra il repository per recuperare gli articoli attivi classificati
+per categoria. Usato dalla UI Nuovo Menu e dal backend SaaS (endpoint /menu).
 """
 
 from core.repositories import prodotti as prodotti_repo

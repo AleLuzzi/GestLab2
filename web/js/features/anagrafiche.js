@@ -86,6 +86,8 @@ export const loadArticoli = async () => {
           <td>${esc(articolo.nome)}</td>
           <td>${esc(articolo.categoria ?? "")}</td>
           <td>${esc(articolo.unita_misura)}</td>
+          <td>${esc(articolo.ean ?? "")}</td>
+          <td>${esc(articolo.prezzo_unitario ?? "")}</td>
           <td>${articolo.attivo ? "Attivo" : "Disattivato"}</td>
           <td>${articolo.utilizzabile_come_input ? "Sì" : "No"}</td>
           <td class="row-actions">
@@ -95,7 +97,7 @@ export const loadArticoli = async () => {
               : `<button class="btn ghost" data-action="activate-articolo" data-id="${esc(articolo.id)}">Riattiva</button>`}
           </td>
         </tr>`).join("")
-      : '<tr><td colspan="8" class="empty">Nessun articolo. Aggiungine uno per iniziare.</td></tr>';
+      : '<tr><td colspan="10" class="empty">Nessun articolo. Aggiungine uno per iniziare.</td></tr>';
   } catch (error) {
     tbody.innerHTML = `<tr><td colspan="8" class="empty">${esc(error.message)}</td></tr>`;
   }
@@ -208,6 +210,8 @@ async function editArticolo(id) {
     $("articoli-nome").value = item.nome;
     $("articoli-codice").value = item.codice ?? "";
     $("articoli-categoria").value = item.categoria ?? "";
+    $("articoli-ean").value = item.ean ?? "";
+    $("articoli-prezzo").value = item.prezzo_unitario ?? "";
     $("articoli-unita").value = item.unita_misura;
     $("articoli-attivo").checked = item.attivo;
     $("articoli-utilizzabile-input").checked = item.utilizzabile_come_input;
@@ -222,6 +226,8 @@ function nuovoArticolo() {
   $("articoli-nome").value = "";
   $("articoli-codice").value = "";
   $("articoli-categoria").value = "";
+  $("articoli-ean").value = "";
+  $("articoli-prezzo").value = "";
   $("articoli-unita").value = "kg";
   $("articoli-attivo").checked = true;
   $("articoli-utilizzabile-input").checked = true;
@@ -243,6 +249,8 @@ function salvaArticolo() {
       codice: $("articoli-codice").value.trim() || null,
       categoria: $("articoli-categoria").value.trim() || null,
       unita_misura: $("articoli-unita").value,
+      ean: $("articoli-ean").value.trim() || null,
+      prezzo_unitario: $("articoli-prezzo").value || null,
       attivo: $("articoli-attivo").checked,
       utilizzabile_come_input: $("articoli-utilizzabile-input").checked,
     },
@@ -270,6 +278,8 @@ async function riattivaArticolo(id) {
         codice: item.codice,
         categoria: item.categoria,
         unita_misura: item.unita_misura,
+        ean: item.ean,
+        prezzo_unitario: item.prezzo_unitario,
         attivo: true,
         utilizzabile_come_input: item.utilizzabile_come_input,
       }),

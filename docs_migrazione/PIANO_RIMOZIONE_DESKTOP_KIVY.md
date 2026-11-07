@@ -124,7 +124,7 @@ baseline non è riproducibile, non procedere alle cancellazioni.
 | Nuovo menu | UI web e `GET /api/v1/menu`; non è emerso un endpoint di salvataggio del menu | Consultazione inclusa; composizione esclusa dal perimetro SaaS scelto |
 | Dipendenti, reparti, merceologie, fornitori | Schermate web e API CRUD | Copertura candidata; collaudo funzionale ancora necessario |
 | Tagli | Desktop usa tagli; SaaS adotta articoli e non espone CRUD tagli | CRUD tagli escluso dal perimetro SaaS scelto dall'utente |
-| Barcode | Campo web e lookup `GET /api/v1/prodotti/ean/{codice}` | Implementato lato software; test con scanner e tablet pendente |
+| Barcode | Campo web e lookup `GET /api/v1/articoli/ean/{codice}` | Implementato lato software; test con scanner e tablet pendente |
 | DDT, scontrino, etichetta | API di generazione e coda/Local Print Agent | Architettura presente; prova con hardware reale pendente |
 | Impostazioni desktop | Il pulsante desktop era un placeholder senza azione | Non costituisce una funzione da migrare, salvo nuovi requisiti |
 

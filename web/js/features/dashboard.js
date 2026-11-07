@@ -29,7 +29,7 @@ async function doEanLookup() {
   if (!code) return;
 
   try {
-    const product = await api("/api/v1/prodotti/ean/" + encodeURIComponent(code));
+    const product = await api("/api/v1/articoli/ean/" + encodeURIComponent(code));
     $("ean-result").textContent = JSON.stringify(product, null, 2);
   } catch (error) {
     $("ean-result").textContent = "Errore: " + error.message;

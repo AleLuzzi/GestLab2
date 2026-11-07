@@ -1,6 +1,6 @@
 import unittest
 
-from saas.bootstrap import _migra_progressivi_tenant
+from saas.bootstrap import _migra_catalogo_articoli, _migra_progressivi_tenant
 
 
 class FakeCursor:
@@ -60,6 +60,66 @@ class ProgressiviMigrationTests(unittest.TestCase):
         self.assertFalse(
             any(query.startswith("ALTER TABLE progressivi") for query, _ in cursor.statements)
         )
+
+
+class CatalogoArticoliMigrationTests(unittest.TestCase):
+    def test_adds_catalog_fields_and_tenant_scoped_ean_index(self):
+        class CatalogCursor:
+            def __init__(self):
+                self.statements = []
+                self.result = []
+
+            def execute(self, query, params=None):
+                self.statements.append(query)
+                if query == "SHOW COLUMNS FROM articoli":
+                    self.result = [("id",), ("tenant_id",), ("nome",)]
+                elif query == "SHOW INDEX FROM articoli":
+                    self.result = []
+
+            def fetchall(self):
+                return self.result
+
+        cursor = CatalogCursor()
+        _migra_catalogo_articoli(cursor)
+
+        self.assertIn("ALTER TABLE articoli ADD COLUMN ean varchar(32) DEFAULT NULL", cursor.statements)
+        self.assertIn(
+            "ALTER TABLE articoli ADD COLUMN prezzo_unitario decimal(12,2) DEFAULT NULL",
+            cursor.statements,
+        )
+        self.assertIn(
+            "ALTER TABLE articoli ADD UNIQUE KEY uq_articoli_tenant_ean (tenant_id, ean)",
+            cursor.statements,
+        )
+
+    def test_does_not_duplicate_existing_catalog_columns_and_index(self):
+        class CatalogCursor:
+            def __init__(self):
+                self.statements = []
+                self.result = []
+
+            def execute(self, query, params=None):
+                self.statements.append(query)
+                if query == "SHOW COLUMNS FROM articoli":
+                    self.result = [
+                        ("id",),
+                        ("tenant_id",),
+                        ("ean",),
+                        ("prezzo_unitario",),
+                    ]
+                elif query == "SHOW INDEX FROM articoli":
+                    self.result = [
+                        ("articoli", 0, "uq_articoli_tenant_ean", 1, "tenant_id"),
+                        ("articoli", 0, "uq_articoli_tenant_ean", 2, "ean"),
+                    ]
+
+            def fetchall(self):
+                return self.result
+
+        cursor = CatalogCursor()
+        _migra_catalogo_articoli(cursor)
+
+        self.assertFalse(any(query.startswith("ALTER TABLE") for query in cursor.statements))
 
 
 if __name__ == "__main__":

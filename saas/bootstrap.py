@@ -125,6 +125,31 @@ def _migra_progressivi_tenant(cursor):
         )
 
 
+def _migra_catalogo_articoli(cursor):
+    """Aggiunge i campi condivisi del catalogo agli schemi già inizializzati."""
+    cursor.execute("SHOW COLUMNS FROM articoli")
+    colonne = {riga[0] for riga in cursor.fetchall()}
+    if "ean" not in colonne:
+        cursor.execute("ALTER TABLE articoli ADD COLUMN ean varchar(32) DEFAULT NULL")
+    if "prezzo_unitario" not in colonne:
+        cursor.execute(
+            "ALTER TABLE articoli "
+            "ADD COLUMN prezzo_unitario decimal(12,2) DEFAULT NULL"
+        )
+
+    cursor.execute("SHOW INDEX FROM articoli")
+    indici_ean = {
+        riga[2]
+        for riga in cursor.fetchall()
+        if riga[4] == "ean" and riga[1] == 0
+    }
+    if "uq_articoli_tenant_ean" not in indici_ean:
+        cursor.execute(
+            "ALTER TABLE articoli "
+            "ADD UNIQUE KEY uq_articoli_tenant_ean (tenant_id, ean)"
+        )
+
+
 def crea_tabelle():
     """Esegue init_database.sql per creare tutte le tabelle (idempotente)."""
     if not os.path.exists(SCHEMA_FILE):
@@ -161,6 +186,7 @@ def crea_tabelle():
                     print(f"  [ok]  Statement {i} (tabella già esistente)")
 
         _migra_progressivi_tenant(c)
+        _migra_catalogo_articoli(c)
         conn.commit()
     
     print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati, {errors} errori")

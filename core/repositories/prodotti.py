@@ -1,34 +1,42 @@
-"""Repository per i prodotti (query merceologiche).
+"""Repository per le query legacy di merceologia e le viste del catalogo.
 
 Migra le funzioni ``_recupera_primi``, ``_recupera_secondi``,
 ``_recupera_contorni`` e ``_lista_tagli`` da ``controller_db.py`` usando il
 pattern context manager di ``core.db`` (niente connessione globale).
+
+Il catalogo operativo è ``articoli``; ``articoli_bilancia`` contiene solo
+parametri specifici del tracciato Bizerba.
 """
 
 from ..db import connection
 
 
 def prodotti_per_merceologia(merceologia, tenant_id=None):
-    """Restituisce i prodotti (prodotto, plu) di una data merceologia.
+    """Restituisce articoli e PLU Bizerba di una data categoria.
 
     Args:
         merceologia: nome della merceologia.
         tenant_id: se valorizzato filtra ``tenant_id = %s`` (SaaS).
     """
+    query = (
+        "SELECT a.nome, b.plu FROM articoli a "
+        "LEFT JOIN articoli_bilancia b "
+        "ON b.tenant_id = a.tenant_id AND b.articolo_id = a.id "
+        "WHERE a.categoria = %s AND a.attivo = 1"
+    )
+    params = [merceologia]
+    if tenant_id is not None:
+        query += " AND a.tenant_id = %s"
+        params.append(tenant_id)
+    query += " ORDER BY a.nome, a.id"
+
     with connection() as conn:
         c = conn.cursor()
-        if tenant_id is not None:
-            c.execute(
-                "SELECT prodotto, plu FROM prodotti "
-                "WHERE merceologia = %s AND tenant_id = %s",
-                (merceologia, tenant_id),
-            )
-        else:
-            c.execute(
-                "SELECT prodotto, plu FROM prodotti WHERE merceologia = %s",
-                (merceologia,),
-            )
-        return [{"prodotto": str(x[0]), "plu": str(x[1])} for x in c]
+        c.execute(query, tuple(params))
+        return [
+            {"prodotto": str(row[0]), "plu": str(row[1] or "")}
+            for row in c.fetchall()
+        ]
 
 
 def recupera_primi(tenant_id=None):
@@ -74,36 +82,42 @@ def recupera_merceologia_da_id(merceologia_id):
 
 
 def trova_per_ean(codice, tenant_id=None):
-    """Cerca un prodotto tramite codice EAN.
+    """Cerca un articolo tramite EAN o codice articolo.
 
     Args:
-        codice: codice EAN/EAN-13 del prodotto.
+        codice: codice EAN/EAN-13 o codice interno dell'articolo.
         tenant_id: se valorizzato scopa la ricerca per tenant (SaaS).
 
     Returns:
-        Un dict ``{'prodotto', 'plu', 'codice', 'prezzo_kg'}`` oppure ``None``
-        se non trovato.
+        I dati dell'articolo trovato, oppure ``None``.
     """
     with connection() as conn:
         c = conn.cursor()
+        query = (
+            "SELECT a.id, a.nome, b.plu, a.codice, a.ean, "
+            "a.prezzo_unitario, a.unita_misura "
+            "FROM articoli a LEFT JOIN articoli_bilancia b "
+            "ON b.tenant_id = a.tenant_id AND b.articolo_id = a.id "
+            "WHERE a.attivo = 1 AND (a.ean = %s OR a.codice = %s)"
+        )
+        params = [codice, codice]
         if tenant_id is not None:
-            c.execute(
-                "SELECT prodotto, plu, codice, prezzo_kg FROM prodotti "
-                "WHERE codice = %s AND tenant_id = %s",
-                (codice, tenant_id),
-            )
-        else:
-            c.execute(
-                "SELECT prodotto, plu, codice, prezzo_kg FROM prodotti "
-                "WHERE codice = %s",
-                (codice,),
-            )
+            query += " AND a.tenant_id = %s"
+            params.append(tenant_id)
+        query += " ORDER BY (a.ean = %s) DESC LIMIT 1"
+        params.append(codice)
+        c.execute(query, tuple(params))
         row = c.fetchone()
         if not row:
             return None
         return {
-            "prodotto": str(row[0]),
-            "plu": str(row[1]) if row[1] is not None else "",
-            "codice": str(row[2]) if row[2] is not None else "",
-            "prezzo_kg": str(row[3]) if row[3] is not None else "",
+            "articolo_id": row[0],
+            "nome": str(row[1]),
+            "prodotto": str(row[1]),
+            "plu": str(row[2]) if row[2] is not None else "",
+            "codice": str(row[3]) if row[3] is not None else "",
+            "ean": str(row[4]) if row[4] is not None else "",
+            "prezzo_unitario": str(row[5]) if row[5] is not None else "",
+            "prezzo_kg": str(row[5]) if row[5] is not None else "",
+            "unita_misura": row[6],
         }

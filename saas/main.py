@@ -367,6 +367,8 @@ def crea_articolo(
         payload.categoria,
         payload.unita_misura,
         payload.utilizzabile_come_input,
+        payload.ean,
+        payload.prezzo_unitario,
     )
 
 
@@ -386,6 +388,10 @@ def aggiorna_articolo(
         payload.unita_misura,
         payload.attivo,
         payload.utilizzabile_come_input,
+        payload.ean,
+        payload.prezzo_unitario,
+        "ean" in payload.model_fields_set,
+        "prezzo_unitario" in payload.model_fields_set,
     )
     if articolo is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
@@ -930,12 +936,13 @@ def genera_etichetta(
     )
 
 
-@app.get("/api/v1/prodotti/ean/{codice}")
-def cerca_prodotto_ean(
+@app.get("/api/v1/articoli/ean/{codice}")
+@app.get("/api/v1/prodotti/ean/{codice}", include_in_schema=False)
+def cerca_articolo_ean(
     codice: str,
     user: dict = Depends(auth.get_current_user),
 ):
-    """Lookup di un prodotto tramite codice EAN (scoped al tenant)."""
+    """Lookup di un articolo tramite EAN o codice articolo."""
     prodotto = barcode_service.lookup_prodotto(codice, user["tenant_id"])
     if not prodotto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Prodotto non trovato")

@@ -240,7 +240,7 @@
           </div>
         </div>
         <table class="table">
-          <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>Stato</th><th>Input lavorazione</th><th>Azioni</th></tr></thead>
+          <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>EAN</th><th>Prezzo unitario</th><th>Stato</th><th>Input lavorazione</th><th>Azioni</th></tr></thead>
           <tbody id="articoli-tbody"></tbody>
         </table>
         <div id="articoli-form" class="form-card" style="display:none">
@@ -249,6 +249,8 @@
           <label>Nome <input type="text" id="articoli-nome" maxlength="120" required /></label>
           <label>Codice <input type="text" id="articoli-codice" maxlength="60" /></label>
           <label>Categoria <input type="text" id="articoli-categoria" maxlength="80" /></label>
+          <label>EAN / codice a barre <input type="text" id="articoli-ean" maxlength="32" /></label>
+          <label>Prezzo unitario <input type="number" id="articoli-prezzo" min="0" step="0.01" /></label>
           <label>Unità di misura
             <select id="articoli-unita">
               <option value="kg">kg</option>

@@ -109,8 +109,10 @@ Tables are organized in sections:
    - `print_jobs` — print queue
 
 3. **Business Tables** (multi-tenant via tenant_id)
-   - `reparti`, `dipendenti`, `fornitori`, `merceologie`, `prodotti`, etc.
-   - All include `tenant_id` column with `idx_tenant_id` index
+   - `articoli` — catalogo operativo condiviso con la tracciabilità
+   - `articoli_bilancia` — configurazione Bizerba per articolo
+   - `reparti`, `dipendenti`, `fornitori`, `merceologie`, etc.
+   - Tenant-scoped tables use tenant keys and indexes appropriate to the relation
 
 4. **Traceability Tables**
    - `documenti_ingresso`, `lavorazioni`, `lotti`, and related movement/detail tables

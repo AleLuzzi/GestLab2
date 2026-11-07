@@ -27,12 +27,21 @@ registrare token o dati del documento.
 
 Il bootstrap consolida eventuali record `progressivi` duplicati per tenant,
 conservando il valore massimo di ciascun contatore, e crea l'indice univoco
-necessario anche sui database già esistenti.
+necessario anche sui database già esistenti. Aggiunge inoltre i campi EAN e
+prezzo al catalogo `articoli` preesistente. Non cancella la vecchia tabella
+`prodotti` né ne copia automaticamente i dati in `articoli_bilancia`: i database
+di sviluppo già popolati vanno riconciliati esplicitamente.
 
 > La console web (`web/`) è una SPA vanilla (HTML/CSS/JS, nessuna build) servita
 > direttamente dal backend FastAPI. Include login, dashboard, gestione dipendenti,
-> lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di
+> articoli, lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di
 > stampa e pannello admin (utenti + dispositivi).
+
+Il catalogo operativo è `articoli`: nome, codice, categoria, unità di misura,
+EAN e prezzo unitario sono condivisi da tracciabilità e lookup. I parametri
+specifici delle bilance Bizerba sono separati in `articoli_bilancia` e collegati
+all'articolo per tenant; la generazione dei file Bizerba non è ancora esposta
+dal SaaS.
 
 La console attuale consente la consultazione dei lotti aperti e del menu. La
 chiusura/vendita lotti, la composizione del menu e il CRUD legacy dei tagli
@@ -70,7 +79,7 @@ saas/
 | PUT | `/api/v1/dipendenti/{id}` | admin/operatore | Aggiorna dipendente |
 | DELETE | `/api/v1/dipendenti/{id}` | admin | Elimina dipendente |
 | GET | `/api/v1/lotti/aperti` | autenticato | Lotti aperti |
-| GET | `/api/v1/menu` | autenticato | Prodotti del menu |
+| GET | `/api/v1/menu` | autenticato | Articoli attivi del menu |
 | GET | `/health` | pubblico | Health check |
 | POST | `/api/v1/dispositivi` | admin | Registra un Local Print Agent (genera token) |
 | POST | `/api/v1/print-jobs` | admin/operatore | Accoda un job di stampa |

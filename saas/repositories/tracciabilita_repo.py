@@ -32,7 +32,8 @@ def lista_articoli(tenant_id):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, codice, nome, categoria, unita_misura, attivo, "
+            "SELECT id, codice, nome, categoria, unita_misura, ean, "
+            "prezzo_unitario, attivo, "
             "utilizzabile_come_input "
             "FROM articoli WHERE tenant_id = %s ORDER BY nome, id",
             (tenant_id,),
@@ -44,23 +45,42 @@ def lista_articoli(tenant_id):
                 "nome": row[2],
                 "categoria": row[3],
                 "unita_misura": row[4],
-                "attivo": bool(row[5]),
-                "utilizzabile_come_input": bool(row[6]),
+                "ean": row[5],
+                "prezzo_unitario": str(row[6]) if row[6] is not None else None,
+                "attivo": bool(row[7]),
+                "utilizzabile_come_input": bool(row[8]),
             }
             for row in cursor.fetchall()
         ]
 
 
 def crea_articolo(
-    tenant_id, codice, nome, categoria, unita_misura, utilizzabile_come_input=True
+    tenant_id,
+    codice,
+    nome,
+    categoria,
+    unita_misura,
+    utilizzabile_come_input=True,
+    ean=None,
+    prezzo_unitario=None,
 ):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO articoli "
-            "(tenant_id, codice, nome, categoria, unita_misura, utilizzabile_come_input) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
-            (tenant_id, codice, nome, categoria, unita_misura, int(utilizzabile_come_input)),
+            "(tenant_id, codice, nome, categoria, unita_misura, ean, "
+            "prezzo_unitario, utilizzabile_come_input) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                tenant_id,
+                codice,
+                nome,
+                categoria,
+                unita_misura,
+                ean,
+                prezzo_unitario,
+                int(utilizzabile_come_input),
+            ),
         )
         articolo_id = cursor.lastrowid
         conn.commit()
@@ -70,6 +90,8 @@ def crea_articolo(
         "nome": nome,
         "categoria": categoria,
         "unita_misura": unita_misura,
+        "ean": ean,
+        "prezzo_unitario": str(prezzo_unitario) if prezzo_unitario is not None else None,
         "attivo": True,
         "utilizzabile_come_input": utilizzabile_come_input,
     }
@@ -84,12 +106,19 @@ def aggiorna_articolo(
     unita_misura,
     attivo,
     utilizzabile_come_input=None,
+    ean=None,
+    prezzo_unitario=None,
+    ean_impostato=True,
+    prezzo_impostato=True,
 ):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE articoli SET codice = %s, nome = %s, categoria = %s, "
-            "unita_misura = %s, attivo = %s, "
+            "unita_misura = %s, "
+            "ean = CASE WHEN %s THEN %s ELSE ean END, "
+            "prezzo_unitario = CASE WHEN %s THEN %s ELSE prezzo_unitario END, "
+            "attivo = %s, "
             "utilizzabile_come_input = COALESCE(%s, utilizzabile_come_input) "
             "WHERE tenant_id = %s AND id = %s",
             (
@@ -97,6 +126,10 @@ def aggiorna_articolo(
                 nome,
                 categoria,
                 unita_misura,
+                int(ean_impostato),
+                ean,
+                int(prezzo_impostato),
+                prezzo_unitario,
                 int(attivo),
                 None if utilizzabile_come_input is None else int(utilizzabile_come_input),
                 tenant_id,
@@ -104,7 +137,8 @@ def aggiorna_articolo(
             ),
         )
         cursor.execute(
-            "SELECT id, codice, nome, categoria, unita_misura, attivo, "
+            "SELECT id, codice, nome, categoria, unita_misura, ean, "
+            "prezzo_unitario, attivo, "
             "utilizzabile_come_input "
             "FROM articoli WHERE tenant_id = %s AND id = %s",
             (tenant_id, articolo_id),
@@ -120,8 +154,10 @@ def aggiorna_articolo(
         "nome": row[2],
         "categoria": row[3],
         "unita_misura": row[4],
-        "attivo": bool(row[5]),
-        "utilizzabile_come_input": bool(row[6]),
+        "ean": row[5],
+        "prezzo_unitario": str(row[6]) if row[6] is not None else None,
+        "attivo": bool(row[7]),
+        "utilizzabile_come_input": bool(row[8]),
     }
 
 

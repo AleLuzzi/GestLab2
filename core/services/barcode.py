@@ -1,8 +1,8 @@
 """Service layer barcode (lookup EAN/QR).
 
-Gestisce la lettura di codici a barre (EAN-13, QR) e il lookup del prodotto
+Gestisce la lettura di codici a barre (EAN-13, QR) e il lookup dell'articolo
 associato. In un contesto SaaS il lookup avviene via API
-(``GET /api/v1/prodotti/ean/{codice}``) con scoping per tenant; qui e'
+(``GET /api/v1/articoli/ean/{codice}``) con scoping per tenant; qui e'
 esposto come funzione di servizio riusabile sia dal backend sia dalla UI.
 
 I lettori barcode commerciali sono *keyboard-wedge* (HID): inviano la stringa
@@ -43,14 +43,14 @@ def lookup_prodotto(codice: str, tenant_id: Optional[int] = None) -> Optional[di
     """Cerca un prodotto mediante codice EAN.
 
     Normalizza il codice, valida l'EAN-13 (se applicabile) ed esegue il lookup
-    nel repository ``prodotti``. In SaaS il ``tenant_id`` scopa la ricerca.
+    nell'articolo del catalogo. In SaaS il ``tenant_id`` scopa la ricerca.
 
     Args:
         codice: codice EAN letto dal barcode.
         tenant_id: id del tenant (opzionale; ``None`` = nessun filtro).
 
     Returns:
-        Un dict con i dati del prodotto, oppure ``None`` se non trovato.
+        Un dict con i dati dell'articolo, oppure ``None`` se non trovato.
     """
     from core.repositories import prodotti as prodotti_repo
 
@@ -62,9 +62,7 @@ def lookup_prodotto(codice: str, tenant_id: Optional[int] = None) -> Optional[di
     if len(codice) == 13 and not valida_ean13(codice):
         return None
 
-    # Lookup per EAN sul repository prodotti (aggiungere metodo dedicato).
-    # Nota: il repository prodotti recupera per merceologia; per il lookup
-    # diretto EAN aggiungere una funzione ``prodotti.trova_per_ean`` in core.
+    # La configurazione Bizerba viene aggiunta alla risposta solo se presente.
     return prodotti_repo.trova_per_ean(codice, tenant_id)
 
 

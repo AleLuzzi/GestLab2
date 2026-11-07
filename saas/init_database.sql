@@ -170,22 +170,26 @@ CREATE TABLE IF NOT EXISTS `articoli` (
   `nome` varchar(120) NOT NULL,
   `categoria` varchar(80) DEFAULT NULL,
   `unita_misura` varchar(8) NOT NULL DEFAULT 'kg',
+  `ean` varchar(32) DEFAULT NULL,
+  `prezzo_unitario` decimal(12,2) DEFAULT NULL,
   `attivo` tinyint(1) NOT NULL DEFAULT 1,
   `utilizzabile_come_input` tinyint(1) NOT NULL DEFAULT 1,
   `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_articoli_tenant_id` (`tenant_id`, `id`),
   UNIQUE KEY `uq_articoli_tenant_codice` (`tenant_id`, `codice`),
+  UNIQUE KEY `uq_articoli_tenant_ean` (`tenant_id`, `ean`),
   KEY `idx_articoli_tenant_nome` (`tenant_id`, `nome`),
   CONSTRAINT `fk_articoli_tenant` FOREIGN KEY (`tenant_id`)
     REFERENCES `tenant` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `prodotti` (
-  `ID` int NOT NULL AUTO_INCREMENT,
-  `prodotto` varchar(30) DEFAULT NULL,
+CREATE TABLE IF NOT EXISTS `articoli_bilancia` (
+  `tenant_id` bigint NOT NULL,
+  `articolo_id` bigint NOT NULL,
   `reparto` varchar(11) DEFAULT NULL,
   `plu` varchar(5) DEFAULT NULL,
+  -- Campo del tracciato Bizerba; il prezzo commerciale canonico è in articoli.prezzo_unitario.
   `prezzo1` int DEFAULT NULL,
   `prezzo2` varchar(1) DEFAULT NULL,
   `prezzo3` varchar(1) DEFAULT NULL,
@@ -195,7 +199,6 @@ CREATE TABLE IF NOT EXISTS `prodotti` (
   `tara` varchar(1) DEFAULT NULL,
   `gg_cons_1` varchar(3) DEFAULT NULL,
   `gg_cons_2` varchar(1) DEFAULT NULL,
-  `ean` varchar(7) DEFAULT NULL,
   `testo_agg_1` int DEFAULT NULL,
   `testo_agg_2` int DEFAULT NULL,
   `testo_agg_3` int DEFAULT NULL,
@@ -217,10 +220,12 @@ CREATE TABLE IF NOT EXISTS `prodotti` (
   `formato_4` int DEFAULT NULL,
   `merceologia` varchar(20) DEFAULT NULL,
   `flag1_prod` int DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL,
-  PRIMARY KEY (`ID`),
-  KEY `idx_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  PRIMARY KEY (`tenant_id`, `articolo_id`),
+  CONSTRAINT `fk_articoli_bilancia_articolo` FOREIGN KEY (`tenant_id`, `articolo_id`)
+    REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_articoli_bilancia_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `ingresso_merce` (
   `progressivo_acq` varchar(5) DEFAULT NULL,

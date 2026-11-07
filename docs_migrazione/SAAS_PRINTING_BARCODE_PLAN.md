@@ -89,7 +89,7 @@ La UI desktop legacy in `lotti_vendita.py` generava PDF con **ReportLab**:
 | Numero progressivo DDT | Sequence DB per tenant | Deve essere unico per tenant |
 | Data documento | Generata + modificabile | Formato `dd/mm/yy` |
 | Fornitore | Tabella fornitori | `flag1_ing_merce = 1` |
-| Articoli / tagli | Tabella tagli/prodotti | merceologici |
+| Articoli / tagli | Catalogo `articoli`; tabella `tagli` | CRUD tagli resta legacy |
 | Quantità/peso | Righe ingresso merce | `peso_i`, `peso_f` |
 | Merceologia | Tabella merceologie | es. Primi, Secondi, Contorni |
 
@@ -148,7 +148,7 @@ La UI desktop legacy in `lotti_vendita.py` generava PDF con **ReportLab**:
 - Un campo di input con **focus fisso** cattura la stringa del barcode.
 - Gestione dell'evento `Enter` (o un prefisso/suffisso configurabile) per
   distinguere la lettura da una digitazione manuale.
-- La stringa viene inviata a `GET /api/v1/prodotti/ean/{codice}` (con `tenant_id`).
+- La stringa viene inviata a `GET /api/v1/articoli/ean/{codice}` (con `tenant_id`).
 - La risposta popola il campo prodotto/quantità e richiama il flusso di vendita.
 
 **Accorgimenti anti-errori:**

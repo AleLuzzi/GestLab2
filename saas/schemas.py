@@ -109,6 +109,8 @@ class ArticoloCreate(BaseModel):
     codice: str | None = Field(default=None, max_length=60)
     categoria: str | None = Field(default=None, max_length=80)
     unita_misura: str = Field(default="kg", min_length=1, max_length=8)
+    ean: str | None = Field(default=None, max_length=32)
+    prezzo_unitario: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     utilizzabile_come_input: bool = True
 
 
@@ -117,6 +119,8 @@ class ArticoloUpdate(BaseModel):
     codice: str | None = Field(default=None, max_length=60)
     categoria: str | None = Field(default=None, max_length=80)
     unita_misura: str = Field(..., min_length=1, max_length=8)
+    ean: str | None = Field(default=None, max_length=32)
+    prezzo_unitario: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=2)
     attivo: bool = True
     utilizzabile_come_input: bool | None = None
 
@@ -127,6 +131,8 @@ class ArticoloOut(BaseModel):
     nome: str
     categoria: str | None = None
     unita_misura: str
+    ean: str | None = None
+    prezzo_unitario: Decimal | None = None
     attivo: bool
     utilizzabile_come_input: bool
 
