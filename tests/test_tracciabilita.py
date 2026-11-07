@@ -322,6 +322,52 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
 
+    def test_work_rolls_back_stock_update_if_movement_insert_fails(self):
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("5.000"), True)]
+            if query.startswith("SELECT id, unita_misura FROM articoli"):
+                return [(9, "kg")]
+            if query.startswith("INSERT INTO movimenti_lotto"):
+                raise RuntimeError("movement insert failed")
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaisesRegex(RuntimeError, "movement insert failed"):
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    descrizione="Trasformazione",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
+                    ],
+                    output=[
+                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("1")})()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertTrue(
+            any("UPDATE lotti SET quantita_disponibile" in query for query, _ in cursor.statements)
+        )
+        self.assertTrue(
+            any("INSERT INTO movimenti_lotto" in query for query, _ in cursor.statements)
+        )
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+
     def test_work_rejects_operator_outside_tenant(self):
         cursor = FakeCursor(lambda query, params: [])
         conn = FakeConnection(cursor)

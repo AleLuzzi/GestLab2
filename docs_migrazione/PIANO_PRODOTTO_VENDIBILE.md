@@ -186,10 +186,11 @@ dati non vengono eliminati automaticamente.
 `GET /api/v1/lotti/aperti` (legacy) e `GET /api/v1/tracciabilita/lotti` (A/V)
 non devono convivere in UI.
 
-**Stato:** la funzione `chiudi_lotto` imposta `quantita_disponibile = 0` e
-`attivo = 0`, ma non è ancora collegata a una vendita o a una rettifica.
-Implementare le variazioni di giacenza e i relativi movimenti nella stessa
-transazione; non considerare la chiusura totale un flusso di vendita.
+**Stato:** ingresso e lavorazione registrano le variazioni di giacenza e i
+relativi movimenti nella stessa transazione. `chiudi_lotto` può disattivare
+solo un lotto con giacenza già a zero: non modifica la quantità e non
+sostituisce un flusso di vendita. I test verificano il rollback se non è
+possibile registrare il movimento.
 
 **Criterio:** [`core/services/vendite.py`](../core/services/vendite.py) non
 solleva `NotImplementedError`; le giacenze aperte provengono da `lotti`.
