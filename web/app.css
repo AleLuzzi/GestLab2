@@ -192,8 +192,15 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px 18px;
 }
+.ingresso-metadata-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 18px;
+  margin-top: 16px;
+}
 .ingresso-header-fields input,
 .ingresso-header-fields select,
+.ingresso-metadata-fields input,
 .ingresso-weight-row input {
   min-height: 52px;
   font-size: 17px;
@@ -472,7 +479,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); }
   }
   .nav-item { flex: 0 0 auto; min-height: 48px; white-space: nowrap; }
   .content { margin-left: 0; padding: 18px; }
-  .ingresso-header-fields { grid-template-columns: 1fr; }
+  .ingresso-header-fields,
+  .ingresso-metadata-fields { grid-template-columns: 1fr; }
   .ingresso-weight-row { grid-template-columns: 1fr 1fr; }
   .ingresso-weight-row label { grid-column: 1 / -1; margin-bottom: -8px; }
   .ingresso-weight-row .btn { grid-column: 1 / -1; margin-bottom: 0; }

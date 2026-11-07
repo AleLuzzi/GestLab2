@@ -36,7 +36,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Metadati, scadenze e FEFO
 
-- [ ] Aggiornare il wizard d'ingresso per raccogliere lotto fornitore, origine e scadenza; raccogliere la temperatura d'ingresso quando applicabile.
+- [x] Aggiornare il wizard d'ingresso per raccogliere lotto fornitore, origine e scadenza; raccogliere la temperatura d'ingresso quando applicabile. Campi facoltativi per gli articoli selezionati, mostrati nel riepilogo e inviati per ciascuna riga; temperatura limitata a -100..100 °C con due decimali.
 - [ ] Definire la distinzione tra scadenza e TMC, i campi da salvare e le regole da applicare agli articoli interessati.
 - [ ] Decidere se e come registrare note di lotto (per esempio “bio” o razza) e, se incluse, aggiungerle al flusso.
 - [ ] Mostrare nel dettaglio lotto i metadati, il fornitore e il DDT d'ingresso.

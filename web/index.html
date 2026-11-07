@@ -143,6 +143,21 @@
             <div id="ingress-categorie" class="categoria-buttons" aria-label="Categorie articolo"></div>
             <div id="ingress-articoli-feedback" class="ingresso-feedback" aria-live="polite"></div>
             <div id="ingress-articoli" class="articoli-list" aria-label="Articoli disponibili"></div>
+            <p class="ingresso-help">I metadati inseriti si applicano a tutti gli articoli selezionati quando li aggiungi al riepilogo.</p>
+            <div class="ingresso-metadata-fields">
+              <label for="ingress-lotto-fornitore">Lotto fornitore (se indicato)
+                <input type="text" id="ingress-lotto-fornitore" maxlength="64" autocomplete="off" />
+              </label>
+              <label for="ingress-origine">Origine (se indicata)
+                <input type="text" id="ingress-origine" maxlength="255" autocomplete="off" />
+              </label>
+              <label for="ingress-data-scadenza">Data di scadenza (se indicata)
+                <input type="date" id="ingress-data-scadenza" />
+              </label>
+              <label for="ingress-temperatura">Temperatura all'ingresso (°C, se applicabile)
+                <input type="number" id="ingress-temperatura" min="-100" max="100" step="0.01" inputmode="decimal" placeholder="Es. 2,5" />
+              </label>
+            </div>
             <div class="ingresso-weight-row">
               <label for="ingress-quantita">Quantità ricevuta</label>
               <input type="number" id="ingress-quantita" min="0.001" max="999999999.999" step="0.001" inputmode="decimal" placeholder="Es. 12,500" />

@@ -533,10 +533,22 @@ class TracciabilitaTests(unittest.TestCase):
         insert_query = next(
             query for query, _ in cursor.statements if "INSERT INTO lotti" in query
         )
+        insert_params = next(
+            params for query, params in cursor.statements if "INSERT INTO lotti" in query
+        )
         self.assertIn("data_scadenza", insert_query)
         self.assertIn("lotto_fornitore", insert_query)
         self.assertIn("origine", insert_query)
         self.assertIn("temperatura_ingresso", insert_query)
+        self.assertEqual(
+            insert_params[5:9],
+            (
+                date(2026, 12, 15),
+                "LF-8842",
+                "Italia, suino",
+                Decimal("2.50"),
+            ),
+        )
 
 
 if __name__ == "__main__":

@@ -77,9 +77,16 @@ function aggiornaRiepilogo() {
     description.className = "ingresso-line-description";
     const name = document.createElement("strong");
     name.textContent = riga.articolo;
-    const category = document.createElement("span");
-    category.textContent = riga.categoria;
-    description.append(name, category);
+    const details = document.createElement("span");
+    const metadati = [
+      riga.categoria,
+      riga.lottoFornitore && `Lotto fornitore: ${riga.lottoFornitore}`,
+      riga.origine && `Origine: ${riga.origine}`,
+      riga.dataScadenza && `Scadenza: ${new Date(`${riga.dataScadenza}T00:00:00`).toLocaleDateString("it-IT")}`,
+      riga.temperaturaIngresso !== null && `Temperatura: ${riga.temperaturaIngresso} °C`,
+    ].filter(Boolean);
+    details.textContent = metadati.join(" · ");
+    description.append(name, details);
 
     const weight = document.createElement("strong");
     weight.className = "ingresso-line-weight";
@@ -256,6 +263,20 @@ function aggiungiRighe() {
     return;
   }
 
+  const inputTemperatura = $("ingress-temperatura");
+  if (!inputTemperatura.checkValidity()) {
+    $("ingress-articoli-feedback").textContent =
+      "Inserisci una temperatura compresa tra -100 e 100 °C, con massimo 2 decimali.";
+    inputTemperatura.focus();
+    return;
+  }
+  const lottoFornitore = $("ingress-lotto-fornitore").value.trim();
+  const origine = $("ingress-origine").value.trim();
+  const dataScadenza = $("ingress-data-scadenza").value;
+  const temperaturaIngresso = inputTemperatura.value === ""
+    ? null
+    : Number(inputTemperatura.value).toFixed(2);
+
   const selezionati = articoliAttivi().filter((articolo) =>
     articoliSelezionati.has(String(articolo.id)));
   selezionati.forEach((articolo) => {
@@ -266,6 +287,10 @@ function aggiungiRighe() {
       categoria: articolo.categoria?.trim() || "Senza categoria",
       unitaMisura: articolo.unita_misura,
       quantita,
+      lottoFornitore: lottoFornitore || null,
+      origine: origine || null,
+      dataScadenza: dataScadenza || null,
+      temperaturaIngresso,
     });
   });
   articoliSelezionati.clear();
@@ -283,6 +308,10 @@ function azzeraIngresso() {
   $("ingress-data").value = dataLocaleISO();
   $("ingress-ddt").value = "";
   $("ingress-quantita").value = "";
+  $("ingress-lotto-fornitore").value = "";
+  $("ingress-origine").value = "";
+  $("ingress-data-scadenza").value = "";
+  $("ingress-temperatura").value = "";
   righeIngresso = [];
   categoriaSelezionata = null;
   articoliSelezionati.clear();
@@ -352,6 +381,10 @@ export function initIngressoMerce() {
           righe: righeIngresso.map((riga) => ({
             articolo_id: Number(riga.articoloId),
             quantita: riga.quantita.toFixed(3),
+            lotto_fornitore: riga.lottoFornitore,
+            origine: riga.origine,
+            data_scadenza: riga.dataScadenza,
+            temperatura_ingresso: riga.temperaturaIngresso,
           })),
         }),
       });
