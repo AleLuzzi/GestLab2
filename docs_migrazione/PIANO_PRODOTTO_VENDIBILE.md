@@ -4,7 +4,8 @@ Documento di prodotto (non di implementazione codice). Descrive i miglioramenti
 necessari perché GestLab sia vendibile come SaaS a macellerie che sezionano e
 producono preparati da cuocere.
 
-**Data:** 2026-11-02  
+**Data aggiornamento:** 2026-11-07
+
 **Canale:** SaaS multi-tenant (`saas/` + console `web/`)  
 **Perimetro v1 concordato:** laboratorio (ingresso, lotti, lavorazioni,
 etichette, scadenze, ricette) + vendite interne (scarico lotti, DDT, scontrino
@@ -51,9 +52,10 @@ flowchart LR
   LottiV --> Etichetta
 ```
 
-Oggi questo flusso è **incompleto**: il laboratorio (ingresso tracciato e
-lavorazioni) esiste; vendita, documenti persistenti, scadenze, ricette e
-hardening SaaS no.
+Oggi questo flusso è **incompleto**: ingresso tracciato e lavorazioni esistono;
+schema e API supportano alcuni metadati dei lotti, ma la UI d'ingresso non li
+raccoglie ancora. Vendita, documenti persistenti, ricette e hardening SaaS
+restano da completare.
 
 ---
 
@@ -87,24 +89,24 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 
 | Funzione | Stato | Dove / nota |
 |---|---|---|
-| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh. Manca reset password, rate limit, revoca, secret di default insicuro. |
+| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Mancano reset password, rate limit e revoca. |
 | Tenant e utenti | P | [`saas/crea_tenant.py`](../saas/crea_tenant.py), `POST /api/v1/tenant`, `POST /api/v1/utenti`. Onboarding manuale. |
 | Anagrafica clienti/fornitori (`soggetti`) | C | CRUD web e API. Soft-delete. Campi utili a FE futuri già presenti. |
 | Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
-| Catalogo articoli | P | [`articoli`](../saas/init_database.sql) è la fonte unica per anagrafica, EAN e prezzo; `articoli_bilancia` contiene solo la configurazione Bizerba collegata all'articolo. |
+| Catalogo articoli | C | [`articoli`](../saas/init_database.sql) è la fonte unica per anagrafica, EAN e prezzo; `articoli_bilancia` contiene solo la configurazione Bizerba collegata all'articolo. Resta da realizzare l'export Bizerba combinato. |
 | Ingresso merce tracciato → lotti `A` | C | `POST /api/v1/tracciabilita/ingressi`, UI wizard in [`web/js/features/ingresso-merce.js`](../web/js/features/ingresso-merce.js). |
-| Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` scrive `ingresso_merce` (quantità `varchar`, senza PK). Doppio percorso. |
+| Ingresso merce legacy | C | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI; resta da riconciliare l'eventuale storico in `ingresso_merce`. |
 | Lavorazioni multi input/output/scarti → lotti `V` | C | `POST /api/v1/tracciabilita/lavorazioni`, UI [`web/js/features/tracciabilita.js`](../web/js/features/tracciabilita.js). |
 | Dettaglio genealogia lotto (API) | P | `GET /api/v1/tracciabilita/lotti/{id}`. UI albero e PDF NAS/ASL assenti. |
-| Scadenza, TMC, origine, lotto fornitore | A | Non in schema `lotti`. |
+| Scadenza, origine, lotto fornitore e temperatura d'ingresso | P | Campi presenti in `lotti`, schema API, repository e migrazione `20261107_lotti_metadata.sql`; il wizard web non li raccoglie ancora e i lotti `V` non li ereditano. Il TMC non ha un campo dedicato. |
 | Ricette / distinta base preparati | A | Ogni lavorazione è ad-hoc. |
 | Allergeni e ingredienti strutturati | A | Etichetta: testo libero in [`web/js/features/printing.js`](../web/js/features/printing.js). |
 | Inventario / rettifica giacenza | P | `movimenti_lotto.tipo = RETTIFICA` nello schema; nessuna UI né API dedicata. |
-| Vendita / scarico lotti | A | [`core/services/vendite.py`](../core/services/vendite.py): `chiudi_lotto` solleva `NotImplementedError`. |
+| Vendita / scarico lotti | A | [`core/services/vendite.py`](../core/services/vendite.py) può chiudere un lotto azzerandone la giacenza, ma non esiste ancora un flusso di vendita con scarico parziale e movimento `VENDITA`. |
 | DDT persistente legato a lotti e cliente | A | `POST /api/v1/ddt` genera PDF da payload libero; campo `fornitore` fuorviante in vendita. |
 | Scontrino non fiscale da vendita | A | `POST /api/v1/scontrino` genera ESC/POS da payload libero, senza magazzino. |
 | Menu / listino banco | P | `GET /api/v1/menu` legge gli articoli attivi; la configurazione Bizerba non è il catalogo. |
-| Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. |
+| Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'endpoint etichetta può derivare scadenza e origine da `lotto_id`, ma la maschera resta in gran parte manuale. |
 | Lookup EAN | P | API + campo dashboard; EAN e prezzo sono dati dell'articolo. |
 | Dashboard operativa | P | Conteggio anagrafiche/lotti/job in [`web/js/features/dashboard.js`](../web/js/features/dashboard.js). Niente scadenze, giacenze critiche, vendite. |
 | HACCP / temperature | A | — |
@@ -132,14 +134,14 @@ vendite interne non possono scaricare un magazzino unico.
 
 ### 4.1 Un solo ingresso merce
 
-Esistono due API:
+Esisteva un doppio percorso:
 
 - `POST /api/v1/ingresso-merce` → tabella legacy `ingresso_merce`.
 - `POST /api/v1/tracciabilita/ingressi` → `documenti_ingresso` + lotti `A`.
 
-**Azione:** un solo flusso operativo (quello tracciato). Deprecare o rendere
-no-op l’endpoint legacy; non mostrarlo in UI. Archiviare/migrare i record
-storici solo dopo riconciliazione (stesso avviso già in
+**Fatto (2026-11-07):** l'endpoint legacy restituisce `410 Gone` ed è escluso
+da OpenAPI; la UI usa il flusso tracciato. Riconciliare e migrare eventuali
+record storici solo dopo verifica (stesso avviso già in
 `TRACCIABILITA_ARTICOLI.md`).
 
 **Criterio:** un ingresso dal wizard crea lotti `A` e movimenti `INGRESSO`;
@@ -155,7 +157,7 @@ Oggi:
   Bizerba. Inoltre alcune query cercavano `codice` e `prezzo_kg`, colonne che
   non esistono nel suo DDL.
 
-**Azione:** `articoli` è la fonte unica per nome, codice, categoria, unità di
+**Fatto (2026-11-07):** `articoli` è la fonte unica per nome, codice, categoria, unità di
 misura, EAN e prezzo unitario. `articoli_bilancia` conserva solo i parametri
 specifici dell'esportazione Bizerba (PLU, reparto, tara, conservazione, testi e
 formati) ed è collegata con `(tenant_id, articolo_id)`. Il nome e i dati
@@ -170,15 +172,19 @@ dati.
 
 **Criterio:** vendita, etichetta e lookup EAN usano lo stesso `articolo_id`
 dei lotti; menu e lookup non leggono più la vecchia tabella `prodotti`.
+L'export Bizerba che combina i dati di `articoli` e `articoli_bilancia` resta
+un'attività separata; sulle installazioni esistenti la vecchia tabella e i suoi
+dati non vengono eliminati automaticamente.
 
 ### 4.3 Un solo modello lotti
 
 `GET /api/v1/lotti/aperti` (legacy) e `GET /api/v1/tracciabilita/lotti` (A/V)
 non devono convivere in UI.
 
-**Azione:** tutte le giacenze e le vendite passano da `lotti` +
-`movimenti_lotto`. Chiusura lotto = `quantita_disponibile = 0` e `attivo = 0`
-nella stessa transazione della vendita o della rettifica.
+**Stato:** la funzione `chiudi_lotto` imposta `quantita_disponibile = 0` e
+`attivo = 0`, ma non è ancora collegata a una vendita o a una rettifica.
+Implementare le variazioni di giacenza e i relativi movimenti nella stessa
+transazione; non considerare la chiusura totale un flusso di vendita.
 
 **Criterio:** [`core/services/vendite.py`](../core/services/vendite.py) non
 solleva `NotImplementedError`; non legge `ingresso_merce.lotto_chiuso`.
@@ -208,22 +214,22 @@ codice; nessun insert su tabelle senza PK.
 
 ### 4.5 Database e segreti
 
-- Pool di connessioni (oggi una connect per request in `core/db.py`).
 - TLS verso MySQL/RDS in produzione.
-- Vietare l’avvio in produzione se `JWT_SECRET` è il default
-  `"cambia-questa-secret-key"` ([`saas/auth.py`](../saas/auth.py)).
+- Pool di connessioni (oggi una connect per request in `core/db.py`).
 - Credenziali solo da env / Secret Manager; rimuovere il fallback
   `config.ini` in un intervento dedicato (già previsto in
   `SAAS_MIGRATION_PLAN.md`).
 
 **Criterio:** health check verde; sotto carico le connessioni sono riusate;
-deploy di test con secret di default viene rifiutato se `GESTLAB_ENV=production`.
+deploy con credenziali protette e secret di default rifiutato se
+`GESTLAB_ENV=production` (quest'ultimo controllo è già implementato).
 
 > Aggiornamento implementativo 2026-11-07:
 > - `saas/auth.py` blocca l’avvio con `JWT_SECRET` di default in `GESTLAB_ENV=production`.
 > - `saas/main.py` depreca l’endpoint legacy `/api/v1/ingresso-merce` con `410 Gone` e lo nasconde dal schema OpenAPI.
-> - `core/services/vendite.py` non lancia più `NotImplementedError` e chiude il lotto impostando `quantita_disponibile = 0` e `attivo = 0`.
+> - `core/services/vendite.py` non lancia più `NotImplementedError`; la funzione di chiusura azzera giacenza e stato attivo, ma non realizza ancora una vendita né un decremento parziale.
 > - `saas/init_database.sql` include il valore `VENDITA` nel `CHECK` di `movimenti_lotto.tipo` e la migrazione `saas/migrations/20261107_movimenti_lotto_vendita.sql` allinea i DB esistenti.
+> - `saas/init_database.sql`, `saas/schemas.py` e il repository tracciabilità supportano scadenza, lotto fornitore, origine e temperatura d'ingresso; la migrazione `saas/migrations/20261107_lotti_metadata.sql` aggiorna i DB esistenti.
 
 ---
 
@@ -234,21 +240,28 @@ sui preparati, senza Excel di appoggio.
 
 ### 5.1 Dati di lotto per la carne e i preparati
 
-Estendere i lotti `A` (e derivare sui `V` in lavorazione) con:
+I campi `data_scadenza`, `lotto_fornitore`, `origine` e
+`temperatura_ingresso` sono già presenti nello schema e accettati dall'API di
+ingresso. Il wizard web non li raccoglie ancora; inoltre TMC non è distinto
+dalla scadenza e i lotti `V` non ereditano i metadati dagli input. Per
+completare la gestione:
 
-- lotto / riferimento documento del fornitore;
+- inserire lotto fornitore e riferimento del documento (il DDT d'ingresso è
+  già registrato a livello documento);
 - paese di origine / allevamento (e, se disponibile, macellazione e
   sezionamento — approvazione veterinaria);
-- data scadenza o TMC;
+- data di scadenza o TMC, chiarendo quale campo e regola applicare;
 - temperatura all’ingresso (opzionale);
-- note (es. “bio”, “razza”).
+- note (es. “bio”, “razza”), oggi non previste nei metadati del lotto.
 
 Sui lotti `V`: scadenza calcolata da ricetta o inserita (es. +N giorni da
-produzione); origine aggregata dagli input (testo etichetta).
+produzione); origine aggregata dagli input (testo etichetta). Definire se e
+come distinguere scadenza e TMC per gli articoli interessati.
 
-**Criterio:** in dettaglio lotto si vedono fornitore, DDT, lotto fornitore,
-origine, scadenza. I `V` di una lavorazione ereditano o dichiarano origine e
-scadenza.
+**Criterio:** il wizard consente di registrare lotto fornitore, origine,
+scadenza e, se necessario, temperatura; in dettaglio si vedono questi dati
+insieme a fornitore e DDT. I `V` di una lavorazione ereditano o dichiarano
+origine e scadenza.
 
 ### 5.2 FEFO e alert
 
@@ -291,8 +304,9 @@ l’etichetta usa gli ingredienti della ricetta, non un campo libero vuoto.
 
 ### 5.5 Etichette da dati, non da form vuoto
 
-Oggi `POST /api/v1/etichetta` e la maschera Stampa chiedono PLU, prodotto,
-prezzo, ingredienti, codice a mano.
+Oggi `POST /api/v1/etichetta` e la maschera Stampa chiedono ancora PLU,
+prodotto, prezzo, ingredienti e codice; se viene fornito `lotto_id`, l'API
+precompila scadenza e origine dai dati del lotto.
 
 Obiettivo:
 
@@ -343,8 +357,8 @@ Nuovo aggregato (nome da definire in implementazione, es. `documenti_vendita`
 - righe: `lotto_id`, `articolo_id`, quantità, UM, prezzo unitario, IVA
   informativa;
 - transazione unica: decremento `quantita_disponibile`, movimento
-  `VENDITA` (estendere il `CHECK` su `movimenti_lotto.tipo`), chiusura lotto
-  se giacenza a zero.
+  `VENDITA` (già ammesso dallo schema aggiornato e dalla relativa migrazione),
+  chiusura lotto se giacenza a zero.
 
 Estendere [`core/services/vendite.py`](../core/services/vendite.py) e repository
 tracciabilità; non chiudere lotti sul modello legacy.
@@ -528,8 +542,8 @@ interna sul catalogo doppio.
 
 | Ordine | Pacchetto | Fase |
 |---|---|---|
-| 1 | Unificare catalogo, ingresso, lotti; schema/migrazioni; pool DB e JWT production-safe (avviato: deprecazione legacy, secret production-safe, VENDITA e chiusura lotto) | Debito |
-| 2 | Scadenze, origine, genealogia UI, etichette da lotto (avviato: campi lotto e stampa da dati) | A |
+| 1 | Consolidare schema/migrazioni e dati legacy; pool DB e TLS; catalogo unificato e ingresso legacy disabilitato (fatti: catalogo, endpoint legacy, secret production-safe, tipo movimento `VENDITA`) | Debito |
+| 2 | UI metadati lotto, scadenze, origine, genealogia UI, etichette da lotto (parziale: campi schema/API e precompilazione stampa da `lotto_id`) | A |
 | 3 | Ricette/preparati + lavorazione guidata + inventario rettifiche | A |
 | 4 | Vendita interna, movimenti `VENDITA`, DDT e scontrino persistenti, UI banco | B |
 | 5 | Hardening SaaS, backup, onboarding interno, GDPR, manuale, collaudo tablet | C |
@@ -570,7 +584,7 @@ prodotto in vendita.
 | API FastAPI | [`saas/main.py`](../saas/main.py) |
 | Auth JWT | [`saas/auth.py`](../saas/auth.py) |
 | Lotti e lavorazioni | [`saas/repositories/tracciabilita_repo.py`](../saas/repositories/tracciabilita_repo.py) |
-| Vendite (stub) | [`core/services/vendite.py`](../core/services/vendite.py) |
+| Vendite (solo helper di chiusura lotto; flusso vendita non implementato) | [`core/services/vendite.py`](../core/services/vendite.py) |
 | Stampa PDF/ESC/POS | [`core/services/printing.py`](../core/services/printing.py) |
 | Print agent | [`saas/print_agent.py`](../saas/print_agent.py) |
 | DB | [`core/db.py`](../core/db.py) |
