@@ -201,6 +201,7 @@
       <!-- Dashboard -->
       <section id="view-dashboard" class="panel">
         <h2>Dashboard</h2>
+        <div id="dashboard-error" class="error" role="alert" aria-live="assertive"></div>
         <div class="cards">
           <div class="stat-card"><h3>Dipendenti</h3><p id="stat-dip" class="stat">—</p></div>
           <div class="stat-card"><h3>Reparti</h3><p id="stat-reparti" class="stat">—</p></div>
@@ -208,6 +209,49 @@
           <div class="stat-card"><h3>Merceologie</h3><p id="stat-merc" class="stat">—</p></div>
           <div class="stat-card"><h3>Lotti in tracciabilità</h3><p id="stat-lotti" class="stat">—</p></div>
           <div class="stat-card"><h3>Job di stampa</h3><p id="stat-jobs" class="stat">—</p></div>
+        </div>
+        <h3>Attenzione operativa</h3>
+        <div class="cards dashboard-alert-cards">
+          <div class="stat-card"><h3>Lotti scaduti con disponibilità</h3><p id="stat-lotti-scaduti" class="stat">—</p></div>
+          <div class="stat-card"><h3>In scadenza entro 48 ore</h3><p id="stat-lotti-48h" class="stat">—</p></div>
+          <div class="stat-card"><h3>In scadenza da 3 a 7 giorni</h3><p id="stat-lotti-7gg" class="stat">—</p></div>
+          <div class="stat-card"><h3>Lotti a giacenza zero</h3><p id="stat-lotti-zero" class="stat">—</p></div>
+          <div class="stat-card"><h3>Job di stampa in errore</h3><p id="stat-jobs-error" class="stat">—</p></div>
+        </div>
+        <div class="dashboard-lists">
+          <div class="panel-box">
+            <h3>Lotti con scadenza entro 7 giorni o scaduti</h3>
+            <div class="dashboard-table-wrap">
+              <table class="table">
+                <thead><tr><th>Lotto</th><th>Articolo</th><th>Disponibilità</th><th>Scadenza</th><th>Stato</th></tr></thead>
+                <tbody id="dashboard-expiring-tbody"></tbody>
+              </table>
+            </div>
+            <p id="dashboard-expiring-empty" class="dashboard-empty" hidden>Nessun lotto disponibile in scadenza.</p>
+            <p id="dashboard-expiring-truncated" class="dashboard-empty" hidden></p>
+          </div>
+          <div class="panel-box">
+            <h3>Lotti a giacenza zero</h3>
+            <div class="dashboard-table-wrap">
+              <table class="table">
+                <thead><tr><th>Lotto</th><th>Articolo</th><th>Scadenza</th></tr></thead>
+                <tbody id="dashboard-zero-tbody"></tbody>
+              </table>
+            </div>
+            <p id="dashboard-zero-empty" class="dashboard-empty" hidden>Nessun lotto a giacenza zero.</p>
+            <p id="dashboard-zero-truncated" class="dashboard-empty" hidden></p>
+          </div>
+          <div class="panel-box">
+            <h3>Job di stampa in errore</h3>
+            <div class="dashboard-table-wrap">
+              <table class="table">
+                <thead><tr><th>Job</th><th>Tipo</th><th>Creato il</th><th>Stato</th></tr></thead>
+                <tbody id="dashboard-errors-tbody"></tbody>
+              </table>
+            </div>
+            <p id="dashboard-errors-empty" class="dashboard-empty" hidden>Nessun job di stampa in errore.</p>
+            <p id="dashboard-errors-truncated" class="dashboard-empty" hidden></p>
+          </div>
         </div>
         <div class="panel-box">
           <h3>Lookup barcode (EAN)</h3>
