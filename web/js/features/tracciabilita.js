@@ -3,6 +3,7 @@ import { $, esc } from "../core/dom.js";
 
 let articoli = [];
 let lotti = [];
+let lottiDisponibili = [];
 let dipendenti = [];
 let lottiCaricati = false;
 
@@ -57,21 +58,41 @@ function riempiSelectArticoli(select) {
 
 function riempiSelectLotti(select) {
   const selected = select.value;
-  select.replaceChildren(creaOpzione("", "Seleziona lotto"));
   const articoliInput = new Set(
     articoli
       .filter((articolo) => articolo.utilizzabile_come_input)
       .map((articolo) => String(articolo.id)),
   );
-  lotti.filter((lotto) =>
-    Number(lotto.quantita_disponibile) > 0 && articoliInput.has(String(lotto.articolo_id))
-  ).forEach((lotto) => {
+  const lottiFefo = lottiDisponibili
+    .filter((lotto) => {
+      const scadenza = lotto.data_scadenza ? String(lotto.data_scadenza).slice(0, 10) : "";
+      return Number(lotto.quantita_disponibile) > 0
+        && articoliInput.has(String(lotto.articolo_id))
+        && (!scadenza || scadenza >= dataLocaleISO());
+    })
+    .sort((a, b) => {
+      const scadenzaA = a.data_scadenza ? String(a.data_scadenza).slice(0, 10) : "";
+      const scadenzaB = b.data_scadenza ? String(b.data_scadenza).slice(0, 10) : "";
+      if (!scadenzaA && scadenzaB) return 1;
+      if (scadenzaA && !scadenzaB) return -1;
+      return scadenzaA.localeCompare(scadenzaB)
+        || String(a.data_creazione ?? "").localeCompare(String(b.data_creazione ?? ""))
+        || Number(a.id) - Number(b.id);
+    });
+
+  select.replaceChildren(creaOpzione("", "Seleziona lotto (FEFO)"));
+  lottiFefo.forEach((lotto) => {
+    const scadenza = lotto.data_scadenza
+      ? ` · scade il ${formattaData(lotto.data_scadenza)}`
+      : " · senza scadenza";
     select.appendChild(creaOpzione(
       lotto.id,
-      `${lotto.codice_lotto} · ${lotto.articolo}${lotto.categoria ? ` · ${lotto.categoria}` : ""} — disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)}`,
+      `${lotto.codice_lotto} · ${lotto.articolo}${lotto.categoria ? ` · ${lotto.categoria}` : ""} — disponibili ${formattaQuantita(lotto.quantita_disponibile, lotto.unita_misura)}${scadenza}`,
     ));
   });
-  select.value = selected;
+  select.value = lottiFefo.some((lotto) => String(lotto.id) === selected)
+    ? selected
+    : String(lottiFefo[0]?.id ?? "");
 }
 
 function riempiSelectDipendenti(select) {
@@ -367,6 +388,7 @@ export async function loadTracciabilita() {
   const risultati = await Promise.allSettled([
     api("/api/v1/articoli"),
     api(`/api/v1/tracciabilita/lotti${query ? `?${query}` : ""}`),
+    api("/api/v1/tracciabilita/lotti?solo_disponibili=true"),
     api("/api/v1/dipendenti"),
   ]);
 
@@ -379,20 +401,26 @@ export async function loadTracciabilita() {
   }
   if (risultati[1].status === "fulfilled") {
     lotti = risultati[1].value;
-    lottiCaricati = true;
     renderLotti();
   } else {
     lotti = [];
-    lottiCaricati = false;
     impostaMessaggio("trace-lots-error", `Impossibile caricare i lotti: ${risultati[1].reason?.message || risultati[1].reason}`);
     $("trace-lots-tbody").innerHTML = '<tr><td colspan="6" class="empty">Errore nel caricamento dei lotti.</td></tr>';
   }
   if (risultati[2].status === "fulfilled") {
-    dipendenti = risultati[2].value;
+    lottiDisponibili = risultati[2].value;
+  } else {
+    lottiDisponibili = [];
+    erroriDati.push(`lotti disponibili: ${risultati[2].reason?.message || risultati[2].reason}`);
+  }
+  if (risultati[3].status === "fulfilled") {
+    dipendenti = risultati[3].value;
   } else {
     dipendenti = [];
-    erroriDati.push(`dipendenti: ${risultati[2].reason?.message || risultati[2].reason}`);
+    erroriDati.push(`dipendenti: ${risultati[3].reason?.message || risultati[3].reason}`);
   }
+  lottiCaricati = risultati[1].status === "fulfilled"
+    && risultati[2].status === "fulfilled";
   impostaMessaggio(
     "trace-work-data-error",
     erroriDati.length ? `Impossibile caricare i dati per le lavorazioni (${erroriDati.join("; ")}).` : "",
