@@ -140,7 +140,9 @@ python -m saas.print_agent --token <TOKEN_DISPOSITIVO> --interval 5
 ```
 
 Il token può anche essere letto da `config.ini` (sezione `[Stampante]`,
-chiave `agent_token`) o dalla variabile d'ambiente `GESTLAB_AGENT_TOKEN`.
+chiave `agent_token`) solo in sviluppo. In produzione impostare
+`GESTLAB_ENV=production` e fornire `GESTLAB_AGENT_TOKEN` tramite variabile
+d'ambiente o Secret Manager; il fallback a `config.ini` è disabilitato.
 
 ## Note multi-tenant
 

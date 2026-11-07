@@ -7,13 +7,13 @@ Piccolo processo che gira sul PC del punto vendita (o in cucina) e:
 3. Segnala al backend l'esito (done/error).
 
 Autenticazione: il token del dispositivo viene fornito in fase di avvio
-(da config.ini, sezione ``[Stampante]``, oppure da variabile d'ambiente).
+(da variabile d'ambiente in produzione; da ``config.ini`` solo in sviluppo).
 
 Avvio::
 
     python -m saas.print_agent --token <TOKEN_DISPOSITIVO> [--interval 5]
 
-Oppure leggendo il token da ``config.ini``:
+In sviluppo è possibile leggere il token da ``config.ini``:
 
     [Stampante]
     agent_token = <TOKEN_DISPOSITIVO>
@@ -36,6 +36,11 @@ DEFAULT_BASE_URL = os.environ.get("GESTLAB_API_URL", "http://localhost:8000")
 
 def _leggi_token_config():
     """Legge il token dispositivo dalla sezione [Stampante] di config.ini."""
+    from core.env import is_production_environment
+
+    if is_production_environment():
+        return os.environ.get("GESTLAB_AGENT_TOKEN", "")
+
     try:
         from core.config import get_config
         cfg = get_config()

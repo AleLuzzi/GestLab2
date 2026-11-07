@@ -5,8 +5,8 @@ pattern *context manager* di ``Laboratorio/db.py``, eliminando la connessione
 globale condivisa di ``controller_db.py``.
 
 Le credenziali vengono lette da variabili d'ambiente / ``.env`` (priorita')
-con fallback a ``config.ini``. In cloud (SaaS) vanno fornite via Secret
-Manager o env del container.
+con fallback a ``config.ini`` solo fuori dalla produzione. In produzione
+vanno fornite via Secret Manager o env del container.
 """
 
 from contextlib import contextmanager

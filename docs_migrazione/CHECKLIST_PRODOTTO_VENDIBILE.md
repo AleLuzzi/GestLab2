@@ -30,7 +30,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 - [x] Completare il modello unico dei lotti: ingresso e lavorazione registrano i movimenti nella stessa transazione; la chiusura può solo disattivare un lotto già esaurito e non azzera la giacenza. Testata anche la rollback se fallisce la registrazione del movimento.
 - [x] Configurare TLS verso MySQL/RDS in produzione: le connessioni remote richiedono `DB_SSL_CA` in produzione e verificano certificato e identità del server; il database locale su loopback resta supportato. Coperto da `tests/test_db.py`.
 - [x] Aggiungere un pool di connessioni e verificare il riuso sotto carico: pool condiviso per processo, configurabile con `DB_POOL_SIZE` (default 10, massimo 32); test di riuso concorrente in `tests/test_db.py`.
-- [ ] Rimuovere il fallback a `config.ini` per le credenziali di produzione; usare solo variabili d'ambiente o Secret Manager.
+- [x] Rimuovere il fallback a `config.ini` per le credenziali di produzione; usare solo variabili d'ambiente o Secret Manager. `core.env.get_secret` e il token del Print Agent ignorano `config.ini` con `GESTLAB_ENV=production`; coperto da `tests/test_env.py`.
 
 ## 1. Fase A — Laboratorio vendibile
 

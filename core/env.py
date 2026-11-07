@@ -7,7 +7,8 @@ carica un file ``.env`` (se presente) usando ``python-dotenv`` e offre
 
 1. Variabili d'ambiente di sistema (utile in cloud / container).
 2. File ``.env`` nella root del progetto.
-3. Fallback a ``config.ini`` (solo per compatibilita' desktop locale).
+3. Fallback a ``config.ini`` solo fuori dalla produzione, per compatibilita'
+   desktop locale.
 """
 
 import os
@@ -23,6 +24,11 @@ PROJECT_ROOT = os.path.dirname(_DIR)
 ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
 
 
+def is_production_environment():
+    """Indica se il processo è configurato per l'ambiente di produzione."""
+    return os.environ.get("GESTLAB_ENV", "").strip().lower() == "production"
+
+
 def load_env_file():
     """Carica il file ``.env`` nella root del progetto (best-effort)."""
     if load_dotenv is not None:
@@ -30,7 +36,7 @@ def load_env_file():
 
 
 def get_secret(name, default=""):
-    """Legge un segreto da env/.env, poi fallback a ``config.ini``.
+    """Legge un segreto da env/.env, poi da ``config.ini`` solo in sviluppo.
 
     Args:
         name: nome della variabile d'ambiente (es. ``DB_PWD``).
@@ -44,7 +50,10 @@ def get_secret(name, default=""):
     if value is not None and value != "":
         return value
 
-    # 2) Fallback a config.ini (compatibilita' desktop)
+    if is_production_environment():
+        return default
+
+    # Fallback a config.ini (compatibilita' desktop locale)
     try:
         from .config import get_config
 
