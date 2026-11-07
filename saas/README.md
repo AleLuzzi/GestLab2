@@ -104,14 +104,13 @@ impostazioni di ingresso merce e inventario restano specifiche dei fornitori.
 I due flussi di ingresso accettano `fornitore_id` e salvano anche il nome
 visualizzato sul documento come snapshot storico.
 
-Per un database già esistente, il solo aggiornamento di
-`saas/init_database.sql` non aggiunge colonne alle tabelle create. Dopo un
-backup, applicare una volta
-`saas/migrations/20261031_soggetti_clienti_fornitori.sql` al database
-preesistente. Lo script conserva le denominazioni storiche e collega gli
-ingressi solo alle corrispondenze univoche; non eseguirlo su un database
-ricreato dal nuovo schema. Il bootstrap non esegue automaticamente questa
-migrazione.
+Per un database già esistente, `saas.bootstrap` applica le migrazioni mancanti
+in ordine e registra ogni versione in `schema_migrations`. Prima
+dell'aggiornamento eseguire un backup. Le modifiche di schema già presenti
+prima dell'introduzione del registro vengono riconosciute e registrate senza
+riapplicare lo script; gli errori interrompono il bootstrap e non vengono
+ignorati. L'ordine canonico e il comportamento per database nuovi ed esistenti
+sono documentati in `saas/SCHEMA_CONSOLIDATION.md`.
 
 ## Coda di stampa e Local Print Agent
 

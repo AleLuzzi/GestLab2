@@ -117,23 +117,56 @@ Tables are organized in sections:
 4. **Traceability Tables**
    - `documenti_ingresso`, `lavorazioni`, `lotti`, and related movement/detail tables
 
+The consolidated schema defines a primary key for every table, uses
+`DECIMAL(12,3)` for quantities, requires tenant ownership with tenant foreign
+keys, and uses `utf8mb4`. Department and operator relations are also
+tenant-scoped. These definitions apply when creating tables; `CREATE TABLE IF
+NOT EXISTS` does not update an existing table. Existing databases must receive
+the corresponding versioned migrations before they can be considered aligned.
+
 ## Migration Path for Existing Databases
 
-If migrating from the old schema:
+`python -m saas.bootstrap` is the single supported schema and migration entry
+point for both new and existing databases. Back up existing databases before
+running it. The canonical migration order is:
 
-1. **Backup your data** (always!)
-2. **Run** `python -m saas.bootstrap`
-   - If `ingresso_merce` exists, bootstrap atomically renames it to
+1. `20261003_stock_traceability.sql`
+2. `20261031_articoli_input_lavorazione.sql`
+3. `20261031_lotti_data_index.sql`
+4. `20261031_soggetti_clienti_fornitori.sql`
+5. `20261031_work_operator_id.sql`
+6. `20261107_lotti_metadata.sql`
+7. `20261107_movimenti_lotto_vendita.sql`
+
+The order is explicit in `saas.bootstrap`; a test fails if a migration file is
+added without being included. The bootstrap first runs `init_database.sql` to
+create missing tables, then applies each unrecorded migration in the order
+above. Successful versions are stored in `schema_migrations`, making later
+runs skip only migrations already applied. A failure stops the bootstrap and
+leaves that migration unrecorded.
+
+On an empty database, the current `init_database.sql` is the schema baseline;
+the bootstrap records all listed migrations as satisfied without replaying
+historical `ALTER TABLE` statements. On an existing database without migration
+history, the bootstrap recognizes migration effects already present and
+records them; missing effects are applied. This also adopts changes made
+manually before `schema_migrations` was introduced.
+
+Before upgrading an existing schema:
+
+1. **Back up the database.**
+2. **Run** `python -m saas.bootstrap`.
+   - If `ingresso_merce` exists, it is atomically renamed to
      `ingresso_merce_legacy_archive`; its rows are preserved without automatic
      conversion to tracked lots.
-   - If both the legacy table and archive already exist, bootstrap stops and
-     requires manual reconciliation rather than merging uncertain data.
-   - If tables already exist, they're left unchanged (IF NOT EXISTS)
-   - If `tenant_id` columns already exist, they're preserved
-3. **Verify** all tables exist: `SHOW TABLES;`
-   - Confirm `ingresso_merce` is absent and compare archived row counts with
-     the pre-migration backup.
-4. **Test** login at `http://localhost:8000/`
+   - If both the legacy table and archive exist, bootstrap stops and requires
+     manual reconciliation.
+3. **Verify** `schema_migrations`, the schema and archived row counts against
+   the pre-migration backup.
+4. **Test** login at `http://localhost:8000/`.
+
+Do not run individual migration files manually; use the bootstrap so the
+version table remains authoritative.
 
 ## Verification Checklist
 

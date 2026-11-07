@@ -30,6 +30,16 @@ TENANT_NOME = os.environ.get("GESTLAB_TENANT_NOME", "Laboratorio Principale")
 
 # Percorso del file SQL unificato.
 SCHEMA_FILE = os.path.join(os.path.dirname(__file__), "init_database.sql")
+MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "migrations")
+MIGRATION_ORDER = (
+    "20261003_stock_traceability.sql",
+    "20261031_articoli_input_lavorazione.sql",
+    "20261031_lotti_data_index.sql",
+    "20261031_soggetti_clienti_fornitori.sql",
+    "20261031_work_operator_id.sql",
+    "20261107_lotti_metadata.sql",
+    "20261107_movimenti_lotto_vendita.sql",
+)
 
 
 def _remove_sql_comments(sql_line):
@@ -179,6 +189,134 @@ def _archivia_ingresso_merce_legacy(cursor):
     return False
 
 
+def _database_contiene_tabelle(cursor):
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def _colonne_tabella(cursor, tabella):
+    cursor.execute(f"SHOW COLUMNS FROM `{tabella}`")
+    return {riga[0] for riga in cursor.fetchall()}
+
+
+def _indici_tabella(cursor, tabella):
+    cursor.execute(f"SHOW INDEX FROM `{tabella}`")
+    return {riga[2] for riga in cursor.fetchall()}
+
+
+def _tabella_esiste(cursor, tabella):
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_schema = DATABASE() AND table_name = %s",
+        (tabella,),
+    )
+    return cursor.fetchone()[0] > 0
+
+
+def _migrazione_gia_applicata(cursor, migrazione):
+    """Riconosce gli aggiornamenti eseguiti prima dell'introduzione del registro."""
+    if migrazione == "20261003_stock_traceability.sql":
+        tabelle = (
+            "articoli",
+            "documenti_ingresso",
+            "lavorazioni",
+            "lotti",
+            "movimenti_lotto",
+            "lavorazione_scarto",
+            "righe_ingresso_tracciato",
+            "lavorazione_input",
+            "lavorazione_output",
+        )
+        return all(_tabella_esiste(cursor, tabella) for tabella in tabelle)
+
+    if migrazione == "20261031_articoli_input_lavorazione.sql":
+        return "utilizzabile_come_input" in _colonne_tabella(cursor, "articoli")
+
+    if migrazione == "20261031_lotti_data_index.sql":
+        return "idx_lotti_tenant_data" in _indici_tabella(cursor, "lotti")
+
+    if migrazione == "20261031_soggetti_clienti_fornitori.sql":
+        return (
+            _tabella_esiste(cursor, "soggetti")
+            and _tabella_esiste(cursor, "soggetti_ruoli")
+            and "soggetto_id" in _colonne_tabella(cursor, "fornitori")
+            and "fornitore_id" in _colonne_tabella(cursor, "documenti_ingresso")
+        )
+
+    if migrazione == "20261031_work_operator_id.sql":
+        return (
+            "operatore_id" in _colonne_tabella(cursor, "lavorazioni")
+            and "idx_lavorazioni_operatore" in _indici_tabella(cursor, "lavorazioni")
+        )
+
+    if migrazione == "20261107_lotti_metadata.sql":
+        colonne = _colonne_tabella(cursor, "lotti")
+        return {
+            "data_scadenza",
+            "lotto_fornitore",
+            "origine",
+            "temperatura_ingresso",
+        }.issubset(colonne)
+
+    if migrazione == "20261107_movimenti_lotto_vendita.sql":
+        cursor.execute("SHOW CREATE TABLE `movimenti_lotto`")
+        schema = cursor.fetchone()[1]
+        return (
+            "VENDITA" in schema.upper()
+            and "CHK_MOVIMENTI_LOTTO_TIPO" in schema.upper()
+        )
+
+    raise ValueError(f"Migrazione non registrata: {migrazione}")
+
+
+def _registra_migrazione(cursor, migrazione):
+    cursor.execute(
+        "INSERT INTO `schema_migrations` (`migration_id`) VALUES (%s)",
+        (migrazione,),
+    )
+
+
+def _applica_migrazioni(cursor, commit, database_nuovo=False):
+    """Applica o registra tutte le migrazioni nell'ordine canonico."""
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS `schema_migrations` ("
+        "`migration_id` varchar(255) NOT NULL, "
+        "`applied_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+        "PRIMARY KEY (`migration_id`)"
+        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+    )
+    cursor.execute("SELECT `migration_id` FROM `schema_migrations`")
+    applicate = {riga[0] for riga in cursor.fetchall()}
+
+    for migrazione in MIGRATION_ORDER:
+        if migrazione in applicate:
+            continue
+
+        percorso = os.path.join(MIGRATIONS_DIR, migrazione)
+        if not os.path.isfile(percorso):
+            raise FileNotFoundError(f"File di migrazione non trovato: {percorso}")
+
+        if database_nuovo or _migrazione_gia_applicata(cursor, migrazione):
+            _registra_migrazione(cursor, migrazione)
+            commit()
+            print(f"  OK  migrazione gia' presente: {migrazione}")
+            continue
+
+        with open(percorso, "r", encoding="utf-8") as file_migrazione:
+            statements = _parse_sql_statements(file_migrazione.read())
+        if not statements:
+            raise ValueError(f"Nessuno statement nella migrazione: {percorso}")
+        for statement in statements:
+            cursor.execute(statement)
+
+        _registra_migrazione(cursor, migrazione)
+        commit()
+        print(f"  OK  migrazione applicata: {migrazione}")
+
+
 def crea_tabelle():
     """Esegue init_database.sql per creare tutte le tabelle (idempotente)."""
     if not os.path.exists(SCHEMA_FILE):
@@ -197,32 +335,21 @@ def crea_tabelle():
 
     with connection() as conn:
         c = conn.cursor()
+        database_nuovo = not _database_contiene_tabelle(c)
         if _archivia_ingresso_merce_legacy(c):
             print("  OK  ingresso_merce archiviata come ingresso_merce_legacy_archive")
         executed = 0
-        errors = 0
         
         for i, stmt in enumerate(statements, 1):
-            try:
-                c.execute(stmt)
-                executed += 1
-            except Exception as e:
-                errors += 1
-                error_msg = str(e).lower()
-                # Ignora errori per tabelle già esistenti (IF NOT EXISTS).
-                if "already exists" not in error_msg and "duplicate" not in error_msg:
-                    print(f"  [err] Statement {i}: {e}")
-                    print(f"        SQL: {stmt[:100]}...")
-                else:
-                    print(f"  [ok]  Statement {i} (tabella già esistente)")
+            c.execute(stmt)
+            executed += 1
 
         _migra_progressivi_tenant(c)
         _migra_catalogo_articoli(c)
         conn.commit()
+        _applica_migrazioni(c, conn.commit, database_nuovo)
     
-    print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati, {errors} errori")
-    if errors > 0:
-        print(f"  Nota: alcuni errori potrebbero essere ignorabili (es. tabelle già esistenti)")
+    print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati")
 
 
 def crea_admin():

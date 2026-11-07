@@ -116,10 +116,13 @@ CREATE TABLE IF NOT EXISTS `reparti` (
   `reparto` varchar(15) DEFAULT NULL,
   `flag1_dip` int DEFAULT NULL,
   `flag2_prod` int DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL,
+  `tenant_id` bigint NOT NULL,
   PRIMARY KEY (`ID`),
-  KEY `idx_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  UNIQUE KEY `uq_reparti_tenant_id` (`tenant_id`, `ID`),
+  KEY `idx_reparti_tenant` (`tenant_id`),
+  CONSTRAINT `fk_reparti_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `dipendenti` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -127,10 +130,15 @@ CREATE TABLE IF NOT EXISTS `dipendenti` (
   `cognome` varchar(25) DEFAULT NULL,
   `reparto` int DEFAULT NULL,
   `email` varchar(50) DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL,
+  `tenant_id` bigint NOT NULL,
   PRIMARY KEY (`ID`),
-  KEY `idx_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  UNIQUE KEY `uq_dipendenti_tenant_id` (`tenant_id`, `ID`),
+  KEY `idx_dipendenti_reparto` (`tenant_id`, `reparto`),
+  CONSTRAINT `fk_dipendenti_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_dipendenti_reparto` FOREIGN KEY (`tenant_id`, `reparto`)
+    REFERENCES `reparti` (`tenant_id`, `ID`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `fornitori` (
   `ID` int NOT NULL AUTO_INCREMENT,
@@ -138,15 +146,17 @@ CREATE TABLE IF NOT EXISTS `fornitori` (
   `azienda` varchar(50) DEFAULT NULL,
   `flag1_ing_merce` int DEFAULT NULL,
   `flag2_inventario` int NOT NULL,
-  `tenant_id` bigint DEFAULT NULL,
+  `tenant_id` bigint NOT NULL,
   `soggetto_id` bigint DEFAULT NULL,
   PRIMARY KEY (`ID`),
   KEY `idx_tenant_id` (`tenant_id`),
   UNIQUE KEY `uq_fornitori_tenant_id` (`tenant_id`, `ID`),
   UNIQUE KEY `uq_fornitori_soggetto` (`tenant_id`, `soggetto_id`),
+  CONSTRAINT `fk_fornitori_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fornitori_soggetto` FOREIGN KEY (`tenant_id`, `soggetto_id`)
     REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `merceologie` (
   `Id` int NOT NULL AUTO_INCREMENT,
@@ -155,13 +165,15 @@ CREATE TABLE IF NOT EXISTS `merceologie` (
   `flag1_inv` int DEFAULT NULL,
   `flag2_taglio` int DEFAULT NULL,
   `flag3_ing_base` int DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL,
+  `tenant_id` bigint NOT NULL,
   PRIMARY KEY (`Id`),
-  KEY `Id` (`Id`),
-  KEY `Id_2` (`Id`),
   KEY `idx_merceologie_tenant` (`tenant_id`),
-  KEY `idx_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  KEY `idx_merceologie_reparto` (`tenant_id`, `Id_Reparto`),
+  CONSTRAINT `fk_merceologie_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_merceologie_reparto` FOREIGN KEY (`tenant_id`, `Id_Reparto`)
+    REFERENCES `reparti` (`tenant_id`, `ID`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `articoli` (
   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -230,9 +242,11 @@ CREATE TABLE IF NOT EXISTS `articoli_bilancia` (
 CREATE TABLE IF NOT EXISTS `progressivi` (
   `prog_acq` int DEFAULT NULL,
   `prog_ven` int DEFAULT NULL,
-  `tenant_id` bigint DEFAULT NULL,
-  UNIQUE KEY `uq_progressivi_tenant_id` (`tenant_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
+  `tenant_id` bigint NOT NULL,
+  PRIMARY KEY (`tenant_id`),
+  CONSTRAINT `fk_progressivi_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ---------------------------------------------------------------------------
 -- 4. TRACEABILITY TABLES
@@ -267,11 +281,11 @@ CREATE TABLE IF NOT EXISTS `lavorazioni` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lavorazioni_tenant_id` (`tenant_id`, `id`),
   KEY `idx_lavorazioni_data` (`tenant_id`, `data_lavorazione`),
-  KEY `idx_lavorazioni_operatore` (`operatore_id`),
+  KEY `idx_lavorazioni_operatore` (`tenant_id`, `operatore_id`),
   CONSTRAINT `fk_lavorazioni_tenant` FOREIGN KEY (`tenant_id`)
     REFERENCES `tenant` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_lavorazioni_operatore` FOREIGN KEY (`operatore_id`)
-    REFERENCES `dipendenti` (`ID`) ON DELETE SET NULL
+  CONSTRAINT `fk_lavorazioni_operatore` FOREIGN KEY (`tenant_id`, `operatore_id`)
+    REFERENCES `dipendenti` (`tenant_id`, `ID`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lotti` (

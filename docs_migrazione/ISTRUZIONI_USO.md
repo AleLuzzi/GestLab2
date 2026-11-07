@@ -50,10 +50,14 @@ dedicato, poi esegui:
 python -m saas.bootstrap
 ```
 
-Il bootstrap crea lo schema business e SaaS e un tenant/admin iniziale. Per
-istruzioni su credenziali iniziali e variabili d'ambiente consulta
-`core/env.py` e le guide di deploy. Non usare credenziali di sviluppo in
-produzione.
+Il bootstrap crea lo schema business e SaaS, applica le migrazioni mancanti
+nell'ordine canonico e crea un tenant/admin iniziale. Le versioni applicate
+sono registrate in `schema_migrations`; in caso di errore il bootstrap si
+interrompe. Prima di eseguirlo su un database esistente, crea un backup.
+Consulta `saas/SCHEMA_CONSOLIDATION.md` per l'ordine completo e per le
+differenze tra database nuovi ed esistenti. Per credenziali iniziali e
+variabili d'ambiente consulta `core/env.py` e le guide di deploy. Non usare
+credenziali di sviluppo in produzione.
 
 **Non puntare i test a un database con dati da conservare.** Il test
 `tests/test_saas_e2e.py` ricrea alcune tabelle SaaS; va eseguito soltanto su
