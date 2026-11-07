@@ -23,6 +23,24 @@ class MigrationCursor:
         return self.result
 
 
+class SchemaCursor:
+    def __init__(self, columns, primary_keys):
+        self.columns = columns
+        self.primary_keys = primary_keys
+        self.result = []
+
+    def execute(self, query, params=None):
+        if "information_schema.columns" in query:
+            self.result = self.columns
+        elif "information_schema.key_column_usage" in query:
+            self.result = self.primary_keys
+        else:
+            raise AssertionError(f"Query inattesa: {query}")
+
+    def fetchall(self):
+        return self.result
+
+
 class BootstrapMigrationsTests(unittest.TestCase):
     def test_explicit_migration_order_covers_every_sql_file(self):
         files = {
@@ -91,6 +109,35 @@ class BootstrapMigrationsTests(unittest.TestCase):
                     bootstrap._applica_migrazioni(cursor, lambda: None)
 
         self.assertEqual(cursor.applied, [])
+
+    def test_schema_verification_accepts_required_columns_and_primary_keys(self):
+        required = bootstrap._schema_richiesto()
+        columns = [
+            (table_name, column_name)
+            for table_name, table_columns in required.items()
+            for column_name in table_columns
+        ]
+        primary_keys = [(table_name,) for table_name in required]
+
+        bootstrap._verifica_schema(SchemaCursor(columns, primary_keys))
+
+    def test_schema_verification_rejects_missing_columns_or_primary_keys(self):
+        required = bootstrap._schema_richiesto()
+        table_name = next(iter(required))
+        column_name = next(iter(required[table_name]))
+        columns = [
+            (name, column)
+            for name, table_columns in required.items()
+            for column in table_columns
+            if (name, column) != (table_name, column_name)
+        ]
+        primary_keys = [(name,) for name in required if name != table_name]
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            f"{table_name}: colonne mancanti|{table_name}: chiave primaria assente",
+        ):
+            bootstrap._verifica_schema(SchemaCursor(columns, primary_keys))
 
 
 if __name__ == "__main__":

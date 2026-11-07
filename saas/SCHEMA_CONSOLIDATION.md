@@ -123,6 +123,16 @@ keys, and uses `utf8mb4`. Department and operator relations are also
 tenant-scoped. These definitions apply when creating tables; `CREATE TABLE IF
 NOT EXISTS` does not update an existing table. Existing databases must receive
 the corresponding versioned migrations before they can be considered aligned.
+After creating tables and applying migrations, the bootstrap checks that every
+table and column declared in `init_database.sql` exists and that every such
+table has a primary key. It stops with the missing table, columns, or key rather
+than reporting a successful setup for a partial schema. The same check runs for
+new and existing databases.
+
+The bootstrap also consolidates duplicate `progressivi` rows per tenant by
+keeping the highest counters, then enforces `tenant_id NOT NULL` and a primary
+key on `tenant_id`. Rows without a tenant cannot be assigned safely, so the
+bootstrap stops and requests manual reconciliation instead of deleting them.
 
 ## Migration Path for Existing Databases
 
@@ -179,6 +189,7 @@ After running `python -m saas.bootstrap`:
 - [ ] Business tables (`dipendenti`, `fornitori`, etc.) all have `tenant_id` column
 - [ ] All `tenant_id` columns have `idx_tenant_id` index
 - [ ] FK constraints are valid: `SHOW CREATE TABLE utenti;` shows CONSTRAINT
+- [ ] Bootstrap reports schema validation successful for all required columns and primary keys
 - [ ] Login works at `http://localhost:8000/` with credentials from bootstrap output
 
 ## Questions or Issues?

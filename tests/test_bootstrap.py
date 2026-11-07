@@ -4,9 +4,10 @@ from saas.bootstrap import _migra_catalogo_articoli, _migra_progressivi_tenant
 
 
 class FakeCursor:
-    def __init__(self, duplicates=(), indexes=()):
+    def __init__(self, duplicates=(), indexes=(), null_rows=0):
         self.duplicates = list(duplicates)
         self.indexes = list(indexes)
+        self.null_rows = null_rows
         self.rowcount = 0
         self.statements = []
 
@@ -14,12 +15,17 @@ class FakeCursor:
         self.statements.append((query, params))
         if query.startswith("SELECT tenant_id"):
             self.result = self.duplicates
+        elif query.startswith("SELECT COUNT(*) FROM progressivi"):
+            self.result = [(self.null_rows,)]
         elif query.startswith("SHOW INDEX"):
             self.result = self.indexes
         elif query.startswith("DELETE FROM progressivi"):
             self.rowcount = params[1]
         else:
             self.result = []
+
+    def fetchone(self):
+        return self.result[0] if self.result else None
 
     def fetchall(self):
         return self.result
@@ -51,14 +57,46 @@ class ProgressiviMigrationTests(unittest.TestCase):
             ),
             cursor.statements,
         )
+        self.assertIn(
+            (
+                "ALTER TABLE progressivi "
+                "MODIFY COLUMN tenant_id bigint NOT NULL, "
+                "ADD PRIMARY KEY (tenant_id)",
+                None,
+            ),
+            cursor.statements,
+        )
 
     def test_does_not_recreate_existing_single_column_unique_index(self):
-        cursor = FakeCursor(indexes=[(0, 0, "uq_progressivi_tenant_id", 1, "tenant_id")])
+        cursor = FakeCursor(
+            indexes=[
+                (0, 0, "uq_progressivi_tenant_id", 1, "tenant_id"),
+                (0, 0, "PRIMARY", 1, "tenant_id"),
+            ]
+        )
 
         _migra_progressivi_tenant(cursor)
 
         self.assertFalse(
             any(query.startswith("ALTER TABLE progressivi") for query, _ in cursor.statements)
+        )
+
+    def test_refuses_to_add_primary_key_when_tenantless_rows_exist(self):
+        cursor = FakeCursor(null_rows=1)
+
+        with self.assertRaisesRegex(RuntimeError, "1 record senza tenant_id"):
+            _migra_progressivi_tenant(cursor)
+        self.assertFalse(
+            any(
+                query.startswith(
+                    (
+                        "UPDATE progressivi",
+                        "DELETE FROM progressivi",
+                        "ALTER TABLE progressivi",
+                    )
+                )
+                for query, _ in cursor.statements
+            )
         )
 
 

@@ -14,6 +14,7 @@ Variabili d'ambiente (opzionali, per sovrascrivere le credenziali di default):
 """
 
 import os
+import re
 import sys
 
 # Assicura che il progetto sia nel path (se eseguito da altrove).
@@ -89,8 +90,81 @@ def _parse_sql_statements(sql_content):
     return statements
 
 
+def _schema_richiesto():
+    """Restituisce le colonne e le chiavi primarie previste dallo schema."""
+    with open(SCHEMA_FILE, "r", encoding="utf-8") as file_schema:
+        sql_content = file_schema.read()
+
+    tables = {}
+    pattern = re.compile(
+        r"CREATE TABLE IF NOT EXISTS `([^`]+)`\s*\((.*?)\)\s*ENGINE=",
+        re.DOTALL,
+    )
+    for match in pattern.finditer(sql_content):
+        table_name, definition = match.groups()
+        columns = set(
+            re.findall(r"(?m)^\s*`([^`]+)`\s+[a-zA-Z]", definition)
+        )
+        primary_key = re.search(r"PRIMARY KEY\s*\(([^)]+)\)", definition)
+        if not columns or primary_key is None:
+            raise ValueError(
+                f"Definizione incompleta nello schema per la tabella {table_name}"
+            )
+        tables[table_name] = columns
+
+    if not tables:
+        raise ValueError(f"Nessuna tabella trovata nello schema {SCHEMA_FILE}")
+    return tables
+
+
+def _verifica_schema(cursor):
+    """Interrompe il bootstrap se lo schema DB non soddisfa il contratto corrente."""
+    richiesto = _schema_richiesto()
+    cursor.execute(
+        "SELECT table_name, column_name FROM information_schema.columns "
+        "WHERE table_schema = DATABASE()"
+    )
+    colonne_db = {}
+    for table_name, column_name in cursor.fetchall():
+        colonne_db.setdefault(table_name, set()).add(column_name)
+
+    cursor.execute(
+        "SELECT table_name FROM information_schema.key_column_usage "
+        "WHERE table_schema = DATABASE() AND constraint_name = 'PRIMARY'"
+    )
+    tabelle_con_pk = {row[0] for row in cursor.fetchall()}
+
+    errori = []
+    for table_name, colonne_richieste in richiesto.items():
+        colonne_mancanti = colonne_richieste - colonne_db.get(table_name, set())
+        if table_name not in colonne_db:
+            errori.append(f"{table_name}: tabella assente")
+        elif colonne_mancanti:
+            errori.append(
+                f"{table_name}: colonne mancanti "
+                f"{', '.join(sorted(colonne_mancanti))}"
+            )
+        if table_name not in tabelle_con_pk:
+            errori.append(f"{table_name}: chiave primaria assente")
+
+    if errori:
+        dettagli = "; ".join(errori)
+        raise RuntimeError(f"Schema database non allineato: {dettagli}")
+
+
 def _migra_progressivi_tenant(cursor):
     """Consolida i progressivi tenant e garantisce un solo record per tenant."""
+    cursor.execute(
+        "SELECT COUNT(*) FROM progressivi WHERE tenant_id IS NULL"
+    )
+    righe_senza_tenant = cursor.fetchone()[0]
+    if righe_senza_tenant:
+        raise RuntimeError(
+            "Impossibile aggiungere la chiave primaria a progressivi: "
+            f"{righe_senza_tenant} record senza tenant_id richiedono "
+            "riconciliazione manuale."
+        )
+
     cursor.execute(
         "SELECT tenant_id, MAX(prog_acq), MAX(prog_ven), COUNT(*) "
         "FROM progressivi WHERE tenant_id IS NOT NULL "
@@ -132,6 +206,22 @@ def _migra_progressivi_tenant(cursor):
         cursor.execute(
             "ALTER TABLE progressivi "
             "ADD UNIQUE KEY uq_progressivi_tenant_id (tenant_id)"
+        )
+
+    chiavi_primarie = {}
+    for indice in indici:
+        if indice[2] == "PRIMARY":
+            chiavi_primarie.setdefault(indice[2], []).append((indice[3], indice[4]))
+    colonne_pk = next(iter(chiavi_primarie.values()), [])
+    if colonne_pk and colonne_pk != [(1, "tenant_id")]:
+        raise RuntimeError(
+            "La chiave primaria di progressivi non coincide con tenant_id"
+        )
+    if not colonne_pk:
+        cursor.execute(
+            "ALTER TABLE progressivi "
+            "MODIFY COLUMN tenant_id bigint NOT NULL, "
+            "ADD PRIMARY KEY (tenant_id)"
         )
 
 
@@ -348,6 +438,7 @@ def crea_tabelle():
         _migra_catalogo_articoli(c)
         conn.commit()
         _applica_migrazioni(c, conn.commit, database_nuovo)
+        _verifica_schema(c)
     
     print(f"  OK  schema eseguito: {executed}/{len(statements)} statement completati")
 
