@@ -259,9 +259,23 @@ metadati dagli input. La decisione di prodotto per distinguere scadenza e TMC
   conversioni o inferenze automatiche. I dati esistenti in `data_scadenza`
   restano invariati durante la migrazione;
 - sui lotti `V`, il tipo di data è determinato per il prodotto ottenuto e la
-  data è inserita dall'operatore oppure calcolata dalla lavorazione solo se
-  una durata è stata definita e approvata dall'OSA. Non copiare la data degli
-  input né dedurla automaticamente dalla ricetta;
+  data è dichiarata dall'operatore per ciascun output. La data di produzione
+  coincide con la data della lavorazione. Non copiare la data degli input e
+  non applicare automaticamente la scadenza minima degli input: l'operatore
+  verifica che gli input siano utilizzabili e stabilisce la data del prodotto
+  ottenuto;
+- una ricetta potrà indicare una durata in giorni solo dopo che l'OSA l'ha
+  definita e approvata per il prodotto. La console potrà proporre la data
+  risultante dalla data di lavorazione e dalla durata, ma l'operatore dovrà
+  confermare la proposta per ogni lotto `V`; non sono previste durate
+  predefinite né assegnazioni automatiche. Senza una durata approvata, la data
+  è inserita manualmente oppure resta vuota se l'OSA dichiara che non è
+  applicabile;
+- l'origine di ciascun lotto `V` è dichiarata dall'operatore per il prodotto
+  ottenuto. Non copiare né concatenare automaticamente le origini degli input:
+  la genealogia conserva i lotti di provenienza e l'operatore usa tali dati
+  per la dichiarazione appropriata. L'origine può restare vuota se non è
+  dichiarabile; non va mai inventata o inferita dal sistema;
 - etichetta, dettaglio, FEFO e avvisi mostrano sempre se si tratta di
   scadenza o TMC. FEFO ordina per data crescente e colloca in coda i lotti
   senza data;
@@ -271,9 +285,10 @@ metadati dagli input. La decisione di prodotto per distinguere scadenza e TMC
   non sostituiscono la valutazione dell'OSA né attestano conformità legale.
 
 L'OSA resta responsabile di stabilire se al prodotto si applica una scadenza o
-un TMC e di definire l'eventuale durata dei prodotti `V`; l'applicazione non
-classifica autonomamente gli alimenti né propone durate predefinite. L'origine
-dei lotti `V` è gestita separatamente e può essere aggregata dagli input.
+un TMC, di definire l'eventuale durata dei prodotti `V` e di determinare
+l'origine dichiarabile. L'applicazione non classifica autonomamente gli
+alimenti, non propone durate predefinite e non sostituisce la valutazione
+dell'operatore sulla provenienza.
 
 Restano inoltre da completare la visualizzazione dei metadati di lotto e del
 riferimento DDT nel dettaglio e la temperatura d'ingresso quando applicabile.
