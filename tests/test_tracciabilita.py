@@ -189,12 +189,12 @@ class TracciabilitaTests(unittest.TestCase):
             Decimal("10"),
             Decimal("8"),
             "kg",
+            55,
             None,
-            None,
-            None,
-            None,
-            None,
-            None,
+            date(2026, 10, 3),
+            "DDT-2026-42",
+            "Fornitore Esempio",
+            12,
             None,
             None,
             None,
@@ -212,6 +212,20 @@ class TracciabilitaTests(unittest.TestCase):
             dettaglio = tracciabilita_repo.dettaglio_lotto(42, 7)
 
         self.assertEqual(dettaglio["note_lotto"], "Bio; razza: esempio")
+        self.assertEqual(dettaglio["data_scadenza"], date(2026, 12, 15))
+        self.assertEqual(dettaglio["lotto_fornitore"], "LF-8842")
+        self.assertEqual(dettaglio["origine"], "Italia, suino")
+        self.assertEqual(dettaglio["temperatura_ingresso"], "2.50")
+        self.assertEqual(
+            dettaglio["documento_ingresso"],
+            {
+                "id": 55,
+                "data": date(2026, 10, 3),
+                "numero_ddt": "DDT-2026-42",
+                "fornitore": "Fornitore Esempio",
+                "fornitore_id": 12,
+            },
+        )
         self.assertIn("l.note_lotto", cursor.statements[0][0])
 
     def test_progressivo_drains_locked_select_before_updating(self):

@@ -227,6 +227,18 @@ function appendTesto(parent, tag, className, text) {
   return element;
 }
 
+function creaFatti(entries) {
+  const facts = document.createElement("div");
+  facts.className = "trace-facts";
+  entries.forEach(([label, value]) => {
+    const fact = document.createElement("div");
+    appendTesto(fact, "span", "", label);
+    appendTesto(fact, "strong", "", value);
+    facts.appendChild(fact);
+  });
+  return facts;
+}
+
 function renderDettaglio(dettaglio) {
   const container = $("trace-detail");
   container.replaceChildren();
@@ -247,27 +259,39 @@ function renderDettaglio(dettaglio) {
   header.appendChild(close);
   container.appendChild(header);
 
-  const facts = document.createElement("div");
-  facts.className = "trace-facts";
-  [
+  container.appendChild(creaFatti([
     ["Tipo", dettaglio.tipo_lotto === "A" ? "Ingresso" : "Produzione"],
     ["Quantità iniziale", formattaQuantita(dettaglio.quantita_iniziale, dettaglio.unita_misura)],
     ["Disponibile", formattaQuantita(dettaglio.quantita_disponibile, dettaglio.unita_misura)],
-  ].forEach(([label, value]) => {
-    const fact = document.createElement("div");
-    appendTesto(fact, "span", "", label);
-    appendTesto(fact, "strong", "", value);
-    facts.appendChild(fact);
-  });
-  container.appendChild(facts);
+  ]));
+
+  const metadata = document.createElement("div");
+  metadata.className = "trace-detail-block";
+  appendTesto(metadata, "h4", "", "Metadati del lotto");
+  metadata.appendChild(creaFatti([
+    ["Lotto fornitore", dettaglio.lotto_fornitore || "—"],
+    ["Origine", dettaglio.origine || "—"],
+    ["Scadenza", formattaData(dettaglio.data_scadenza)],
+    [
+      "Temperatura all'ingresso",
+      dettaglio.temperatura_ingresso != null
+        ? formattaQuantita(dettaglio.temperatura_ingresso, "°C")
+        : "—",
+    ],
+  ]));
+  container.appendChild(metadata);
 
   if (dettaglio.documento_ingresso) {
     const ingresso = dettaglio.documento_ingresso;
-    const origin = document.createElement("div");
-    origin.className = "trace-detail-block";
-    appendTesto(origin, "h4", "", "Documento di ingresso");
-    appendTesto(origin, "p", "", `${formattaData(ingresso.data)} · DDT ${ingresso.numero_ddt || "—"} · ${ingresso.fornitore}`);
-    container.appendChild(origin);
+    const documentBlock = document.createElement("div");
+    documentBlock.className = "trace-detail-block";
+    appendTesto(documentBlock, "h4", "", "Documento di ingresso");
+    documentBlock.appendChild(creaFatti([
+      ["Data ingresso", formattaData(ingresso.data)],
+      ["DDT", ingresso.numero_ddt || "—"],
+      ["Fornitore", ingresso.fornitore || "—"],
+    ]));
+    container.appendChild(documentBlock);
   }
 
   if (dettaglio.note_lotto) {
