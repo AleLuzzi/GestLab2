@@ -1,4 +1,4 @@
-import { api } from "../api/client.js";
+import { api, apiGetBlob } from "../api/client.js";
 import { $, esc } from "../core/dom.js";
 
 let articoli = [];
@@ -291,6 +291,14 @@ function renderDettaglio(dettaglio) {
   appendTesto(heading, "h3", "", dettaglio.codice_lotto);
   appendTesto(heading, "p", "trace-help", `${dettaglio.articolo} · ${formattaData(dettaglio.data_creazione)}`);
   header.appendChild(heading);
+  const actions = document.createElement("div");
+  actions.className = "row";
+  const download = document.createElement("button");
+  download.type = "button";
+  download.className = "btn primary";
+  download.textContent = "Scarica scheda PDF";
+  download.addEventListener("click", () => scaricaSchedaLotto(dettaglio.id, download));
+  actions.appendChild(download);
   const close = document.createElement("button");
   close.type = "button";
   close.className = "btn ghost";
@@ -302,7 +310,8 @@ function renderDettaglio(dettaglio) {
       container.hidden = true;
     }
   });
-  header.appendChild(close);
+  actions.appendChild(close);
+  header.appendChild(actions);
   container.appendChild(header);
 
   container.appendChild(creaFatti([
@@ -450,6 +459,26 @@ function renderDettaglio(dettaglio) {
   movements.appendChild(list);
   container.appendChild(movements);
   container.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function scaricaSchedaLotto(lottoId, button) {
+  impostaMessaggio("trace-lots-error");
+  button.disabled = true;
+  try {
+    const blob = await apiGetBlob(
+      `/api/v1/tracciabilita/lotti/${encodeURIComponent(lottoId)}/scheda.pdf`,
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `scheda_lotto_${lottoId}.pdf`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    impostaMessaggio("trace-lots-error", `Impossibile scaricare la scheda PDF: ${error.message}`);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function mostraDettaglioLotto(lottoId, daInput = false) {

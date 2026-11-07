@@ -9,11 +9,13 @@ from unittest.mock import patch
 from fastapi import HTTPException
 from pydantic import ValidationError
 
+from core.services import printing as printing_service
 from saas.repositories import tracciabilita_repo
 from saas.main import (
     lista_lotti_tracciati,
     registra_ingresso_tracciato,
     registra_lavorazione_tracciata,
+    scheda_lotto_tracciato,
 )
 from saas.schemas import IngressoTracciatoCreate, LavorazioneCreate
 
@@ -158,6 +160,67 @@ class TracciabilitaTests(unittest.TestCase):
             )
 
         self.assertEqual(raised.exception.status_code, 422)
+
+    def test_scheda_lotto_pdf_includes_tenant_scoped_source_lot(self):
+        lotto_prodotto = {
+            "id": 8,
+            "codice_lotto": "8V",
+            "articolo": "Preparato",
+            "tipo_lotto": "V",
+            "data_creazione": "2026-10-05",
+            "quantita_iniziale": "4.000",
+            "quantita_disponibile": "3.000",
+            "unita_misura": "kg",
+            "lavorazione": {
+                "data": "2026-10-05",
+                "descrizione": "Preparazione",
+                "operatore": "Operatore",
+                "input": [{"lotto_id": 3, "quantita": "2.500"}],
+            },
+        }
+        lotto_ingresso = {
+            "id": 3,
+            "codice_lotto": "3A",
+            "articolo": "Carne",
+            "tipo_lotto": "A",
+            "data_creazione": "2026-10-01",
+            "quantita_iniziale": "10.000",
+            "quantita_disponibile": "7.500",
+            "unita_misura": "kg",
+            "origine": "Italia",
+            "lotto_fornitore": "FORN-42",
+            "documento_ingresso": {
+                "data": "2026-10-01",
+                "numero_ddt": "DDT-42",
+                "fornitore": "Fornitore di prova",
+            },
+            "lavorazione": None,
+        }
+
+        with (
+            patch(
+                "saas.main.tracciabilita_repo.dettaglio_lotto",
+                side_effect=[lotto_prodotto, lotto_ingresso],
+            ) as dettaglio_lotto,
+            patch(
+                "saas.main.printing_service.genera_scheda_lotto_pdf",
+                wraps=printing_service.genera_scheda_lotto_pdf,
+            ) as genera_pdf,
+        ):
+            response = scheda_lotto_tracciato(8, {"tenant_id": 42})
+
+        self.assertEqual(response.media_type, "application/pdf")
+        self.assertTrue(response.body.startswith(b"%PDF"))
+        self.assertEqual(
+            [call.args for call in dettaglio_lotto.call_args_list],
+            [(42, 8), (42, 3)],
+        )
+        genealogy = genera_pdf.call_args.args[1]
+        self.assertEqual(
+            genealogy[1]["dettaglio"]["documento_ingresso"]["numero_ddt"],
+            "DDT-42",
+        )
+        self.assertIn('filename="scheda_lotto_8.pdf"', response.headers["content-disposition"])
 
     def test_ingress_rejects_lot_notes_longer_than_500_characters(self):
         with self.assertRaises(ValidationError):

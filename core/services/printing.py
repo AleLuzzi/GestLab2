@@ -156,6 +156,199 @@ def genera_ddt_pdf(numero, data=None, fornitore="", righe=None) -> bytes:
     return buffer.getvalue()  # bytes del PDF generato
 
 
+def genera_scheda_lotto_pdf(dettaglio, genealogia) -> bytes:
+    """Genera una scheda riepilogativa del lotto e dei suoi ingressi d'origine."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
+        from xml.sax.saxutils import escape
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "reportlab non installato. Aggiungerlo a requirements.txt."
+        ) from exc
+
+    def testo(value):
+        return escape(str(value)) if value not in (None, "") else "—"
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(
+        name="LotSheetSubtitle",
+        parent=styles["Normal"],
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#9a3412"),
+        spaceAfter=12,
+    ))
+    styles.add(ParagraphStyle(
+        name="LotSheetCell",
+        parent=styles["Normal"],
+        fontSize=7.5,
+        leading=9,
+    ))
+    styles.add(ParagraphStyle(
+        name="LotSheetHeading",
+        parent=styles["Heading2"],
+        spaceBefore=12,
+        spaceAfter=6,
+    ))
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=16 * mm,
+        leftMargin=16 * mm,
+        topMargin=15 * mm,
+        bottomMargin=15 * mm,
+    )
+    story = [
+        Paragraph(f"Scheda lotto {testo(dettaglio.get('codice_lotto'))}", styles["Title"]),
+        Paragraph(
+            "Riepilogo per consultazione e controlli — non è una certificazione legale.",
+            styles["LotSheetSubtitle"],
+        ),
+        Paragraph("Dati del lotto", styles["LotSheetHeading"]),
+    ]
+
+    fatti = [
+        ("Articolo", dettaglio.get("articolo")),
+        ("Tipo lotto", "Ingresso" if dettaglio.get("tipo_lotto") == "A" else "Produzione"),
+        ("Data creazione", dettaglio.get("data_creazione")),
+        (
+            "Quantità iniziale",
+            f"{dettaglio.get('quantita_iniziale', '—')} {dettaglio.get('unita_misura', '')}".strip(),
+        ),
+        (
+            "Quantità disponibile",
+            f"{dettaglio.get('quantita_disponibile', '—')} {dettaglio.get('unita_misura', '')}".strip(),
+        ),
+        ("Origine dichiarata", dettaglio.get("origine")),
+        ("Lotto fornitore", dettaglio.get("lotto_fornitore")),
+        ("Scadenza", dettaglio.get("data_scadenza")),
+        ("TMC", dettaglio.get("data_tmc")),
+        (
+            "Temperatura all'ingresso",
+            f"{dettaglio.get('temperatura_ingresso')} °C"
+            if dettaglio.get("temperatura_ingresso") is not None
+            else None,
+        ),
+        ("Note lotto", dettaglio.get("note_lotto")),
+    ]
+    facts_table = Table(
+        [[testo(label), testo(value)] for label, value in fatti],
+        colWidths=[48 * mm, 130 * mm],
+        hAlign="LEFT",
+    )
+    facts_table.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#f1f5f9")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.extend([facts_table, Paragraph("Genealogia e documenti d'ingresso", styles["LotSheetHeading"])])
+
+    cell_style = styles["LotSheetCell"]
+    genealogy_rows = [[
+        Paragraph("<b>Lotto</b>", cell_style),
+        Paragraph("<b>Articolo e tipo</b>", cell_style),
+        Paragraph("<b>Origine / lotto fornitore</b>", cell_style),
+        Paragraph("<b>DDT e fornitore</b>", cell_style),
+    ]]
+    for item in genealogia:
+        lot = item["dettaglio"]
+        indent = "&nbsp;" * min(item["livello"] * 4, 40)
+        document = lot.get("documento_ingresso") or {}
+        quantity = item.get("quantita_usata")
+        lot_label = testo(lot.get("codice_lotto"))
+        if quantity is not None:
+            lot_label += f"<br/>Input lavorato: {testo(quantity)}"
+        ddt = " · ".join(
+            value for value in (
+                str(document.get("numero_ddt")) if document.get("numero_ddt") else None,
+                str(document.get("data")) if document.get("data") else None,
+                str(document.get("fornitore")) if document.get("fornitore") else None,
+            ) if value
+        )
+        genealogy_rows.append([
+            Paragraph(f"{indent}{lot_label}", cell_style),
+            Paragraph(
+                f"{testo(lot.get('articolo'))}<br/>{testo('Ingresso' if lot.get('tipo_lotto') == 'A' else 'Produzione')}",
+                cell_style,
+            ),
+            Paragraph(
+                f"{testo(lot.get('origine'))}<br/>Lotto fornitore: {testo(lot.get('lotto_fornitore'))}",
+                cell_style,
+            ),
+            Paragraph(testo(ddt), cell_style),
+        ])
+
+    genealogy_table = Table(
+        genealogy_rows,
+        colWidths=[30 * mm, 43 * mm, 48 * mm, 57 * mm],
+        repeatRows=1,
+        hAlign="LEFT",
+    )
+    genealogy_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cbd5e1")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(genealogy_table)
+
+    lavorazioni = [
+        item["dettaglio"]
+        for item in genealogia
+        if item["dettaglio"].get("lavorazione")
+    ]
+    if lavorazioni:
+        unita_per_lotto = {
+            item["dettaglio"]["id"]: item["dettaglio"].get("unita_misura", "")
+            for item in genealogia
+        }
+        story.append(Paragraph("Lavorazioni registrate", styles["LotSheetHeading"]))
+        for lot in lavorazioni:
+            work = lot["lavorazione"]
+            inputs = ", ".join(
+                f"{row.get('codice_lotto')} ({row.get('quantita')} "
+                f"{unita_per_lotto.get(row.get('lotto_id'), '')})"
+                for row in work.get("input", [])
+            )
+            description = " · ".join(
+                value for value in (
+                    str(work.get("data")) if work.get("data") else None,
+                    str(work.get("descrizione")) if work.get("descrizione") else None,
+                    str(work.get("operatore")) if work.get("operatore") else None,
+                ) if value
+            )
+            story.append(Paragraph(
+                f"<b>{testo(lot.get('codice_lotto'))}</b> — {testo(description)}"
+                f"<br/>Lotti input: {testo(inputs)}",
+                cell_style,
+            ))
+            story.append(Spacer(1, 3 * mm))
+
+    doc.build(story)
+    return buffer.getvalue()
+
+
 # ------------------------------------------------------------------------- #
 #  Generazione etichette DYMO (ReportLab canvas)
 # ------------------------------------------------------------------------- #

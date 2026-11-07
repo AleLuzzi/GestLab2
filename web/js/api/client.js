@@ -85,3 +85,7 @@ export function apiBlob(path, body) {
     body: JSON.stringify(body),
   }, "blob");
 }
+
+export function apiGetBlob(path) {
+  return request(path, { method: "GET" }, "blob");
+}

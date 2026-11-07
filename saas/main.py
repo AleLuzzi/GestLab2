@@ -799,6 +799,62 @@ def dettaglio_lotto_tracciato(
     return dettaglio
 
 
+@app.get("/api/v1/tracciabilita/lotti/{lotto_id}/scheda.pdf")
+def scheda_lotto_tracciato(
+    lotto_id: int,
+    user: dict = Depends(auth.get_current_user),
+):
+    """Genera una scheda PDF riepilogativa del lotto e dei suoi ingressi d'origine."""
+    tenant_id = user["tenant_id"]
+    dettaglio = tracciabilita_repo.dettaglio_lotto(tenant_id, lotto_id)
+    if dettaglio is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato")
+
+    genealogia = []
+    visitati = set()
+
+    def aggiungi_lotto(lotto, livello, quantita_usata=None):
+        if lotto["id"] in visitati:
+            return
+        visitati.add(lotto["id"])
+        genealogia.append({
+            "dettaglio": lotto,
+            "livello": livello,
+            "quantita_usata": quantita_usata,
+        })
+        lavorazione = lotto.get("lavorazione") or {}
+        for riga_input in lavorazione.get("input", []):
+            lotto_input = tracciabilita_repo.dettaglio_lotto(
+                tenant_id, riga_input["lotto_id"]
+            )
+            if lotto_input is None:
+                logger.error(
+                    "Lotto input mancante nella genealogia tenant_id=%s lotto_id=%s input_id=%s",
+                    tenant_id,
+                    lotto["id"],
+                    riga_input["lotto_id"],
+                )
+                raise HTTPException(
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "Genealogia lotto incompleta: impossibile generare la scheda.",
+                )
+            aggiungi_lotto(
+                lotto_input,
+                livello + 1,
+                riga_input.get("quantita"),
+            )
+
+    aggiungi_lotto(dettaglio, 0)
+    pdf = printing_service.genera_scheda_lotto_pdf(dettaglio, genealogia)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="scheda_lotto_{lotto_id}.pdf"'
+        },
+    )
+
+
 @app.get("/api/v1/vendite/lotti-disponibili")
 def lotti_disponibili_vendita(user: dict = Depends(auth.get_current_user)):
     """Elenca i lotti vendibili in ordine FEFO per il tenant corrente."""
