@@ -10,6 +10,7 @@ Esecuzione:
 
 import os
 import sys
+import uuid
 
 # Assicura che il progetto sia nel path (se eseguito da altrove).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -48,23 +49,7 @@ def check(cond, msg):
 #  Bootstrap del DB multi-tenant (una tantum, idempotente)
 # ------------------------------------------------------------------------- #
 def _crea_tabelle(c):
-    """Crea le tabelle multi-tenant, ricreandole da zero (schema SaaS).
-
-    NOTA: le tabelle SaaS (tenant, utenti, dispositivi_stampa, print_jobs)
-    sono nuove rispetto al DB del progetto originale. Per garantire uno schema
-    coerente e idempotente nel test, vengono droppate e ricreate. In
-    produzione la creazione e' governata da ``saas/schema_multitenant.sql``.
-    Il controllo FK va sospeso durante il reset perché alcune tabelle business
-    referenziano ``tenant``.
-    """
-    c.execute("SET FOREIGN_KEY_CHECKS = 0")
-
-    # Drop in ordine di dipendenza (figlie prima dei padri).
-    c.execute("DROP TABLE IF EXISTS print_jobs")
-    c.execute("DROP TABLE IF EXISTS dispositivi_stampa")
-    c.execute("DROP TABLE IF EXISTS utenti")
-    c.execute("DROP TABLE IF EXISTS tenant")
-
+    """Crea le tabelle multi-tenant mancanti senza eliminare dati esistenti."""
     c.execute(
         "CREATE TABLE IF NOT EXISTS tenant ("
         "id BIGINT PRIMARY KEY AUTO_INCREMENT,"
@@ -109,7 +94,6 @@ def _crea_tabelle(c):
         "CONSTRAINT fk_printjobs_dispositivo FOREIGN KEY (dispositivo_id) "
         "REFERENCES dispositivi_stampa(id))"
     )
-    c.execute("SET FOREIGN_KEY_CHECKS = 1")
 
 
 def bootstrap():
@@ -173,7 +157,7 @@ def test_stampa_e_barcode():
 def test_print_job_flow(tenant_id):
     print(f"\n{YELLOW}== Coda di stampa + Local Print Agent flow =={RES}")
     # Registra un dispositivo (agent).
-    token = "tok_" + ("x" * 32)
+    token = "tok_" + uuid.uuid4().hex
     did = print_repo.registra_dispositivo(tenant_id, "Pdv 1", token, "DYMO LabelWriter 450 Turbo")
     check(did is not None and did > 0, f"dispositivo registrato (id={did})")
 
@@ -181,7 +165,7 @@ def test_print_job_flow(tenant_id):
     check(disp is not None and disp["tenant_id"] == tenant_id, "trova dispositivo per token")
 
     # Accoda un job.
-    job_id = print_repo.accoda_job(tenant_id, None, "etichetta", '{"plu":"0001"}')
+    job_id = print_repo.accoda_job(tenant_id, did, "etichetta", '{"plu":"0001"}')
     check(job_id > 0, f"job accodato (id={job_id})")
 
     # L'agent preleva il prossimo job pending.

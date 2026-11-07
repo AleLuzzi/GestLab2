@@ -23,7 +23,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 ### Da completare
 
 - [x] Definire e automatizzare l'archiviazione non distruttiva di `ingresso_merce`: il bootstrap la rinomina in `ingresso_merce_legacy_archive` senza trasformare dati con corrispondenze non verificate.
-- [ ] Eseguire il bootstrap sui database esistenti; verificare che la tabella legacy sia assente e confrontare il numero di righe archiviate con un backup.
+- [x] Eseguire il bootstrap sui database esistenti; verificare che la tabella legacy sia assente e confrontare il numero di righe archiviate con un backup. Verificato il 2026-11-07 sul database `data`: backup `../backups/gestlab_backup_20261107_161449.sql`, bootstrap completato senza errori; `ingresso_merce` e `ingresso_merce_legacy_archive` assenti (0 righe da archiviare e confrontare).
 - [ ] Rendere coerente lo schema consolidato: chiavi primarie, quantità `DECIMAL(12,3)`, `tenant_id NOT NULL` con FK, charset `utf8mb4` e FK mancanti.
 - [ ] Definire e documentare l'ordine unico delle migrazioni per database nuovi ed esistenti; aggiornare il bootstrap perché non ne salti nessuna.
 - [ ] Verificare che un database nuovo e uno migrato espongano le stesse colonne richieste dal codice e che nessuna tabella usata accetti insert senza PK.

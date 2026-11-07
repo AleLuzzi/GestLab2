@@ -3,6 +3,7 @@ venv
 .continue/
 .vscode/
 logs/
+backups/
 
 # Segreti: non committare .env (mantieni .env.example)
 .env
