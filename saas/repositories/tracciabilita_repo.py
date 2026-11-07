@@ -539,7 +539,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                     "data_creazione, data_scadenza, data_tmc, lotto_fornitore, origine, "
                     "temperatura_ingresso, note_lotto, quantita_iniziale, quantita_disponibile, "
                     "unita_misura, documento_ingresso_id) "
-                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         tenant_id,
                         riga.articolo_id,
@@ -708,7 +708,7 @@ def registra_lavorazione(
                     "data_creazione, data_scadenza, data_tmc, origine, "
                     "quantita_iniziale, quantita_disponibile, "
                     "unita_misura, lavorazione_id) "
-                    "VALUES (%s, %s, 'V', %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, 'V', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         tenant_id,
                         riga.articolo_id,

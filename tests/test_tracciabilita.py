@@ -341,6 +341,13 @@ class TracciabilitaTests(unittest.TestCase):
             )
 
         self.assertEqual(result["lotti"][0]["codice_lotto"], "7A")
+        lotto_insert = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO lotti")
+        )
+        self.assertEqual(lotto_insert[0].count("%s"), len(lotto_insert[1]))
+        self.assertEqual(lotto_insert[1][-1], result["documento_ingresso_id"])
         self.assertTrue(
             any("VALUES (%s, %s, 'INGRESSO'" in query for query, _ in cursor.statements)
         )
@@ -756,11 +763,18 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
         output_insert = next(
-            params
+            (query, params)
             for query, params in cursor.statements
             if query.startswith("INSERT INTO lotti")
         )
-        self.assertEqual(output_insert[6], date(2026, 12, 1))
+        self.assertEqual(output_insert[0].count("%s"), len(output_insert[1]))
+        self.assertEqual(output_insert[1][6], date(2026, 12, 1))
+        work_output_insert = next(
+            params
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO lavorazione_output")
+        )
+        self.assertEqual(output_insert[1][-1], work_output_insert[1])
 
     def test_work_endpoint_maps_expiration_rules_to_conflict(self):
         payload = LavorazioneCreate(
