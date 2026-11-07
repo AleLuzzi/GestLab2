@@ -401,6 +401,48 @@ def dettaglio_lotto(tenant_id, lotto_id):
             }
             for item in cursor.fetchall()
         ]
+        cursor.execute(
+            "SELECT w.id, w.data_lavorazione, w.descrizione, "
+            "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore), "
+            "lo.lotto_id, lp.codice_lotto, a.nome, lo.quantita, lp.unita_misura "
+            "FROM lavorazione_input li "
+            "JOIN lavorazioni w "
+            "ON w.tenant_id = li.tenant_id AND w.id = li.lavorazione_id "
+            "LEFT JOIN dipendenti dp "
+            "ON dp.tenant_id = w.tenant_id AND dp.ID = w.operatore_id "
+            "LEFT JOIN lavorazione_output lo "
+            "ON lo.tenant_id = w.tenant_id AND lo.lavorazione_id = w.id "
+            "LEFT JOIN lotti lp "
+            "ON lp.tenant_id = lo.tenant_id AND lp.id = lo.lotto_id "
+            "LEFT JOIN articoli a "
+            "ON a.tenant_id = lo.tenant_id AND a.id = lo.articolo_id "
+            "WHERE li.tenant_id = %s AND li.lotto_id = %s "
+            "ORDER BY w.data_lavorazione, w.id, lo.id",
+            (tenant_id, lotto_id),
+        )
+        lavorazioni_successive = {}
+        for item in cursor.fetchall():
+            lavorazione = lavorazioni_successive.setdefault(
+                item[0],
+                {
+                    "id": item[0],
+                    "data": item[1],
+                    "descrizione": item[2],
+                    "operatore": item[3],
+                    "output": [],
+                },
+            )
+            if item[4] is not None:
+                lavorazione["output"].append(
+                    {
+                        "lotto_id": item[4],
+                        "codice_lotto": item[5],
+                        "articolo": item[6],
+                        "quantita": str(item[7]),
+                        "unita_misura": item[8],
+                    }
+                )
+        risultato["lavorazioni_successive"] = list(lavorazioni_successive.values())
         if row[15] is not None:
             cursor.execute(
                 "SELECT li.lotto_id, lp.codice_lotto, ap.nome, li.quantita "

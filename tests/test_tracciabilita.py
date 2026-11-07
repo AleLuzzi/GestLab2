@@ -243,6 +243,71 @@ class TracciabilitaTests(unittest.TestCase):
                 ],
             )
 
+    def test_lot_detail_includes_forward_work_genealogy(self):
+        lotto_row = [None] * 25
+        lotto_row[0] = 7
+        lotto_row[1] = 3
+        lotto_row[2] = "Mezzena"
+        lotto_row[3] = "A"
+        lotto_row[4] = 1
+        lotto_row[5] = "1A"
+        lotto_row[6] = date(2026, 10, 3)
+        lotto_row[11] = Decimal("10")
+        lotto_row[12] = Decimal("8")
+        lotto_row[13] = "kg"
+        cursor = FakeCursor(
+            lambda query, params: (
+                [tuple(lotto_row)]
+                if query.startswith("SELECT l.id, l.articolo_id")
+                else [
+                    (
+                        20,
+                        date(2026, 10, 4),
+                        "Preparazione",
+                        "Mario Rossi",
+                        9,
+                        "1V",
+                        "Salsiccia",
+                        Decimal("7.500"),
+                        "kg",
+                    )
+                ]
+                if query.startswith("SELECT w.id, w.data_lavorazione")
+                else []
+            )
+        )
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            dettaglio = tracciabilita_repo.dettaglio_lotto(42, 7)
+
+        self.assertEqual(
+            dettaglio["lavorazioni_successive"],
+            [
+                {
+                    "id": 20,
+                    "data": date(2026, 10, 4),
+                    "descrizione": "Preparazione",
+                    "operatore": "Mario Rossi",
+                    "output": [
+                        {
+                            "lotto_id": 9,
+                            "codice_lotto": "1V",
+                            "articolo": "Salsiccia",
+                            "quantita": "7.500",
+                            "unita_misura": "kg",
+                        }
+                    ],
+                }
+            ],
+        )
+        forward_query, params = cursor.statements[2]
+        self.assertIn("li.tenant_id = %s AND li.lotto_id = %s", forward_query)
+        self.assertEqual(params, (42, 7))
+
     def test_work_output_rejects_both_expiration_and_best_before_dates(self):
         with self.assertRaises(ValidationError):
             LavorazioneCreate(

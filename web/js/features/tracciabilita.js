@@ -391,6 +391,46 @@ function renderDettaglio(dettaglio) {
     container.appendChild(work);
   }
 
+  const forward = document.createElement("div");
+  forward.className = "trace-detail-block";
+  appendTesto(forward, "h4", "", "Genealogia in avanti");
+  if (dettaglio.lavorazioni_successive.length) {
+    dettaglio.lavorazioni_successive.forEach((successiva) => {
+      appendTesto(forward, "h5", "", `Lavorazione · ${formattaData(successiva.data)}`);
+      appendTesto(
+        forward,
+        "p",
+        "trace-help",
+        [successiva.descrizione, successiva.operatore].filter(Boolean).join(" · ") || "Nessuna descrizione",
+      );
+      const outputList = document.createElement("ul");
+      if (successiva.output.length) {
+        successiva.output.forEach((row) => {
+          const item = document.createElement("li");
+          appendTesto(
+            item,
+            "span",
+            "",
+            `${row.codice_lotto} · ${row.articolo} — ${formattaQuantita(row.quantita, row.unita_misura)}`,
+          );
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "btn ghost trace-lot-link";
+          open.textContent = "Apri lotto";
+          open.addEventListener("click", () => mostraDettaglioLotto(row.lotto_id, true));
+          item.appendChild(open);
+          outputList.appendChild(item);
+        });
+      } else {
+        appendTesto(outputList, "li", "trace-muted", "Nessun lotto prodotto registrato.");
+      }
+      forward.appendChild(outputList);
+    });
+  } else {
+    appendTesto(forward, "p", "trace-muted", "Nessuna lavorazione successiva registrata.");
+  }
+  container.appendChild(forward);
+
   const movements = document.createElement("div");
   movements.className = "trace-detail-block";
   appendTesto(movements, "h4", "", "Movimenti");
