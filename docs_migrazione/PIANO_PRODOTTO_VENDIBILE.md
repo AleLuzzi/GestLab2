@@ -98,7 +98,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI. Il bootstrap non crea più `ingresso_merce` e archivia la tabella esistente come `ingresso_merce_legacy_archive`; resta da verificare l'esito sui database in uso. |
 | Lavorazioni multi input/output/scarti → lotti `V` | C | `POST /api/v1/tracciabilita/lavorazioni`, UI [`web/js/features/tracciabilita.js`](../web/js/features/tracciabilita.js). |
 | Dettaglio genealogia lotto (API) | P | `GET /api/v1/tracciabilita/lotti/{id}`. UI albero e PDF NAS/ASL assenti. |
-| Scadenza, origine, lotto fornitore e temperatura d'ingresso | P | Campi presenti in `lotti`, schema API, repository e migrazione `20261107_lotti_metadata.sql`; il wizard web non li raccoglie ancora e i lotti `V` non li ereditano. Il TMC non ha un campo dedicato. |
+| Scadenza, TMC, origine, lotto fornitore e temperatura d'ingresso | P | `data_scadenza` è presente in `lotti`; il TMC non ha ancora un campo dedicato. Il wizard web raccoglie lotto fornitore, origine e scadenza; regole di distinzione e migrazione del TMC sono definite in § 5.1 ma non implementate. |
 | Ricette / distinta base preparati | A | Ogni lavorazione è ad-hoc. |
 | Allergeni e ingredienti strutturati | A | Etichetta: testo libero in [`web/js/features/printing.js`](../web/js/features/printing.js). |
 | Inventario / rettifica giacenza | P | `movimenti_lotto.tipo = RETTIFICA` nello schema; nessuna UI né API dedicata. |
@@ -246,27 +246,43 @@ sui preparati, senza Excel di appoggio.
 ### 5.1 Dati di lotto per la carne e i preparati
 
 I campi `data_scadenza`, `lotto_fornitore`, `origine` e
-`temperatura_ingresso` sono già presenti nello schema e accettati dall'API di
-ingresso. Il wizard web non li raccoglie ancora; inoltre TMC non è distinto
-dalla scadenza e i lotti `V` non ereditano i metadati dagli input. Per
-completare la gestione:
+`temperatura_ingresso` sono presenti nello schema; il wizard web raccoglie
+lotto fornitore, origine e scadenza. I lotti `V` non ereditano ancora i
+metadati dagli input. La decisione di prodotto per distinguere scadenza e TMC
+è la seguente:
 
-- inserire lotto fornitore e riferimento del documento (il DDT d'ingresso è
-  già registrato a livello documento);
-- paese di origine / allevamento (e, se disponibile, macellazione e
-  sezionamento — approvazione veterinaria);
-- data di scadenza o TMC, chiarendo quale campo e regola applicare;
-- temperatura all’ingresso (opzionale);
-- note (es. “bio”, “razza”), oggi non previste nei metadati del lotto.
+- mantenere `lotti.data_scadenza` per la data di scadenza e aggiungere
+  `lotti.data_tmc` per il termine minimo di conservazione; sono date
+  alternative, mai entrambe valorizzate sullo stesso lotto. Entrambe possono
+  essere vuote solo quando per quel prodotto non è prevista una data;
+- all'ingresso registrare il tipo e la data riportati dal fornitore, senza
+  conversioni o inferenze automatiche. I dati esistenti in `data_scadenza`
+  restano invariati durante la migrazione;
+- sui lotti `V`, il tipo di data è determinato per il prodotto ottenuto e la
+  data è inserita dall'operatore oppure calcolata dalla lavorazione solo se
+  una durata è stata definita e approvata dall'OSA. Non copiare la data degli
+  input né dedurla automaticamente dalla ricetta;
+- etichetta, dettaglio, FEFO e avvisi mostrano sempre se si tratta di
+  scadenza o TMC. FEFO ordina per data crescente e colloca in coda i lotti
+  senza data;
+- una scadenza trascorsa rende il lotto non selezionabile per lavorazione e
+  vendita; un TMC trascorso genera un avviso distinto e richiede conferma
+  esplicita dell'operatore, senza blocco automatico. Queste regole operative
+  non sostituiscono la valutazione dell'OSA né attestano conformità legale.
 
-Sui lotti `V`: scadenza calcolata da ricetta o inserita (es. +N giorni da
-produzione); origine aggregata dagli input (testo etichetta). Definire se e
-come distinguere scadenza e TMC per gli articoli interessati.
+L'OSA resta responsabile di stabilire se al prodotto si applica una scadenza o
+un TMC e di definire l'eventuale durata dei prodotti `V`; l'applicazione non
+classifica autonomamente gli alimenti né propone durate predefinite. L'origine
+dei lotti `V` è gestita separatamente e può essere aggregata dagli input.
+
+Restano inoltre da completare la visualizzazione del lotto fornitore e del
+riferimento DDT nel dettaglio, la temperatura d'ingresso quando applicabile e
+la decisione separata sulle note di lotto (per esempio “bio” o razza).
 
 **Criterio:** il wizard consente di registrare lotto fornitore, origine,
-scadenza e, se necessario, temperatura; in dettaglio si vedono questi dati
-insieme a fornitore e DDT. I `V` di una lavorazione ereditano o dichiarano
-origine e scadenza.
+scadenza o TMC e, se necessario, temperatura; in dettaglio si vedono questi
+dati insieme a fornitore e DDT. I `V` di una lavorazione dichiarano il tipo e
+la data applicabili, oltre all'origine.
 
 ### 5.2 FEFO e alert
 
