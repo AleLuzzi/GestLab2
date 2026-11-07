@@ -447,6 +447,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .trace-detail-block h5 { margin-bottom: 8px; }
 .trace-detail-block ul { list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 8px; }
 .trace-detail-block li { padding: 8px 10px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px; }
+.trace-lot-link { margin: 8px 0 0 8px; padding: 5px 8px; }
 .trace-muted { color: var(--text-dim); }
 .trace-type {
   display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid transparent;

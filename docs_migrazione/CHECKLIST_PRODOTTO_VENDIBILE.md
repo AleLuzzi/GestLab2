@@ -50,7 +50,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Genealogia ed export
 
-- [ ] Realizzare in UI la genealogia all'indietro: lotto `V` → lavorazione → lotti input → ingresso → fornitore.
+- [x] Realizzare in UI la genealogia all'indietro: lotto `V` → lavorazione → lotti input → ingresso → fornitore. Dal dettaglio del lotto prodotto si aprono i lotti input e si torna al passaggio precedente; il dettaglio del lotto `A` mostra ingresso, DDT e fornitore.
 - [ ] Realizzare in UI la genealogia in avanti: lotto `A` → lavorazioni → lotti `V` (e, in Fase B, vendite).
 - [ ] Generare una scheda lotto PDF per controlli, presentandola come riepilogo e non come certificazione legale.
 - [ ] Verificare con un caso reale che dalla UI e dal PDF si risalga dal preparato al DDT fornitore in meno di un minuto.

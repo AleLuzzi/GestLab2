@@ -6,6 +6,8 @@ let lotti = [];
 let lottiDisponibili = [];
 let dipendenti = [];
 let lottiCaricati = false;
+let cronologiaDettaglio = [];
+let dettaglioCorrente = null;
 
 function dataLocaleISO() {
   const oggi = new Date();
@@ -277,6 +279,7 @@ function creaFatti(entries) {
 }
 
 function renderDettaglio(dettaglio) {
+  dettaglioCorrente = dettaglio;
   const container = $("trace-detail");
   container.replaceChildren();
   container.hidden = false;
@@ -291,8 +294,14 @@ function renderDettaglio(dettaglio) {
   const close = document.createElement("button");
   close.type = "button";
   close.className = "btn ghost";
-  close.textContent = "Chiudi";
-  close.addEventListener("click", () => { container.hidden = true; });
+  close.textContent = cronologiaDettaglio.length ? "Indietro" : "Chiudi";
+  close.addEventListener("click", () => {
+    if (cronologiaDettaglio.length) {
+      renderDettaglio(cronologiaDettaglio.pop());
+    } else {
+      container.hidden = true;
+    }
+  });
   header.appendChild(close);
   container.appendChild(header);
 
@@ -347,7 +356,6 @@ function renderDettaglio(dettaglio) {
     appendTesto(work, "h4", "", `Lavorazione · ${formattaData(lavorazione.data)}`);
     appendTesto(work, "p", "trace-help", [lavorazione.descrizione, lavorazione.operatore].filter(Boolean).join(" · ") || "Nessuna descrizione");
     [
-      ["Input consumati", lavorazione.input, (row) => `${row.codice_lotto} · ${row.articolo} — ${formattaQuantita(row.quantita)}`],
       ["Output prodotti", lavorazione.output, (row) => `${row.codice_lotto} · ${row.articolo} — ${formattaQuantita(row.quantita)}`],
       ["Scarti", lavorazione.scarti, (row) => `${row.descrizione} — ${formattaQuantita(row.quantita, row.unita_misura)}`],
     ].forEach(([title, rows, getText]) => {
@@ -357,6 +365,29 @@ function renderDettaglio(dettaglio) {
       else appendTesto(list, "li", "trace-muted", "Nessun dato");
       work.appendChild(list);
     });
+    appendTesto(work, "h5", "", "Lotti input consumati");
+    const inputList = document.createElement("ul");
+    if (lavorazione.input.length) {
+      lavorazione.input.forEach((row) => {
+        const item = document.createElement("li");
+        appendTesto(
+          item,
+          "span",
+          "",
+          `${row.codice_lotto} · ${row.articolo} — ${formattaQuantita(row.quantita)}`,
+        );
+        const open = document.createElement("button");
+        open.type = "button";
+        open.className = "btn ghost trace-lot-link";
+        open.textContent = "Apri lotto";
+        open.addEventListener("click", () => mostraDettaglioLotto(row.lotto_id, true));
+        item.appendChild(open);
+        inputList.appendChild(item);
+      });
+    } else {
+      appendTesto(inputList, "li", "trace-muted", "Nessun lotto input registrato.");
+    }
+    work.appendChild(inputList);
     container.appendChild(work);
   }
 
@@ -381,10 +412,15 @@ function renderDettaglio(dettaglio) {
   container.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-async function mostraDettaglioLotto(lottoId) {
+async function mostraDettaglioLotto(lottoId, daInput = false) {
   impostaMessaggio("trace-lots-error");
   try {
     const dettaglio = await api(`/api/v1/tracciabilita/lotti/${encodeURIComponent(lottoId)}`);
+    if (daInput) {
+      if (dettaglioCorrente) cronologiaDettaglio.push(dettaglioCorrente);
+    } else {
+      cronologiaDettaglio = [];
+    }
     renderDettaglio(dettaglio);
   } catch (error) {
     impostaMessaggio("trace-lots-error", `Impossibile caricare il dettaglio: ${error.message}`);
