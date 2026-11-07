@@ -799,6 +799,12 @@ def dettaglio_lotto_tracciato(
     return dettaglio
 
 
+@app.get("/api/v1/vendite/lotti-disponibili")
+def lotti_disponibili_vendita(user: dict = Depends(auth.get_current_user)):
+    """Elenca i lotti vendibili in ordine FEFO per il tenant corrente."""
+    return tracciabilita_repo.lotti_disponibili_vendita(user["tenant_id"])
+
+
 @app.post(
     "/api/v1/tracciabilita/lavorazioni",
     status_code=status.HTTP_201_CREATED,

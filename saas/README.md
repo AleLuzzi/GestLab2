@@ -86,6 +86,7 @@ saas/
 | PUT | `/api/v1/dipendenti/{id}` | admin/operatore | Aggiorna dipendente |
 | DELETE | `/api/v1/dipendenti/{id}` | admin | Elimina dipendente |
 | GET | `/api/v1/lotti/aperti` | autenticato | Lotti aperti |
+| GET | `/api/v1/vendite/lotti-disponibili` | autenticato | Lotti attivi con giacenza e non scaduti, ordinati FEFO; la UI vendita non è ancora collegata |
 | GET | `/api/v1/menu` | autenticato | Articoli attivi del menu |
 | GET | `/health` | pubblico | Health check |
 | POST | `/api/v1/dispositivi` | admin | Registra un Local Print Agent (genera token) |

@@ -275,6 +275,38 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
         return rows
 
 
+def lotti_disponibili_vendita(tenant_id):
+    """Restituisce i lotti vendibili ordinati per FEFO."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, "
+            "l.codice_lotto, l.data_scadenza, l.quantita_disponibile, "
+            "l.unita_misura "
+            "FROM lotti l JOIN articoli a "
+            "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
+            "WHERE l.tenant_id = %s AND a.attivo = 1 AND l.attivo = 1 "
+            "AND l.quantita_disponibile > 0 "
+            "AND (l.data_scadenza IS NULL OR l.data_scadenza >= CURRENT_DATE) "
+            "ORDER BY CASE WHEN l.data_scadenza IS NULL THEN 1 ELSE 0 END, "
+            "l.data_scadenza ASC, l.data_creazione ASC, l.id ASC",
+            (tenant_id,),
+        )
+        return [
+            {
+                "id": row[0],
+                "articolo_id": row[1],
+                "articolo": row[2],
+                "tipo_lotto": row[3],
+                "codice_lotto": row[4],
+                "data_scadenza": row[5],
+                "quantita_disponibile": str(row[6]),
+                "unita_misura": row[7],
+            }
+            for row in cursor.fetchall()
+        ]
+
+
 def dettaglio_lotto(tenant_id, lotto_id):
     """Restituisce lotto, origine e input/output della sua lavorazione."""
     with connection() as conn:

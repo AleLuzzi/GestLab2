@@ -42,7 +42,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 - [x] Mostrare nel dettaglio lotto i metadati, il fornitore e il DDT d'ingresso; la scheda mostra lotto fornitore, origine, scadenza e temperatura, oltre a data, numero DDT e fornitore d'ingresso.
 - [x] Definire come i lotti `V` ereditano o dichiarano origine e scadenza, anche in relazione alla ricetta e alla data di produzione. Decisione in `PIANO_PRODOTTO_VENDIBILE.md` § 5.1: origine dichiarata dall'operatore per ogni output, senza copia o aggregazione automatica; data riferita alla lavorazione, senza ereditarla dagli input. Una durata di ricetta approvata dall'OSA può solo proporre una data da confermare dall'operatore.
 - [x] Applicare la selezione FEFO predefinita in lavorazione: il lotto con scadenza più vicina è preselezionato, i lotti senza scadenza sono in coda e quelli scaduti non sono selezionabili; l'operatore può scegliere un altro lotto disponibile.
-- [ ] Applicare la selezione FEFO predefinita in vendita in Fase B; consentire la scelta di un altro lotto disponibile.
+- [ ] Applicare la selezione FEFO predefinita in vendita in Fase B; consentire la scelta di un altro lotto disponibile. Base API pronta in `GET /api/v1/vendite/lotti-disponibili`, che restituisce tutte le alternative vendibili in ordine FEFO; da collegare alla UI di vendita.
 - [ ] Mostrare in dashboard lotti in scadenza (ad esempio entro 48 ore e 7 giorni), giacenze a zero e job di stampa in errore.
 - [ ] Verificare che i metadati e le regole siano coperti da test e funzionino anche sui database migrati.
 
