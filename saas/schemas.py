@@ -144,6 +144,7 @@ class IngressoTracciatoRigaCreate(BaseModel):
     origine: str | None = Field(default=None, max_length=255)
     data_scadenza: date | None = None
     temperatura_ingresso: Decimal | None = Field(default=None, ge=-100, le=100, max_digits=6, decimal_places=2)
+    note_lotto: str | None = Field(default=None, max_length=500)
 
 
 class IngressoTracciatoCreate(BaseModel):

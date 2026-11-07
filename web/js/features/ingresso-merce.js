@@ -84,6 +84,7 @@ function aggiornaRiepilogo() {
       riga.origine && `Origine: ${riga.origine}`,
       riga.dataScadenza && `Scadenza: ${new Date(`${riga.dataScadenza}T00:00:00`).toLocaleDateString("it-IT")}`,
       riga.temperaturaIngresso !== null && `Temperatura: ${riga.temperaturaIngresso} °C`,
+      riga.noteLotto && `Note: ${riga.noteLotto}`,
     ].filter(Boolean);
     details.textContent = metadati.join(" · ");
     description.append(name, details);
@@ -272,6 +273,7 @@ function aggiungiRighe() {
   }
   const lottoFornitore = $("ingress-lotto-fornitore").value.trim();
   const origine = $("ingress-origine").value.trim();
+  const noteLotto = $("ingress-note-lotto").value.trim();
   const dataScadenza = $("ingress-data-scadenza").value;
   const temperaturaIngresso = inputTemperatura.value === ""
     ? null
@@ -289,6 +291,7 @@ function aggiungiRighe() {
       quantita,
       lottoFornitore: lottoFornitore || null,
       origine: origine || null,
+      noteLotto: noteLotto || null,
       dataScadenza: dataScadenza || null,
       temperaturaIngresso,
     });
@@ -310,6 +313,7 @@ function azzeraIngresso() {
   $("ingress-quantita").value = "";
   $("ingress-lotto-fornitore").value = "";
   $("ingress-origine").value = "";
+  $("ingress-note-lotto").value = "";
   $("ingress-data-scadenza").value = "";
   $("ingress-temperatura").value = "";
   righeIngresso = [];
@@ -383,6 +387,7 @@ export function initIngressoMerce() {
             quantita: riga.quantita.toFixed(3),
             lotto_fornitore: riga.lottoFornitore,
             origine: riga.origine,
+            note_lotto: riga.noteLotto,
             data_scadenza: riga.dataScadenza,
             temperatura_ingresso: riga.temperaturaIngresso,
           })),

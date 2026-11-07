@@ -300,6 +300,7 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   `lotto_fornitore` varchar(64) DEFAULT NULL,
   `origine` varchar(255) DEFAULT NULL,
   `temperatura_ingresso` decimal(6,2) DEFAULT NULL,
+  `note_lotto` varchar(500) DEFAULT NULL,
   `quantita_iniziale` decimal(12,3) NOT NULL,
   `quantita_disponibile` decimal(12,3) NOT NULL,
   `unita_misura` varchar(8) NOT NULL,

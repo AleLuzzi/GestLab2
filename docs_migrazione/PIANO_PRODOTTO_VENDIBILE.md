@@ -98,7 +98,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI. Il bootstrap non crea più `ingresso_merce` e archivia la tabella esistente come `ingresso_merce_legacy_archive`; resta da verificare l'esito sui database in uso. |
 | Lavorazioni multi input/output/scarti → lotti `V` | C | `POST /api/v1/tracciabilita/lavorazioni`, UI [`web/js/features/tracciabilita.js`](../web/js/features/tracciabilita.js). |
 | Dettaglio genealogia lotto (API) | P | `GET /api/v1/tracciabilita/lotti/{id}`. UI albero e PDF NAS/ASL assenti. |
-| Scadenza, TMC, origine, lotto fornitore e temperatura d'ingresso | P | `data_scadenza` è presente in `lotti`; il TMC non ha ancora un campo dedicato. Il wizard web raccoglie lotto fornitore, origine e scadenza; regole di distinzione e migrazione del TMC sono definite in § 5.1 ma non implementate. |
+| Scadenza, TMC, origine, lotto fornitore, temperatura d'ingresso e note lotto | P | `data_scadenza` è presente in `lotti`; il TMC non ha ancora un campo dedicato. Il wizard raccoglie i metadati in ingresso, incluse note descrittive facoltative; regole TMC definite in § 5.1 ma non implementate. |
 | Ricette / distinta base preparati | A | Ogni lavorazione è ad-hoc. |
 | Allergeni e ingredienti strutturati | A | Etichetta: testo libero in [`web/js/features/printing.js`](../web/js/features/printing.js). |
 | Inventario / rettifica giacenza | P | `movimenti_lotto.tipo = RETTIFICA` nello schema; nessuna UI né API dedicata. |
@@ -275,9 +275,11 @@ un TMC e di definire l'eventuale durata dei prodotti `V`; l'applicazione non
 classifica autonomamente gli alimenti né propone durate predefinite. L'origine
 dei lotti `V` è gestita separatamente e può essere aggregata dagli input.
 
-Restano inoltre da completare la visualizzazione del lotto fornitore e del
-riferimento DDT nel dettaglio, la temperatura d'ingresso quando applicabile e
-la decisione separata sulle note di lotto (per esempio “bio” o razza).
+Restano inoltre da completare la visualizzazione dei metadati di lotto e del
+riferimento DDT nel dettaglio e la temperatura d'ingresso quando applicabile.
+Le note di lotto sono facoltative e descrittive (massimo 500 caratteri), si
+registrano sul lotto di ingresso e non vengono propagate automaticamente ai
+lotti prodotti; non costituiscono attestazioni o certificazioni.
 
 **Criterio:** il wizard consente di registrare lotto fornitore, origine,
 scadenza o TMC e, se necessario, temperatura; in dettaglio si vedono questi

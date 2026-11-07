@@ -39,6 +39,7 @@ MIGRATION_ORDER = (
     "20261031_soggetti_clienti_fornitori.sql",
     "20261031_work_operator_id.sql",
     "20261107_lotti_metadata.sql",
+    "20261107_note_lotto.sql",
     "20261107_movimenti_lotto_vendita.sql",
 )
 
@@ -350,6 +351,9 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "origine",
             "temperatura_ingresso",
         }.issubset(colonne)
+
+    if migrazione == "20261107_note_lotto.sql":
+        return "note_lotto" in _colonne_tabella(cursor, "lotti")
 
     if migrazione == "20261107_movimenti_lotto_vendita.sql":
         cursor.execute("SHOW CREATE TABLE `movimenti_lotto`")

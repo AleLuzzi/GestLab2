@@ -270,6 +270,14 @@ function renderDettaglio(dettaglio) {
     container.appendChild(origin);
   }
 
+  if (dettaglio.note_lotto) {
+    const notes = document.createElement("div");
+    notes.className = "trace-detail-block";
+    appendTesto(notes, "h4", "", "Note del lotto");
+    appendTesto(notes, "p", "", dettaglio.note_lotto);
+    container.appendChild(notes);
+  }
+
   const lavorazione = dettaglio.lavorazione;
   if (lavorazione) {
     const work = document.createElement("div");

@@ -191,7 +191,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
         "l.codice_lotto, l.data_creazione, l.data_scadenza, l.lotto_fornitore, "
         "l.origine, l.temperatura_ingresso, l.quantita_iniziale, "
         "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
-        "l.lavorazione_id, a.categoria "
+        "l.lavorazione_id, a.categoria, l.note_lotto "
         "FROM lotti l JOIN articoli a "
         "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
         "WHERE l.tenant_id = %s"
@@ -213,7 +213,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
         rows = []
         for row in cursor.fetchall():
             row_len = len(row)
-            if row_len >= 17:
+            if row_len >= 18:
                 quantita_iniziale = _row_value(row, 11)
                 quantita_disponibile = _row_value(row, 12)
                 unita_misura = _row_value(row, 13)
@@ -224,6 +224,19 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                 lotto_fornitore = _row_value(row, 8)
                 origine = _row_value(row, 9)
                 temperatura = _row_value(row, 10)
+                note_lotto = _row_value(row, 17)
+            elif row_len >= 17:
+                quantita_iniziale = _row_value(row, 11)
+                quantita_disponibile = _row_value(row, 12)
+                unita_misura = _row_value(row, 13)
+                documento_ingresso_id = _row_value(row, 14)
+                lavorazione_id = _row_value(row, 15)
+                categoria = _row_value(row, 16)
+                data_scadenza = _row_value(row, 7)
+                lotto_fornitore = _row_value(row, 8)
+                origine = _row_value(row, 9)
+                temperatura = _row_value(row, 10)
+                note_lotto = None
             else:
                 quantita_iniziale = _row_value(row, 7)
                 quantita_disponibile = _row_value(row, 8)
@@ -235,6 +248,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                 lotto_fornitore = None
                 origine = None
                 temperatura = None
+                note_lotto = None
 
             rows.append(
                 {
@@ -255,6 +269,7 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
                     "lotto_fornitore": lotto_fornitore,
                     "origine": origine,
                     "temperatura_ingresso": str(temperatura) if temperatura is not None else None,
+                    "note_lotto": note_lotto,
                 }
             )
         return rows
@@ -272,7 +287,8 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "l.lavorazione_id, d.data_ingresso, d.numero_ddt, d.fornitore, "
             "d.fornitore_id, "
             "w.data_lavorazione, w.descrizione, "
-            "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore) "
+            "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore), "
+            "l.note_lotto "
             "FROM lotti l "
             "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "LEFT JOIN documenti_ingresso d "
@@ -305,6 +321,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "unita_misura": row[13],
             "documento_ingresso_id": row[14],
             "lavorazione_id": row[15],
+            "note_lotto": _row_value(row, 23),
             "documento_ingresso": None,
             "lavorazione": None,
         }
@@ -459,13 +476,14 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                 lotto_fornitore = getattr(riga, "lotto_fornitore", None)
                 origine = getattr(riga, "origine", None)
                 temperatura_ingresso = getattr(riga, "temperatura_ingresso", None)
+                note_lotto = getattr(riga, "note_lotto", None)
                 cursor.execute(
                     "INSERT INTO lotti "
                     "(tenant_id, articolo_id, tipo_lotto, progressivo, codice_lotto, "
                     "data_creazione, data_scadenza, lotto_fornitore, origine, "
-                    "temperatura_ingresso, quantita_iniziale, quantita_disponibile, "
+                    "temperatura_ingresso, note_lotto, quantita_iniziale, quantita_disponibile, "
                     "unita_misura, documento_ingresso_id) "
-                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         tenant_id,
                         riga.articolo_id,
@@ -476,6 +494,7 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
                         lotto_fornitore,
                         origine,
                         temperatura_ingresso,
+                        note_lotto,
                         riga.quantita,
                         riga.quantita,
                         articoli[riga.articolo_id],

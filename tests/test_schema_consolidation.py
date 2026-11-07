@@ -56,6 +56,12 @@ class ConsolidatedSchemaTests(unittest.TestCase):
                 with self.subTest(table=table_name, column=column[0]):
                     self.assertRegex(column[1], r"(?i)^decimal\(12,3\)")
 
+    def test_lot_notes_are_optional_and_bounded(self):
+        self.assertRegex(
+            self.tables["lotti"],
+            r"`note_lotto`\s+varchar\(500\)\s+DEFAULT NULL",
+        )
+
     def test_department_and_operator_relations_are_tenant_scoped(self):
         self.assertIn(
             "FOREIGN KEY (`tenant_id`, `reparto`)", self.tables["dipendenti"]

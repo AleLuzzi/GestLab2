@@ -7,6 +7,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from saas.repositories import tracciabilita_repo
 from saas.main import (
@@ -92,8 +93,26 @@ class TracciabilitaTests(unittest.TestCase):
     def test_lista_lotti_includes_article_category(self):
         cursor = FakeCursor(
             lambda query, params: [
-                (7, 3, "Mezzena", "A", 1, "1A", "2026-10-03", Decimal("10"),
-                 Decimal("8"), "kg", None, None, "Suino")
+                (
+                    7,
+                    3,
+                    "Mezzena",
+                    "A",
+                    1,
+                    "1A",
+                    "2026-10-03",
+                    date(2026, 12, 15),
+                    "LF-8842",
+                    "Italia, suino",
+                    Decimal("2.50"),
+                    Decimal("10"),
+                    Decimal("8"),
+                    "kg",
+                    None,
+                    None,
+                    "Suino",
+                    "Bio; razza: esempio",
+                )
             ]
         )
 
@@ -105,6 +124,7 @@ class TracciabilitaTests(unittest.TestCase):
             lotti = tracciabilita_repo.lista_lotti(42, solo_disponibili=True)
 
         self.assertEqual(lotti[0]["categoria"], "Suino")
+        self.assertEqual(lotti[0]["note_lotto"], "Bio; razza: esempio")
         query, params = cursor.statements[0]
         self.assertIn("a.categoria", query)
         self.assertIn("AND l.quantita_disponibile > 0", query)
@@ -138,6 +158,61 @@ class TracciabilitaTests(unittest.TestCase):
             )
 
         self.assertEqual(raised.exception.status_code, 422)
+
+    def test_ingress_rejects_lot_notes_longer_than_500_characters(self):
+        with self.assertRaises(ValidationError):
+            IngressoTracciatoCreate(
+                data="2026-10-03",
+                fornitore_id=1,
+                righe=[
+                    {
+                        "articolo_id": 3,
+                        "quantita": "8.250",
+                        "note_lotto": "x" * 501,
+                    }
+                ],
+            )
+
+    def test_lot_detail_includes_descriptive_notes(self):
+        row = (
+            7,
+            3,
+            "Mezzena",
+            "A",
+            1,
+            "1A",
+            date(2026, 10, 3),
+            date(2026, 12, 15),
+            "LF-8842",
+            "Italia, suino",
+            Decimal("2.50"),
+            Decimal("10"),
+            Decimal("8"),
+            "kg",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            "Bio; razza: esempio",
+        )
+        cursor = FakeCursor(
+            lambda query, params: [row] if query.startswith("SELECT l.id, l.articolo_id") else []
+        )
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            dettaglio = tracciabilita_repo.dettaglio_lotto(42, 7)
+
+        self.assertEqual(dettaglio["note_lotto"], "Bio; razza: esempio")
+        self.assertIn("l.note_lotto", cursor.statements[0][0])
 
     def test_progressivo_drains_locked_select_before_updating(self):
         class FetchAllCursor(FakeCursor):
@@ -525,6 +600,7 @@ class TracciabilitaTests(unittest.TestCase):
                             "origine": "Italia, suino",
                             "data_scadenza": date(2026, 12, 15),
                             "temperatura_ingresso": Decimal("2.50"),
+                            "note_lotto": "Bio; razza: esempio",
                         },
                     )()
                 ],
@@ -540,13 +616,15 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertIn("lotto_fornitore", insert_query)
         self.assertIn("origine", insert_query)
         self.assertIn("temperatura_ingresso", insert_query)
+        self.assertIn("note_lotto", insert_query)
         self.assertEqual(
-            insert_params[5:9],
+            insert_params[5:10],
             (
                 date(2026, 12, 15),
                 "LF-8842",
                 "Italia, suino",
                 Decimal("2.50"),
+                "Bio; razza: esempio",
             ),
         )
 
