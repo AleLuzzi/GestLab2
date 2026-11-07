@@ -7,6 +7,7 @@ import { initIngressoMerce } from "./features/ingresso-merce.js";
 import { initPrinting } from "./features/printing.js";
 import { initProgressivi } from "./features/progressivi.js";
 import { initTracciabilita } from "./features/tracciabilita.js";
+import { initVendite } from "./features/vendite.js";
 
 document.addEventListener("DOMContentLoaded", () => {
   const showLanding = initNavigation();
@@ -17,5 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initPrinting();
   initProgressivi();
   initTracciabilita();
+  initVendite();
   initAdmin();
 });

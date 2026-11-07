@@ -8,6 +8,7 @@ import { loadMenu } from "../features/menu.js";
 import { loadPrintJobs } from "../features/printing.js";
 import { loadProgressivi } from "../features/progressivi.js";
 import { loadTracciabilita } from "../features/tracciabilita.js";
+import { loadVendite } from "../features/vendite.js";
 
 function showLanding() {
   document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
@@ -45,6 +46,7 @@ function switchView(view) {
     menu: loadMenu,
     printjobs: loadPrintJobs,
     tracciabilita: loadTracciabilita,
+    vendite: loadVendite,
   };
   loaders[view]?.();
 }

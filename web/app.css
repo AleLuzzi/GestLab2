@@ -73,6 +73,19 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .panel.active { display: block; }
 .panel h2 { margin-bottom: 18px; }
 .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.sales-help { color: var(--text-dim); margin-bottom: 14px; }
+.sales-selection { max-width: none; }
+.sales-selection-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 18px;
+}
+.sales-selection-fields select { min-height: 52px; font-size: 17px; }
+.sales-lot-summary {
+  min-height: 24px;
+  color: var(--text);
+  font-weight: 600;
+}
 
 .landing-panel {
   display: none;
@@ -466,6 +479,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .trace-work-columns { grid-template-columns: 1fr; gap: 4px; }
 }
 @media (max-width: 760px) {
+  .sales-selection-fields { grid-template-columns: 1fr; }
   .sidebar {
     position: sticky;
     top: 61px;
