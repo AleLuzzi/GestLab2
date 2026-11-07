@@ -16,7 +16,29 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from core.env import get_secret
 
 # In produzione: valori da variabili d'ambiente / Secret Manager / .env.
-SECRET_KEY = get_secret("JWT_SECRET", os.environ.get("GESTLAB_JWT_SECRET", "cambia-questa-secret-key"))
+_DEFAULT_JWT_SECRETS = {
+    "cambia-questa-secret-key",
+    "change_me_in_production_please",
+    "gestlab-dev-secret",
+}
+
+
+def _validate_jwt_secret(secret: str) -> str:
+    """Blocca l'avvio in produzione con chiavi di default di sviluppo."""
+    if os.environ.get("GESTLAB_ENV", "").lower() == "production" and secret in _DEFAULT_JWT_SECRETS:
+        raise RuntimeError(
+            "JWT_SECRET di default non consentito in produzione. "
+            "Impostare una chiave TLS-safe via variabile d'ambiente o Secret Manager."
+        )
+    return secret
+
+
+SECRET_KEY = _validate_jwt_secret(
+    get_secret(
+        "JWT_SECRET",
+        os.environ.get("GESTLAB_JWT_SECRET", "cambia-questa-secret-key"),
+    )
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("GESTLAB_ACCESS_MIN", get_secret("JWT_ACCESS_MIN", "60")))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("GESTLAB_REFRESH_DAYS", get_secret("JWT_REFRESH_DAYS", "7")))

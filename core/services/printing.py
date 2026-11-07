@@ -161,21 +161,10 @@ def genera_ddt_pdf(numero, data=None, fornitore="", righe=None) -> bytes:
 # ------------------------------------------------------------------------- #
 
 def genera_etichetta_dymo_pdf(plu, prodotto, prezzo_kg="", ingredienti="",
-                              codice="") -> bytes:
+                              codice="", lotto="", scadenza="", origine="") -> bytes:
     """Genera il PDF dell'etichetta DYMO (formato 54x101 mm).
 
-    Riadatta ``stp_etichetta`` di ``Laboratorio/lotti_vendita_cucina.py``
-    usando ReportLab canvas su formato DYMO.
-
-    Args:
-        plu: codice PLU del prodotto.
-        prodotto: nome del prodotto.
-        prezzo_kg: prezzo al kg.
-        ingredienti: lista ingredienti (testo).
-        codice: codice/EAN del prodotto.
-
-    Returns:
-        I bytes del PDF dell'etichetta.
+    Integra i dati di lotto e scadenza necessari nel flusso di laboratorio.
     """
     try:
         from reportlab.pdfgen import canvas as pdfcanvas
@@ -202,8 +191,18 @@ def genera_etichetta_dymo_pdf(plu, prodotto, prezzo_kg="", ingredienti="",
     if codice:
         c.drawString(5 * mm, height - 53 * mm, "COD: {}".format(codice))
 
+    if lotto:
+        c.setFont("Helvetica", 6)
+        c.drawString(5 * mm, height - 62 * mm, f"LOTTO: {lotto[:24]}")
+    if scadenza:
+        c.setFont("Helvetica", 6)
+        c.drawString(5 * mm, height - 68 * mm, f"SCAD: {scadenza}")
+    if origine:
+        c.setFont("Helvetica", 6)
+        c.drawString(5 * mm, height - 74 * mm, f"ORIG: {origine[:28]}")
+
     # Ingredienti (testo su piu' righe)
-    y = height - 62 * mm
+    y = height - 82 * mm
     c.setFont("Helvetica", 6)
     for line in str(ingredienti).splitlines()[:8]:
         c.drawString(5 * mm, y, line[:40])

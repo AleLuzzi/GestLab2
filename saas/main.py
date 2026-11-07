@@ -712,27 +712,17 @@ def elimina_progressivi(user: dict = Depends(auth.require_roles("admin"))):
 #  Ingresso merce
 # ------------------------------------------------------------------------- #
 
-@app.post("/api/v1/ingresso-merce", status_code=status.HTTP_201_CREATED)
+@app.post("/api/v1/ingresso-merce", status_code=status.HTTP_410_GONE, include_in_schema=False)
 def conferma_ingresso_merce(
     payload: IngressoMerceCreate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Salva tutte le righe dell'ingresso nel tenant autenticato."""
-    try:
-        movimenti = ingresso_merce_service.salva_movimenti(
-            prog_acq=payload.prog_acq,
-            data=payload.data,
-            num_ddt=payload.num_ddt,
-            fornitore_id=payload.fornitore_id,
-            righe=payload.righe,
-            tenant_id=user["tenant_id"],
-        )
-    except FornitoreNonValido as error:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            "Fornitore non trovato, disattivato o non abilitato all'ingresso merce",
-        ) from error
-    return {"inseriti": len(movimenti)}
+    """Endpoint legacy disattivato: usare il flusso tracciato."""
+    raise HTTPException(
+        status.HTTP_410_GONE,
+        "L'endpoint legacy /api/v1/ingresso-merce è stato deprecato. "
+        "Usare /api/v1/tracciabilita/ingressi per registrare l'ingresso tracciato.",
+    )
 
 
 @app.post(
@@ -921,18 +911,35 @@ def genera_etichetta(
     payload: EtichettaCreate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Genera il PDF di un'etichetta DYMO per il tenant corrente."""
+    """Genera il PDF di un'etichetta DYMO a partire da lotto/articolo o da payload manuale."""
+    lotto_dati = None
+    if payload.lotto_id is not None:
+        lotto_dati = tracciabilita_repo.dettaglio_lotto(user["tenant_id"], payload.lotto_id)
+        if lotto_dati is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato")
+
+    plu = payload.plu or (str(lotto_dati["articolo_id"]) if lotto_dati else "")
+    prodotto = payload.prodotto or (lotto_dati["articolo"] if lotto_dati else "")
+    codice = payload.codice or (lotto_dati["codice_lotto"] if lotto_dati else "")
+    lotto = payload.lotto or (lotto_dati["codice_lotto"] if lotto_dati else "")
+    scadenza = payload.scadenza or (str(lotto_dati.get("data_scadenza")) if lotto_dati and lotto_dati.get("data_scadenza") else "")
+    origine = payload.origine or (lotto_dati.get("origine") if lotto_dati else "")
+
     pdf = printing_service.genera_etichetta_dymo_pdf(
-        plu=payload.plu,
-        prodotto=payload.prodotto,
+        plu=plu,
+        prodotto=prodotto,
         prezzo_kg=payload.prezzo_kg,
-        ingredienti=payload.ingredienti,
-        codice=payload.codice,
+        ingredienti=payload.ingredienti or "",
+        codice=codice,
+        lotto=lotto,
+        scadenza=scadenza,
+        origine=origine,
     )
+    file_name = (lotto or plu or "etichetta").replace("/", "_")
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="etichetta_{payload.plu}.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="etichetta_{file_name}.pdf"'},
     )
 
 

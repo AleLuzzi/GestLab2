@@ -219,6 +219,12 @@ codice; nessun insert su tabelle senza PK.
 **Criterio:** health check verde; sotto carico le connessioni sono riusate;
 deploy di test con secret di default viene rifiutato se `GESTLAB_ENV=production`.
 
+> Aggiornamento implementativo 2026-11-07:
+> - `saas/auth.py` blocca l’avvio con `JWT_SECRET` di default in `GESTLAB_ENV=production`.
+> - `saas/main.py` depreca l’endpoint legacy `/api/v1/ingresso-merce` con `410 Gone` e lo nasconde dal schema OpenAPI.
+> - `core/services/vendite.py` non lancia più `NotImplementedError` e chiude il lotto impostando `quantita_disponibile = 0` e `attivo = 0`.
+> - `saas/init_database.sql` include il valore `VENDITA` nel `CHECK` di `movimenti_lotto.tipo` e la migrazione `saas/migrations/20261107_movimenti_lotto_vendita.sql` allinea i DB esistenti.
+
 ---
 
 ## 5. Fase A — Laboratorio vendibile
@@ -522,8 +528,8 @@ interna sul catalogo doppio.
 
 | Ordine | Pacchetto | Fase |
 |---|---|---|
-| 1 | Unificare catalogo, ingresso, lotti; schema/migrazioni; pool DB e JWT production-safe | Debito |
-| 2 | Scadenze, origine, genealogia UI, etichette da lotto | A |
+| 1 | Unificare catalogo, ingresso, lotti; schema/migrazioni; pool DB e JWT production-safe (avviato: deprecazione legacy, secret production-safe, VENDITA e chiusura lotto) | Debito |
+| 2 | Scadenze, origine, genealogia UI, etichette da lotto (avviato: campi lotto e stampa da dati) | A |
 | 3 | Ricette/preparati + lavorazione guidata + inventario rettifiche | A |
 | 4 | Vendita interna, movimenti `VENDITA`, DDT e scontrino persistenti, UI banco | B |
 | 5 | Hardening SaaS, backup, onboarding interno, GDPR, manuale, collaudo tablet | C |

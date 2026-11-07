@@ -7,7 +7,7 @@ accettato dal client: viene estratto dal JWT lato server (frontend "sottile").
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 # ------------------------------------------------------------------------- #
@@ -140,6 +140,10 @@ class ArticoloOut(BaseModel):
 class IngressoTracciatoRigaCreate(BaseModel):
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    lotto_fornitore: str | None = Field(default=None, max_length=64)
+    origine: str | None = Field(default=None, max_length=255)
+    data_scadenza: date | None = None
+    temperatura_ingresso: Decimal | None = Field(default=None, ge=-100, le=100, max_digits=6, decimal_places=2)
 
 
 class IngressoTracciatoCreate(BaseModel):
@@ -391,11 +395,15 @@ class ScontrinoCreate(BaseModel):
 
 
 class EtichettaCreate(BaseModel):
-    plu: str
-    prodotto: str
+    plu: str = ""
+    prodotto: str = ""
     prezzo_kg: str = ""
     ingredienti: str = ""
     codice: str = ""
+    lotto_id: int | None = None
+    lotto: str = ""
+    scadenza: str = ""
+    origine: str = ""
 
 
 # ------------------------------------------------------------------------- #

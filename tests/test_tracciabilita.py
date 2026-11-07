@@ -445,6 +445,53 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(raised.exception.status_code, 422)
         self.assertEqual(raised.exception.detail, "Articolo non abilitato come input.")
 
+    def test_ingress_keeps_lotto_metadata_for_scadenza_and_origin(self):
+        def handle(query, params):
+            if query.startswith("SELECT s.id, s.denominazione FROM soggetti s"):
+                return [(1, "Fornitore Beta")]
+            if query.startswith("SELECT id, unita_misura FROM articoli"):
+                return [(3, "kg")]
+            if query.startswith("SELECT prog_acq"):
+                return [(6,)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            tracciabilita_repo.registra_ingresso(
+                tenant_id=42,
+                data="2026-10-03",
+                numero_ddt="DDT-42",
+                fornitore_id=1,
+                righe=[
+                    type(
+                        "Riga",
+                        (),
+                        {
+                            "articolo_id": 3,
+                            "quantita": Decimal("8.250"),
+                            "lotto_fornitore": "LF-8842",
+                            "origine": "Italia, suino",
+                            "data_scadenza": date(2026, 12, 15),
+                            "temperatura_ingresso": Decimal("2.50"),
+                        },
+                    )()
+                ],
+            )
+
+        insert_query = next(
+            query for query, _ in cursor.statements if "INSERT INTO lotti" in query
+        )
+        self.assertIn("data_scadenza", insert_query)
+        self.assertIn("lotto_fornitore", insert_query)
+        self.assertIn("origine", insert_query)
+        self.assertIn("temperatura_ingresso", insert_query)
+
 
 if __name__ == "__main__":
     unittest.main()

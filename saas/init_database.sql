@@ -300,6 +300,10 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   `progressivo` int NOT NULL,
   `codice_lotto` varchar(32) NOT NULL,
   `data_creazione` date NOT NULL,
+  `data_scadenza` date DEFAULT NULL,
+  `lotto_fornitore` varchar(64) DEFAULT NULL,
+  `origine` varchar(255) DEFAULT NULL,
+  `temperatura_ingresso` decimal(6,2) DEFAULT NULL,
   `quantita_iniziale` decimal(12,3) NOT NULL,
   `quantita_disponibile` decimal(12,3) NOT NULL,
   `unita_misura` varchar(8) NOT NULL,
@@ -338,7 +342,7 @@ CREATE TABLE IF NOT EXISTS `movimenti_lotto` (
   PRIMARY KEY (`id`),
   KEY `idx_movimenti_lotto_lotto` (`tenant_id`, `lotto_id`, `id`),
   CONSTRAINT `chk_movimenti_lotto_tipo` CHECK (
-    `tipo` IN ('INGRESSO', 'CONSUMO', 'PRODUZIONE', 'RETTIFICA')
+    `tipo` IN ('INGRESSO', 'CONSUMO', 'PRODUZIONE', 'RETTIFICA', 'VENDITA')
   ),
   CONSTRAINT `chk_movimenti_lotto_delta` CHECK (`quantita_delta` <> 0),
   CONSTRAINT `fk_movimenti_lotto_lotto` FOREIGN KEY (`tenant_id`, `lotto_id`)

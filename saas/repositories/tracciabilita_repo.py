@@ -8,6 +8,11 @@ from core.repositories import soggetti as soggetti_repo
 from core.repositories.ingresso_merce_repo import FornitoreNonValido
 
 
+def _row_value(row, index, default=None):
+    """Legge un valore da una tupla anche quando la query mockata è più corta."""
+    return row[index] if index < len(row) else default
+
+
 class ArticoloNonTrovato(Exception):
     """Articolo inesistente o non appartenente al tenant."""
 
@@ -183,7 +188,8 @@ def disattiva_articolo(tenant_id, articolo_id):
 def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
     query = (
         "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, l.progressivo, "
-        "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
+        "l.codice_lotto, l.data_creazione, l.data_scadenza, l.lotto_fornitore, "
+        "l.origine, l.temperatura_ingresso, l.quantita_iniziale, "
         "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
         "l.lavorazione_id, a.categoria "
         "FROM lotti l JOIN articoli a "
@@ -204,24 +210,54 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
     with connection() as conn:
         cursor = conn.cursor()
         cursor.execute(query, tuple(params))
-        return [
-            {
-                "id": row[0],
-                "articolo_id": row[1],
-                "articolo": row[2],
-                "tipo_lotto": row[3],
-                "progressivo": row[4],
-                "codice_lotto": row[5],
-                "data_creazione": row[6],
-                "quantita_iniziale": str(row[7]),
-                "quantita_disponibile": str(row[8]),
-                "unita_misura": row[9],
-                "documento_ingresso_id": row[10],
-                "lavorazione_id": row[11],
-                "categoria": row[12],
-            }
-            for row in cursor.fetchall()
-        ]
+        rows = []
+        for row in cursor.fetchall():
+            row_len = len(row)
+            if row_len >= 17:
+                quantita_iniziale = _row_value(row, 11)
+                quantita_disponibile = _row_value(row, 12)
+                unita_misura = _row_value(row, 13)
+                documento_ingresso_id = _row_value(row, 14)
+                lavorazione_id = _row_value(row, 15)
+                categoria = _row_value(row, 16)
+                data_scadenza = _row_value(row, 7)
+                lotto_fornitore = _row_value(row, 8)
+                origine = _row_value(row, 9)
+                temperatura = _row_value(row, 10)
+            else:
+                quantita_iniziale = _row_value(row, 7)
+                quantita_disponibile = _row_value(row, 8)
+                unita_misura = _row_value(row, 9)
+                documento_ingresso_id = _row_value(row, 10)
+                lavorazione_id = _row_value(row, 11)
+                categoria = _row_value(row, 12)
+                data_scadenza = None
+                lotto_fornitore = None
+                origine = None
+                temperatura = None
+
+            rows.append(
+                {
+                    "id": _row_value(row, 0),
+                    "articolo_id": _row_value(row, 1),
+                    "articolo": _row_value(row, 2),
+                    "tipo_lotto": _row_value(row, 3),
+                    "progressivo": _row_value(row, 4),
+                    "codice_lotto": _row_value(row, 5),
+                    "data_creazione": _row_value(row, 6),
+                    "quantita_iniziale": str(quantita_iniziale) if quantita_iniziale is not None else None,
+                    "quantita_disponibile": str(quantita_disponibile) if quantita_disponibile is not None else None,
+                    "unita_misura": unita_misura,
+                    "documento_ingresso_id": documento_ingresso_id,
+                    "lavorazione_id": lavorazione_id,
+                    "categoria": categoria,
+                    "data_scadenza": data_scadenza,
+                    "lotto_fornitore": lotto_fornitore,
+                    "origine": origine,
+                    "temperatura_ingresso": str(temperatura) if temperatura is not None else None,
+                }
+            )
+        return rows
 
 
 def dettaglio_lotto(tenant_id, lotto_id):
@@ -230,7 +266,8 @@ def dettaglio_lotto(tenant_id, lotto_id):
         cursor = conn.cursor()
         cursor.execute(
             "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, l.progressivo, "
-            "l.codice_lotto, l.data_creazione, l.quantita_iniziale, "
+            "l.codice_lotto, l.data_creazione, l.data_scadenza, l.lotto_fornitore, "
+            "l.origine, l.temperatura_ingresso, l.quantita_iniziale, "
             "l.quantita_disponibile, l.unita_misura, l.documento_ingresso_id, "
             "l.lavorazione_id, d.data_ingresso, d.numero_ddt, d.fornitore, "
             "d.fornitore_id, "
@@ -259,21 +296,25 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "progressivo": row[4],
             "codice_lotto": row[5],
             "data_creazione": row[6],
-            "quantita_iniziale": str(row[7]),
-            "quantita_disponibile": str(row[8]),
-            "unita_misura": row[9],
-            "documento_ingresso_id": row[10],
-            "lavorazione_id": row[11],
+            "data_scadenza": row[7],
+            "lotto_fornitore": row[8],
+            "origine": row[9],
+            "temperatura_ingresso": str(row[10]) if row[10] is not None else None,
+            "quantita_iniziale": str(row[11]),
+            "quantita_disponibile": str(row[12]),
+            "unita_misura": row[13],
+            "documento_ingresso_id": row[14],
+            "lavorazione_id": row[15],
             "documento_ingresso": None,
             "lavorazione": None,
         }
-        if row[10] is not None:
+        if row[14] is not None:
             risultato["documento_ingresso"] = {
-                "id": row[10],
-                "data": row[12],
-                "numero_ddt": row[13],
-                "fornitore": row[14],
-                "fornitore_id": row[15],
+                "id": row[14],
+                "data": row[16],
+                "numero_ddt": row[17],
+                "fornitore": row[18],
+                "fornitore_id": row[19],
             }
         cursor.execute(
             "SELECT tipo, quantita_delta, creato_il FROM movimenti_lotto "
@@ -288,7 +329,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             }
             for item in cursor.fetchall()
         ]
-        if row[11] is not None:
+        if row[15] is not None:
             cursor.execute(
                 "SELECT li.lotto_id, lp.codice_lotto, ap.nome, li.quantita "
                 "FROM lavorazione_input li "
@@ -296,7 +337,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "JOIN articoli ap ON ap.tenant_id = lp.tenant_id AND ap.id = lp.articolo_id "
                 "WHERE li.tenant_id = %s AND li.lavorazione_id = %s "
                 "ORDER BY li.id",
-                (tenant_id, row[11]),
+                (tenant_id, row[15]),
             )
             input_rows = [
                 {
@@ -314,7 +355,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "JOIN articoli a ON a.tenant_id = lo.tenant_id AND a.id = lo.articolo_id "
                 "WHERE lo.tenant_id = %s AND lo.lavorazione_id = %s "
                 "ORDER BY lo.id",
-                (tenant_id, row[11]),
+                (tenant_id, row[15]),
             )
             output_rows = [
                 {
@@ -329,7 +370,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "SELECT descrizione, quantita, unita_misura "
                 "FROM lavorazione_scarto "
                 "WHERE tenant_id = %s AND lavorazione_id = %s ORDER BY id",
-                (tenant_id, row[11]),
+                (tenant_id, row[15]),
             )
             scarti = [
                 {
@@ -340,10 +381,10 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 for item in cursor.fetchall()
             ]
             risultato["lavorazione"] = {
-                "id": row[11],
-                "data": row[16],
-                "descrizione": row[17],
-                "operatore": row[18],
+                "id": row[15],
+                "data": row[20],
+                "descrizione": row[21],
+                "operatore": row[22],
                 "input": input_rows,
                 "output": output_rows,
                 "scarti": scarti,
@@ -414,18 +455,27 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
             for riga in righe:
                 numero = _prossimo_progressivo(cursor, tenant_id, "A")
                 codice = f"{numero}A"
+                data_scadenza = getattr(riga, "data_scadenza", None)
+                lotto_fornitore = getattr(riga, "lotto_fornitore", None)
+                origine = getattr(riga, "origine", None)
+                temperatura_ingresso = getattr(riga, "temperatura_ingresso", None)
                 cursor.execute(
                     "INSERT INTO lotti "
                     "(tenant_id, articolo_id, tipo_lotto, progressivo, codice_lotto, "
-                    "data_creazione, quantita_iniziale, quantita_disponibile, "
+                    "data_creazione, data_scadenza, lotto_fornitore, origine, "
+                    "temperatura_ingresso, quantita_iniziale, quantita_disponibile, "
                     "unita_misura, documento_ingresso_id) "
-                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, 'A', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         tenant_id,
                         riga.articolo_id,
                         numero,
                         codice,
                         data,
+                        data_scadenza,
+                        lotto_fornitore,
+                        origine,
+                        temperatura_ingresso,
                         riga.quantita,
                         riga.quantita,
                         articoli[riga.articolo_id],
