@@ -57,7 +57,7 @@ from saas.schemas import (
     UtenteCreate,
 )
 
-from core.repositories.soggetti import FornitoreConStoricoError
+from core.repositories.soggetti import FornitoreConStoricoError, FornitoreNonValido
 from core.services import dipendenti as dipendenti_service
 from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
@@ -67,9 +67,7 @@ from core.services import menu as menu_service
 from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
-from core.services import ingresso_merce as ingresso_merce_service
 from core.services import soggetti as soggetti_service
-from core.repositories.ingresso_merce_repo import FornitoreNonValido
 _PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LOG_DIR = os.environ.get("GESTLAB_LOG_DIR", os.path.join(_PROJECT_DIR, "logs"))
 os.makedirs(_LOG_DIR, exist_ok=True)

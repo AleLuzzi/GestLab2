@@ -289,10 +289,12 @@ Se hai dati locali da migrare:
    UPDATE reparti SET tenant_id = 2 WHERE tenant_id IS NULL;
    UPDATE merceologie SET tenant_id = 2 WHERE tenant_id IS NULL;
    UPDATE tagli SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE ingresso_merce SET tenant_id = 2 WHERE tenant_id IS NULL;
    UPDATE progressivi SET tenant_id = 2 WHERE tenant_id IS NULL;
    EOF
    ```
+   - La tabella `ingresso_merce` viene archiviata dal bootstrap; non
+     assegnarle tenant o modificarne i record senza una riconciliazione
+     esplicita dell'archivio.
 
 5. **Verificare l'isolamento multi-tenant:**
    - Creare un secondo tenant dall'API

@@ -13,7 +13,6 @@ __all__ = [
     "soggetti",
     "dipendenti",
     "tagli",
-    "ingresso_merce_repo",
     "progressivi",
 ]
 

@@ -32,6 +32,13 @@ prezzo al catalogo `articoli` preesistente. Non cancella la vecchia tabella
 `prodotti` né ne copia automaticamente i dati in `articoli_bilancia`: i database
 di sviluppo già popolati vanno riconciliati esplicitamente.
 
+Il bootstrap non crea più la tabella legacy `ingresso_merce`. Se la trova in un
+database esistente, la rinomina atomicamente in
+`ingresso_merce_legacy_archive`, preservandone schema e righe senza migrazione
+automatica. Se esistono entrambe le tabelle, il bootstrap si interrompe per
+evitare una riconciliazione ambigua. Dopo l'aggiornamento, verificare conteggi
+e backup prima di pianificare un'eventuale migrazione dei record archiviati.
+
 > La console web (`web/`) è una SPA vanilla (HTML/CSS/JS, nessuna build) servita
 > direttamente dal backend FastAPI. Include login, dashboard, gestione dipendenti,
 > articoli, lotti, menu, generazione DDT/scontrino/etichetta, lookup barcode EAN, coda di

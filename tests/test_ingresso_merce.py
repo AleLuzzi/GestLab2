@@ -1,181 +1,126 @@
-"""Test per il salvataggio multi-tenant dell'ingresso merce."""
-
 import datetime
 import unittest
 from contextlib import contextmanager
 from unittest.mock import patch
 
-from core import MovIngressoMerce
-from core.repositories import ingresso_merce_repo
-from core.services import ingresso_merce
-from saas.schemas import IngressoMerceCreate
+from fastapi import HTTPException
+
+from core.repositories import lotti as lotti_repo
+from saas.bootstrap import SCHEMA_FILE, _archivia_ingresso_merce_legacy
 from saas.main import conferma_ingresso_merce
+from saas.schemas import IngressoMerceCreate
 
 
-class FakeCursor:
-    def __init__(self, error=None):
-        self.error = error
-        self.query = None
-        self.rows = None
+class TableCursor:
+    def __init__(self, tables=()):
+        self.tables = set(tables)
+        self.result = None
         self.statements = []
-        self.rowcount = 1
 
-    def executemany(self, query, rows):
-        self.query = query
-        self.rows = rows
-        self.statements.append((query, rows))
-        if self.error:
-            raise self.error
-
-    def execute(self, query, params):
+    def execute(self, query, params=None):
         self.statements.append((query, params))
-        if not query.startswith("SELECT") and not query.startswith("UPDATE progressivi"):
-            self.rowcount = 1
+        if "information_schema.tables" in query:
+            self.result = (int(params[0] in self.tables),)
+        elif query.startswith("RENAME TABLE"):
+            self.tables.remove("ingresso_merce")
+            self.tables.add("ingresso_merce_legacy_archive")
 
     def fetchone(self):
-        return (1, "Fornitore")
+        return self.result
 
 
-class FakeConnection:
-    def __init__(self, cursor):
-        self._cursor = cursor
-        self.commits = 0
-        self.rollbacks = 0
+class LegacyIngressoMigrationTests(unittest.TestCase):
+    def test_new_schema_does_not_create_legacy_table(self):
+        with open(SCHEMA_FILE, encoding="utf-8") as schema_file:
+            schema = schema_file.read()
 
-    def cursor(self):
-        return self._cursor
+        self.assertNotIn("CREATE TABLE IF NOT EXISTS `ingresso_merce`", schema)
 
-    def commit(self):
-        self.commits += 1
+    def test_archives_legacy_table_atomically_and_is_idempotent(self):
+        cursor = TableCursor({"ingresso_merce"})
 
-    def rollback(self):
-        self.rollbacks += 1
-
-
-class IngressoMerceTests(unittest.TestCase):
-    def test_schema_accepts_valid_payload_and_rejects_invalid_peso(self):
-        payload = IngressoMerceCreate(
-            prog_acq="12A",
-            data="2026-10-03",
-            num_ddt="DDT123",
-            fornitore_id=1,
-            righe=[{"taglio": "Costata", "peso": "12.5", "id_merc": 10}],
-        )
-        self.assertEqual(payload.data, datetime.date(2026, 10, 3))
-
-        with self.assertRaises(ValueError):
-            IngressoMerceCreate(
-                prog_acq="12A",
-                data="2026-10-03",
-                fornitore_id=1,
-                righe=[{"taglio": "Costata", "peso": "0", "id_merc": 10}],
-            )
-
-    def test_service_maps_each_line_to_the_model(self):
-        row = type(
-            "Riga",
-            (),
-            {"taglio": "Costata", "peso": "12.5", "id_merc": 10},
-        )()
-        with patch.object(ingresso_merce_repo, "insert_many", return_value=[]) as insert:
-            ingresso_merce.salva_movimenti(
-                "12A", datetime.date(2026, 10, 3), "DDT123", 1, [row], 42
-            )
-
-        movimenti, tenant_id = insert.call_args.args
-        self.assertEqual(tenant_id, 42)
-        self.assertEqual(len(movimenti), 1)
-        self.assertIsInstance(movimenti[0], MovIngressoMerce)
+        self.assertTrue(_archivia_ingresso_merce_legacy(cursor))
+        self.assertEqual(cursor.tables, {"ingresso_merce_legacy_archive"})
+        self.assertFalse(_archivia_ingresso_merce_legacy(cursor))
         self.assertEqual(
-            movimenti[0].params_insert(),
-            ("12A", datetime.date(2026, 10, 3), "DDT123", "",
-             "Costata", "12.5", "12.5", "no", 10),
+            sum(query.startswith("RENAME TABLE") for query, _ in cursor.statements),
+            1,
         )
-        self.assertEqual(movimenti[0].fornitore_id, 1)
 
-    def test_api_passes_authenticated_tenant_to_service(self):
+    def test_does_nothing_for_new_database(self):
+        cursor = TableCursor()
+
+        self.assertFalse(_archivia_ingresso_merce_legacy(cursor))
+        self.assertEqual(cursor.tables, set())
+
+    def test_fails_if_legacy_table_and_archive_both_exist(self):
+        cursor = TableCursor(
+            {"ingresso_merce", "ingresso_merce_legacy_archive"}
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "riconciliare manualmente"):
+            _archivia_ingresso_merce_legacy(cursor)
+
+        self.assertEqual(
+            cursor.tables,
+            {"ingresso_merce", "ingresso_merce_legacy_archive"},
+        )
+
+
+class LegacyIngressoEndpointTests(unittest.TestCase):
+    def test_old_endpoint_remains_gone(self):
         payload = IngressoMerceCreate(
-            prog_acq="12A",
-            data="2026-10-03",
-            fornitore_id=1,
-            righe=[{"taglio": "Costata", "peso": "12.5", "id_merc": 10}],
-        )
-        with patch(
-            "saas.main.ingresso_merce_service.salva_movimenti",
-            return_value=[MovIngressoMerce()],
-        ) as save:
-            result = conferma_ingresso_merce(payload, {"tenant_id": 42})
-
-        self.assertEqual(result, {"inseriti": 1})
-        self.assertEqual(save.call_args.kwargs["tenant_id"], 42)
-
-    def test_repository_inserts_rows_in_one_tenant_transaction(self):
-        cursor = FakeCursor()
-        connection = FakeConnection(cursor)
-
-        @contextmanager
-        def fake_connection():
-            yield connection
-
-        movement = MovIngressoMerce(
             prog_acq="12A",
             data=datetime.date(2026, 10, 3),
             num_ddt="DDT123",
-            fornitore="Fornitore",
-            taglio="Costata",
-            peso_i="12.5",
-            peso_f="12.5",
-            lotto_chiuso="no",
-            id_merc=10,
             fornitore_id=1,
+            righe=[{"taglio": "Costata", "peso": "12.5", "id_merc": 10}],
         )
-        with patch.object(ingresso_merce_repo, "connection", fake_connection):
-            saved = ingresso_merce_repo.insert_many([movement, movement], tenant_id=42)
 
-        self.assertEqual(len(saved), 2)
-        self.assertIn("tenant_id", cursor.query)
-        self.assertEqual(cursor.rows[0][-2], 42)
-        self.assertEqual(cursor.rows[1][-2], 42)
-        self.assertIn("UPDATE progressivi", cursor.statements[2][0])
-        self.assertIn("prog_acq = prog_acq + 1", cursor.statements[2][0])
-        self.assertEqual(cursor.statements[2][1], (42,))
-        self.assertEqual(connection.commits, 1)
-        self.assertEqual(connection.rollbacks, 0)
+        with self.assertRaises(HTTPException) as error:
+            conferma_ingresso_merce(payload, {"tenant_id": 42})
 
-    def test_repository_rolls_back_when_progressivo_is_missing(self):
-        cursor = FakeCursor()
-        cursor.rowcount = 0
-        connection = FakeConnection(cursor)
+        self.assertEqual(error.exception.status_code, 410)
 
-        @contextmanager
-        def fake_connection():
-            yield connection
 
-        with patch.object(ingresso_merce_repo, "connection", fake_connection):
-            with self.assertRaisesRegex(RuntimeError, "progressivo acquisti"):
-                ingresso_merce_repo.insert_many(
-                    [MovIngressoMerce(prog_acq="12A", id_merc=10)], tenant_id=42
-                )
+class TrackedOpenLotsTests(unittest.TestCase):
+    def test_open_lots_read_tracked_tables(self):
+        class FakeCursor:
+            def __init__(self):
+                self.query = None
+                self.params = None
 
-        self.assertEqual(connection.commits, 0)
-        self.assertEqual(connection.rollbacks, 1)
+            def execute(self, query, params=None):
+                self.query = query
+                self.params = params
 
-    def test_repository_rolls_back_when_insert_fails(self):
-        cursor = FakeCursor(error=RuntimeError("insert failed"))
-        connection = FakeConnection(cursor)
+            def __iter__(self):
+                return iter([("A-1", "Fornitore", "Costata", 12.5)])
+
+        class FakeConnection:
+            def __init__(self):
+                self._cursor = FakeCursor()
+
+            def cursor(self):
+                return self._cursor
+
+        connection = FakeConnection()
 
         @contextmanager
         def fake_connection():
             yield connection
 
-        with patch.object(ingresso_merce_repo, "connection", fake_connection):
-            with self.assertRaisesRegex(RuntimeError, "insert failed"):
-                ingresso_merce_repo.insert_many(
-                    [MovIngressoMerce(prog_acq="12A", id_merc=10)], tenant_id=42
-                )
+        with patch.object(lotti_repo, "connection", fake_connection):
+            lotti = lotti_repo.lotti_aperti(tenant_id=42)
 
-        self.assertEqual(connection.commits, 0)
-        self.assertEqual(connection.rollbacks, 1)
+        self.assertIn("FROM lotti l", connection._cursor.query)
+        self.assertIn("documenti_ingresso", connection._cursor.query)
+        self.assertNotIn("ingresso_merce", connection._cursor.query)
+        self.assertEqual(connection._cursor.params, (42,))
+        self.assertEqual(
+            lotti,
+            [{"number": "A-1", "fornit": "Fornitore", "name": "Costata", "peso": "12.5"}],
+        )
 
 
 if __name__ == "__main__":

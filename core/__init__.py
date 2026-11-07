@@ -12,7 +12,6 @@ from .core_models import (
     Taglio,
     Merceologia,
     Reparto,
-    MovIngressoMerce,
 )
 
 __all__ = [
@@ -25,5 +24,4 @@ __all__ = [
     "Taglio",
     "Merceologia",
     "Reparto",
-    "MovIngressoMerce",
 ]

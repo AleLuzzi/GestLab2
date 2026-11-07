@@ -1,4 +1,4 @@
-"""Servizio Lotti: business logic per gestione ingresso merce e lotti.
+"""Servizio Lotti: business logic per consultazione lotti e menu.
 
 Orchestra i repository ``core.repositories.lotti`` e ``core.repositories.prodotti``.
 Usato dalla UI (ingresso merce, chiudi lotto, vendita) e dal backend SaaS.
@@ -9,7 +9,7 @@ from core.repositories import prodotti as prodotti_repo
 
 
 # ------------------------------------------------------------------------- #
-#  Lotti aperti / ingresso merce
+#  Lotti aperti
 # ------------------------------------------------------------------------- #
 
 def lotti_aperti(tenant_id=None):
@@ -19,20 +19,6 @@ def lotti_aperti(tenant_id=None):
         tenant_id: se valorizzato filtra per tenant (SaaS).
     """
     return lotti_repo.lotti_aperti(tenant_id)
-
-
-def progressivo_ingresso(tenant_id=None):
-    """Restituisce il progressivo di ingresso corrente."""
-    return lotti_repo.recupera_progressivo_ingresso(tenant_id)
-
-
-# ------------------------------------------------------------------------- #
-#  Fornitori
-# ------------------------------------------------------------------------- #
-
-def lista_fornitori_ingresso(tenant_id=None):
-    """Restituisce i fornitori abilitati all'ingresso merce."""
-    return lotti_repo.recupera_lista_fornitori(tenant_id)
 
 
 # ------------------------------------------------------------------------- #

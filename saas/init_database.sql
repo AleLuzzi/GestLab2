@@ -227,24 +227,6 @@ CREATE TABLE IF NOT EXISTS `articoli_bilancia` (
     REFERENCES `tenant` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `ingresso_merce` (
-  `progressivo_acq` varchar(5) DEFAULT NULL,
-  `data_acq` date DEFAULT NULL,
-  `documento` varchar(8) DEFAULT NULL,
-  `fornitore` varchar(50) DEFAULT NULL,
-  `prodotto` varchar(30) DEFAULT NULL,
-  `quantita` varchar(6) DEFAULT NULL,
-  `residuo` varchar(6) DEFAULT NULL,
-  `lotto_chiuso` varchar(2) DEFAULT NULL,
-  `id_merc` int NOT NULL,
-  `tenant_id` bigint DEFAULT NULL,
-  `fornitore_id` bigint DEFAULT NULL,
-  KEY `idx_tenant_id` (`tenant_id`),
-  KEY `idx_ingresso_merce_fornitore` (`tenant_id`, `fornitore_id`),
-  CONSTRAINT `fk_ingresso_merce_fornitore` FOREIGN KEY (`tenant_id`, `fornitore_id`)
-    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3;
-
 CREATE TABLE IF NOT EXISTS `progressivi` (
   `prog_acq` int DEFAULT NULL,
   `prog_ven` int DEFAULT NULL,

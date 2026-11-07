@@ -62,26 +62,8 @@ UPDATE `fornitori`
 SET `soggetto_id` = `ID`
 WHERE `tenant_id` IS NOT NULL;
 
-ALTER TABLE `ingresso_merce`
-  ADD COLUMN `fornitore_id` bigint DEFAULT NULL AFTER `tenant_id`,
-  ADD KEY `idx_ingresso_merce_fornitore` (`tenant_id`, `fornitore_id`),
-  ADD CONSTRAINT `fk_ingresso_merce_fornitore` FOREIGN KEY (`tenant_id`, `fornitore_id`)
-    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE RESTRICT;
-
--- Associate only unambiguous exact-name matches. The existing fornitore value
--- remains the historical display snapshot, including for rows not matched here.
-UPDATE `ingresso_merce` AS `im`
-JOIN (
-  SELECT `tenant_id`, `azienda`, MIN(`soggetto_id`) AS `soggetto_id`
-  FROM `fornitori`
-  WHERE `tenant_id` IS NOT NULL AND `azienda` IS NOT NULL
-  GROUP BY `tenant_id`, `azienda`, BINARY `azienda`
-  HAVING COUNT(*) = 1
-) AS `f`
-  ON `f`.`tenant_id` = `im`.`tenant_id`
- AND BINARY `f`.`azienda` = BINARY `im`.`fornitore`
-SET `im`.`fornitore_id` = `f`.`soggetto_id`
-WHERE `im`.`fornitore_id` IS NULL;
+-- Legacy ingresso_merce rows are archived verbatim by saas.bootstrap;
+-- they are not linked to subjects without a verified article/supplier mapping.
 
 ALTER TABLE `documenti_ingresso`
   ADD COLUMN `fornitore_id` bigint DEFAULT NULL AFTER `fornitore`,

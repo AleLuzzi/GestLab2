@@ -28,7 +28,8 @@ dei test e delle dipendenze prima di cancellare file.
   sono sorgenti tracciati, una copia vendorizzata necessaria o residui locali.
 - Il print agent SaaS (`saas/print_agent.py`) gestisce la stampa locale senza
   dipendere dalla UI Kivy: non va eliminato insieme alla UI.
-- `test_ingresso_merce.py` verifica servizi, repository, validazione e API.
+- `test_ingresso_merce.py` verifica l'archiviazione legacy, la risposta `410`
+  dell'endpoint dismesso e la lettura dei lotti dallo schema tracciato.
   `test_nuovo_lotto.py` copriva invece il salvataggio dei lotti di vendita,
   flusso escluso dal perimetro SaaS e non implementato nel codice corrente;
   i relativi test obsoleti sono stati rimossi.

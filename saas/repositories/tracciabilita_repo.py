@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from core.db import connection
 from core.repositories import soggetti as soggetti_repo
-from core.repositories.ingresso_merce_repo import FornitoreNonValido
+from core.repositories.soggetti import FornitoreNonValido
 
 
 def _row_value(row, index, default=None):

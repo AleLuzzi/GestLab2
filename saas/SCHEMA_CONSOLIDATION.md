@@ -123,9 +123,16 @@ If migrating from the old schema:
 
 1. **Backup your data** (always!)
 2. **Run** `python -m saas.bootstrap`
+   - If `ingresso_merce` exists, bootstrap atomically renames it to
+     `ingresso_merce_legacy_archive`; its rows are preserved without automatic
+     conversion to tracked lots.
+   - If both the legacy table and archive already exist, bootstrap stops and
+     requires manual reconciliation rather than merging uncertain data.
    - If tables already exist, they're left unchanged (IF NOT EXISTS)
    - If `tenant_id` columns already exist, they're preserved
 3. **Verify** all tables exist: `SHOW TABLES;`
+   - Confirm `ingresso_merce` is absent and compare archived row counts with
+     the pre-migration backup.
 4. **Test** login at `http://localhost:8000/`
 
 ## Verification Checklist

@@ -1,59 +1,32 @@
-"""Repository per ingresso merce e lotti.
-
-Migra ``_recupera_progressivo_ingresso``, ``_recupera_lista_fornitori`` e
-``_recupera_lotti_aperti`` da ``controller_db.py`` usando il context manager.
-"""
+"""Repository per la consultazione dei lotti."""
 
 from ..db import connection
 
 
-def recupera_progressivo_ingresso(tenant_id=None):
-    """Recupera il progressivo di ingresso corrente."""
-    with connection() as conn:
-        c = conn.cursor()
-        if tenant_id is not None:
-            c.execute(
-                "SELECT prog_acq FROM progressivi WHERE tenant_id = %s",
-                (tenant_id,),
-            )
-        else:
-            c.execute("SELECT prog_acq FROM progressivi")
-        row = c.fetchone()
-        return int(row[0]) if row else None
-
-
-def recupera_lista_fornitori(tenant_id=None):
-    """Restituisce l'elenco dei fornitori abilitati all'ingresso merce."""
-    with connection() as conn:
-        c = conn.cursor()
-        if tenant_id is not None:
-            c.execute(
-                "SELECT azienda FROM fornitori "
-                "WHERE flag1_ing_merce = 1 AND tenant_id = %s",
-                (tenant_id,),
-            )
-        else:
-            c.execute("SELECT azienda FROM fornitori WHERE flag1_ing_merce = 1")
-        return [row[0] for row in c]
-
-
 def lotti_aperti(tenant_id=None):
-    """Restituisce i lotti aperti (lotto_chiuso = 'no')."""
+    """Restituisce i lotti di ingresso con giacenza disponibile."""
     with connection() as conn:
         c = conn.cursor()
+        query = (
+            "SELECT l.codice_lotto, d.fornitore, a.nome, l.quantita_disponibile "
+            "FROM lotti l "
+            "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
+            "LEFT JOIN documenti_ingresso d "
+            "ON d.tenant_id = l.tenant_id AND d.id = l.documento_ingresso_id "
+            "WHERE l.tipo_lotto = 'A' AND l.attivo = 1 "
+            "AND l.quantita_disponibile > 0"
+        )
         if tenant_id is not None:
-            c.execute(
-                "SELECT progressivo_acq, fornitore, prodotto, residuo "
-                "FROM ingresso_merce WHERE lotto_chiuso = 'no' AND tenant_id = %s",
-                (tenant_id,),
-            )
+            query += " AND l.tenant_id = %s"
+            c.execute(query + " ORDER BY l.data_creazione DESC, l.id DESC", (tenant_id,))
         else:
-            c.execute(
-                "SELECT progressivo_acq, fornitore, prodotto, residuo "
-                "FROM ingresso_merce WHERE lotto_chiuso = 'no'"
-            )
+            c.execute(query + " ORDER BY l.data_creazione DESC, l.id DESC")
         return [
-            {"number": str(x[0]), "fornit": str(x[1]),
-             "name": str(x[2]), "peso": str(x[3])}
-            for x in c
+            {
+                "number": str(row[0]),
+                "fornit": str(row[1] or ""),
+                "name": str(row[2]),
+                "peso": str(row[3]),
+            }
+            for row in c
         ]

@@ -25,11 +25,10 @@ regime e al formato di fatturazione effettivamente adottati.
 - Modello, repository, servizio, schemi API e CRUD web gestiscono i fornitori
   come risorsa autonoma.
 - La maschera d'ingresso carica `/api/v1/fornitori` e seleziona il fornitore.
-- Il percorso d'ingresso operativo salva il nome testuale del fornitore in
-  `ingresso_merce.fornitore`.
-- Il percorso tracciato salva il nome testuale in
-  `documenti_ingresso.fornitore`; lotti e tracciabilità leggono poi quel
-  documento.
+- Il vecchio percorso operativo e la tabella `ingresso_merce` sono dismessi;
+  i dati preesistenti vengono conservati nell'archivio legacy.
+- Il percorso tracciato salva la denominazione snapshot e `fornitore_id` in
+  `documenti_ingresso`; lotti e tracciabilità leggono quel documento.
 
 ## Modello dati proposto
 
@@ -108,24 +107,15 @@ fiscali e righe fattura. La fattura dovrà conservare una copia/snapshot dei
 dati del cliente usati al momento dell'emissione, così una modifica successiva
 all'anagrafica non altererà i documenti già emessi.
 
-## Modifiche alle tabelle di ingresso merce
+## Archivio dell'ingresso merce legacy
 
 ### `ingresso_merce`
 
-La colonna testuale `fornitore` non identifica stabilmente il soggetto. Il
-piano è:
-
-1. Aggiungere una colonna nullable `fornitore_id` collegata al soggetto con
-   ruolo fornitore e con garanzia di `tenant_id` coerente.
-2. Aggiornare insert, update, letture, filtri ed export per utilizzare l'ID e
-   recuperare la denominazione con join quando serve visualizzarla.
-3. Decidere se conservare `fornitore` come snapshot del nome al momento
-   dell'ingresso. È raccomandato conservarlo o sostituirlo con una colonna
-   esplicitamente denominata `fornitore_nome_snapshot`, perché le stampe e lo
-   storico devono restare comprensibili anche se la denominazione cambia.
-4. Dopo aver verificato che tutti i flussi scrivono e leggono l'ID, rimuovere
-   la colonna testuale originaria oppure rinominarla come snapshot, evitando
-   due fonti correnti di verità.
+La tabella legacy non è più un percorso operativo. Il bootstrap la rinomina in
+`ingresso_merce_legacy_archive` preservandone righe e schema; non converte
+automaticamente `id_merc` in `articolo_id` né il formato quantità testuale,
+perché le corrispondenze non sono verificabili in modo generale. Un'eventuale
+riconciliazione va progettata a partire dall'archivio e validata per tenant.
 
 ### `documenti_ingresso`
 
@@ -146,23 +136,17 @@ L'API non deve accettare un ID appartenente a un altro tenant, né un soggetto
 senza il ruolo fornitore o non abilitato all'ingresso merce. La verifica va
 eseguita lato server nella stessa transazione dell'inserimento del documento.
 
-### Ingresso operativo e ingresso tracciato
+### Ingresso tracciato
 
-Nel repository esistono due percorsi distinti. Implementare la modifica su
-entrambi, senza lasciarli con semantiche discordanti:
-
-- percorso operativo: `IngressoMerceCreate`, endpoint
-  `/api/v1/ingresso-merce`, servizio ingresso merce e repository
-  `core/repositories/ingresso_merce_repo.py`;
-- percorso tracciato: `IngressoTracciatoCreate`, endpoint
-  `/api/v1/tracciabilita/ingressi` e
-  `saas/repositories/tracciabilita_repo.py`.
+Il solo percorso operativo supportato è `IngressoTracciatoCreate`, endpoint
+`/api/v1/tracciabilita/ingressi` e
+`saas/repositories/tracciabilita_repo.py`. Il vecchio endpoint
+`/api/v1/ingresso-merce` resta come risposta `410 Gone`; la UI usa l'ingresso
+tracciato e il codice che scriveva nella tabella legacy è stato rimosso.
 
 Usare un nome esplicito e coerente nel payload, ad esempio `fornitore_id`.
 Non accettare il nome libero come sostituto dell'identificativo nei nuovi
-flussi. Se in una fase intermedia si mantiene la stringa per compatibilità,
-il backend deve risolverla in modo non ambiguo e segnalare un errore chiaro
-quando non trova un unico fornitore valido.
+flussi.
 
 ## Modifiche backend e API
 

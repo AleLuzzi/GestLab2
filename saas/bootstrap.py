@@ -150,6 +150,35 @@ def _migra_catalogo_articoli(cursor):
         )
 
 
+def _archivia_ingresso_merce_legacy(cursor):
+    """Rinomina la tabella legacy preservandone schema e dati."""
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_schema = DATABASE() AND table_name = %s",
+        ("ingresso_merce",),
+    )
+    tabella_legacy_esiste = cursor.fetchone()[0] > 0
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.tables "
+        "WHERE table_schema = DATABASE() AND table_name = %s",
+        ("ingresso_merce_legacy_archive",),
+    )
+    archivio_esiste = cursor.fetchone()[0] > 0
+
+    if tabella_legacy_esiste and archivio_esiste:
+        raise RuntimeError(
+            "Esistono sia ingresso_merce sia ingresso_merce_legacy_archive; "
+            "verificare e riconciliare manualmente le due tabelle prima del bootstrap."
+        )
+    if tabella_legacy_esiste:
+        cursor.execute(
+            "RENAME TABLE `ingresso_merce` TO `ingresso_merce_legacy_archive`"
+        )
+        return True
+    return False
+
+
 def crea_tabelle():
     """Esegue init_database.sql per creare tutte le tabelle (idempotente)."""
     if not os.path.exists(SCHEMA_FILE):
@@ -168,6 +197,8 @@ def crea_tabelle():
 
     with connection() as conn:
         c = conn.cursor()
+        if _archivia_ingresso_merce_legacy(c):
+            print("  OK  ingresso_merce archiviata come ingresso_merce_legacy_archive")
         executed = 0
         errors = 0
         

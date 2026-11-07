@@ -7,6 +7,10 @@ class FornitoreConStoricoError(ValueError):
     """Impossibile rimuovere il ruolo fornitore usato da documenti esistenti."""
 
 
+class FornitoreNonValido(Exception):
+    """Fornitore inesistente, non attivo o non abilitato all'ingresso merce."""
+
+
 _CAMPI = (
     "denominazione",
     "tipo_soggetto",
@@ -207,12 +211,9 @@ def aggiorna(tenant_id, soggetto_id, payload):
             e_fornitore = "fornitore" in ruoli
             if era_fornitore and not e_fornitore:
                 cursor.execute(
-                    "SELECT "
-                    "(SELECT COUNT(*) FROM ingresso_merce "
-                    " WHERE tenant_id = %s AND fornitore_id = %s) + "
-                    "(SELECT COUNT(*) FROM documenti_ingresso "
-                    " WHERE tenant_id = %s AND fornitore_id = %s)",
-                    (tenant_id, soggetto_id, tenant_id, soggetto_id),
+                    "SELECT COUNT(*) FROM documenti_ingresso "
+                    "WHERE tenant_id = %s AND fornitore_id = %s",
+                    (tenant_id, soggetto_id),
                 )
                 if cursor.fetchone()[0]:
                     raise FornitoreConStoricoError(

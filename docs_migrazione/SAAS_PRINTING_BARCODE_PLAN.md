@@ -66,8 +66,9 @@ supportata; l'hardware è gestito da un Local Print Agent indipendente.
 La UI desktop legacy in `lotti_vendita.py` generava PDF con **ReportLab**:
 - `SimpleDocTemplate` + `Table` per il dettaglio lotto.
 - `win32api.ShellExecute(None, "print", "traccia.pdf", ...)` per la stampa.
-- L'intestazione DDT (numero documento, fornitore, data) è già in
-  `ingresso_merce` (campo `NUMERO DOCUMENTO`, progressivo).
+- L'intestazione del DDT d'ingresso (numero documento, fornitore, data) è nel
+  documento tracciato `documenti_ingresso`; la vecchia `ingresso_merce` è
+  archiviata e non va usata come sorgente operativa.
 
 ### 3.2 Target SaaS
 
@@ -90,7 +91,7 @@ La UI desktop legacy in `lotti_vendita.py` generava PDF con **ReportLab**:
 | Data documento | Generata + modificabile | Formato `dd/mm/yy` |
 | Fornitore | Tabella fornitori | `flag1_ing_merce = 1` |
 | Articoli / tagli | Catalogo `articoli`; tabella `tagli` | CRUD tagli resta legacy |
-| Quantità/peso | Righe ingresso merce | `peso_i`, `peso_f` |
+| Quantità/peso | `righe_ingresso_tracciato.quantita` e lotto | Unità e quantità tracciate |
 | Merceologia | Tabella merceologie | es. Primi, Secondi, Contorni |
 
 ---
@@ -214,7 +215,7 @@ CREATE TABLE print_jobs (
 );
 ```
 
-**Nota:** ogni tabella business esistente (`ingresso_merce`, `lotti_vendita`,
+**Nota:** ogni tabella business esistente (`documenti_ingresso`, `lotti_vendita`,
 `dipendenti`, ecc.) dovrà avere la colonna `tenant_id` (modello A: schema
 condiviso) oppure essere replicata per schema (modello B). Vedi
 `SAAS_MIGRATION_PLAN.md` Fase 0.
@@ -275,7 +276,7 @@ condiviso) oppure essere replicata per schema (modello B). Vedi
 | Inserimento EAN | `Laboratorio/ingredienti.py` | Riusare logica lookup |
 | Selezione stampante | `Laboratorio/anagrafica_impostazioni.py` | Da spostare su dispositivo locale |
 | Config stampante | `config.ini` → `[Stampante]` | Da esternalizzare |
-| Intestazione DDT | `GestLab2/ingresso_merce` (campo numero documento) | Riusare |
+| Intestazione DDT | `documenti_ingresso` (`numero_ddt`, fornitore, data) | Riusare |
 
 ---
 

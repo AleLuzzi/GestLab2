@@ -95,7 +95,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
 | Catalogo articoli | C | [`articoli`](../saas/init_database.sql) è la fonte unica per anagrafica, EAN e prezzo; `articoli_bilancia` contiene solo la configurazione Bizerba collegata all'articolo. Resta da realizzare l'export Bizerba combinato. |
 | Ingresso merce tracciato → lotti `A` | C | `POST /api/v1/tracciabilita/ingressi`, UI wizard in [`web/js/features/ingresso-merce.js`](../web/js/features/ingresso-merce.js). |
-| Ingresso merce legacy | C | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI; resta da riconciliare l'eventuale storico in `ingresso_merce`. |
+| Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI. Il bootstrap non crea più `ingresso_merce` e archivia la tabella esistente come `ingresso_merce_legacy_archive`; resta da verificare l'esito sui database in uso. |
 | Lavorazioni multi input/output/scarti → lotti `V` | C | `POST /api/v1/tracciabilita/lavorazioni`, UI [`web/js/features/tracciabilita.js`](../web/js/features/tracciabilita.js). |
 | Dettaglio genealogia lotto (API) | P | `GET /api/v1/tracciabilita/lotti/{id}`. UI albero e PDF NAS/ASL assenti. |
 | Scadenza, origine, lotto fornitore e temperatura d'ingresso | P | Campi presenti in `lotti`, schema API, repository e migrazione `20261107_lotti_metadata.sql`; il wizard web non li raccoglie ancora e i lotti `V` non li ereditano. Il TMC non ha un campo dedicato. |
@@ -140,12 +140,17 @@ Esisteva un doppio percorso:
 - `POST /api/v1/tracciabilita/ingressi` → `documenti_ingresso` + lotti `A`.
 
 **Fatto (2026-11-07):** l'endpoint legacy restituisce `410 Gone` ed è escluso
-da OpenAPI; la UI usa il flusso tracciato. Riconciliare e migrare eventuali
-record storici solo dopo verifica (stesso avviso già in
-`TRACCIABILITA_ARTICOLI.md`).
+da OpenAPI; la UI usa il flusso tracciato. Il bootstrap archivia la vecchia
+tabella con una rinomina atomica, preservando tutti i dati e lo schema senza
+tentare associazioni automatiche.
+
+**Da verificare sul database esistente:** dopo il bootstrap controllare che
+`ingresso_merce` non esista più, confrontare il conteggio di
+`ingresso_merce_legacy_archive` con il backup e conservare l'archivio finché
+non sarà decisa un'eventuale riconciliazione esplicita.
 
 **Criterio:** un ingresso dal wizard crea lotti `A` e movimenti `INGRESSO`;
-nessuna riga nuova in `ingresso_merce`.
+nessuna riga nuova viene scritta nell'archivio legacy.
 
 ### 4.2 Un solo catalogo e configurazione bilancia separata
 
@@ -187,17 +192,16 @@ Implementare le variazioni di giacenza e i relativi movimenti nella stessa
 transazione; non considerare la chiusura totale un flusso di vendita.
 
 **Criterio:** [`core/services/vendite.py`](../core/services/vendite.py) non
-solleva `NotImplementedError`; non legge `ingresso_merce.lotto_chiuso`.
+solleva `NotImplementedError`; le giacenze aperte provengono da `lotti`.
 
 ### 4.4 Schema e migrazioni
 
-Problemi in [`saas/init_database.sql`](../saas/init_database.sql):
+Problemi residui in [`saas/init_database.sql`](../saas/init_database.sql):
 
 - tabelle business legacy in `utf8mb3`;
-- `ingresso_merce` senza chiave primaria;
 - quantità e date spesso `varchar`;
 - `tenant_id` nullable su `reparti`, `dipendenti`, `fornitori`, `merceologie`,
-  `prodotti`, `ingresso_merce`, `progressivi`;
+  `prodotti`, `progressivi`;
 - FK incomplete tra merceologie/reparti/dipendenti.
 
 **Azione:**
