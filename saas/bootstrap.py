@@ -48,6 +48,7 @@ MIGRATION_ORDER = (
     "20261108_lavorazioni_ricetta.sql",
     "20261108_dati_osa_tenant.sql",
     "20261108_motivo_rettifica_lotto.sql",
+    "20261108_vendite.sql",
 )
 
 
@@ -461,6 +462,57 @@ def _migrazione_gia_applicata(cursor, migrazione):
 
     if migrazione == "20261108_motivo_rettifica_lotto.sql":
         return "motivo" in _colonne_tabella(cursor, "movimenti_lotto")
+
+    if migrazione == "20261108_vendite.sql":
+        colonne_vendite = {
+            "tenant_id",
+            "numero",
+            "data_vendita",
+            "cliente_id",
+            "tipo_documento",
+        }
+        colonne_righe = {
+            "tenant_id",
+            "vendita_id",
+            "lotto_id",
+            "articolo_id",
+            "quantita",
+            "unita_misura",
+            "prezzo_unitario",
+            "iva_percentuale",
+        }
+        if not (
+            _tabella_esiste(cursor, "vendite")
+            and _tabella_esiste(cursor, "righe_vendita")
+            and colonne_vendite.issubset(_colonne_tabella(cursor, "vendite"))
+            and colonne_righe.issubset(_colonne_tabella(cursor, "righe_vendita"))
+        ):
+            return False
+
+        cursor.execute("SHOW CREATE TABLE `vendite`")
+        schema_vendite = cursor.fetchone()[1].upper()
+        cursor.execute("SHOW CREATE TABLE `righe_vendita`")
+        schema_righe = cursor.fetchone()[1].upper()
+        return all(
+            vincolo in schema_vendite
+            for vincolo in (
+                "PRIMARY KEY (`ID`)",
+                "UQ_VENDITE_TENANT_ID",
+                "UQ_VENDITE_TENANT_NUMERO",
+                "CHK_VENDITE_TIPO_DOCUMENTO",
+                "FK_VENDITE_TENANT",
+                "FK_VENDITE_CLIENTE",
+            )
+        ) and all(
+            vincolo in schema_righe
+            for vincolo in (
+                "PRIMARY KEY (`ID`)",
+                "CHK_RIGHE_VENDITA_QUANTITA_PREZZO_IVA",
+                "FK_RIGHE_VENDITA_DOCUMENTO",
+                "FK_RIGHE_VENDITA_LOTTO",
+                "FK_RIGHE_VENDITA_ARTICOLO",
+            )
+        )
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 

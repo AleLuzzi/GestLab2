@@ -81,6 +81,83 @@ class BootstrapMigrationsTests(unittest.TestCase):
             )
         )
 
+    def test_sales_migration_creates_and_recognizes_complete_aggregate(self):
+        migration = "20261108_vendite.sql"
+        self.assertIn(migration, bootstrap.MIGRATION_ORDER)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS `vendite`", sql)
+        self.assertIn("CREATE TABLE IF NOT EXISTS `righe_vendita`", sql)
+
+        class SalesCursor:
+            def __init__(self, tables_exist=True, schema_complete=True):
+                self.tables_exist = tables_exist
+                self.schema_complete = schema_complete
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query.startswith("SELECT COUNT(*) FROM information_schema.tables"):
+                    self.result = [(1 if self.tables_exist else 0,)]
+                elif query == "SHOW COLUMNS FROM `vendite`":
+                    columns = {
+                        "tenant_id",
+                        "numero",
+                        "data_vendita",
+                        "cliente_id",
+                        "tipo_documento",
+                    }
+                    self.result = [(column,) for column in columns]
+                elif query == "SHOW COLUMNS FROM `righe_vendita`":
+                    columns = {
+                        "tenant_id",
+                        "vendita_id",
+                        "lotto_id",
+                        "articolo_id",
+                        "quantita",
+                        "unita_misura",
+                        "prezzo_unitario",
+                        "iva_percentuale",
+                    }
+                    self.result = [(column,) for column in columns]
+                elif query == "SHOW CREATE TABLE `vendite`":
+                    schema = (
+                        "PRIMARY KEY (`ID`) "
+                        "UQ_VENDITE_TENANT_ID UQ_VENDITE_TENANT_NUMERO "
+                        "CHK_VENDITE_TIPO_DOCUMENTO FK_VENDITE_TENANT "
+                        "FK_VENDITE_CLIENTE"
+                    )
+                    self.result = [
+                        ("vendite", schema if self.schema_complete else "")
+                    ]
+                elif query == "SHOW CREATE TABLE `righe_vendita`":
+                    schema = (
+                        "PRIMARY KEY (`ID`) CHK_RIGHE_VENDITA_QUANTITA_PREZZO_IVA "
+                        "FK_RIGHE_VENDITA_DOCUMENTO FK_RIGHE_VENDITA_LOTTO "
+                        "FK_RIGHE_VENDITA_ARTICOLO"
+                    )
+                    self.result = [
+                        ("righe_vendita", schema if self.schema_complete else "")
+                    ]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchall(self):
+                return self.result
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                SalesCursor(tables_exist=False), migration
+            )
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                SalesCursor(schema_complete=False), migration
+            )
+        )
+        self.assertTrue(bootstrap._migrazione_gia_applicata(SalesCursor(), migration))
+
     def test_tmc_migration_is_additive_and_recognized_only_when_complete(self):
         migration = "20261107_lotti_tmc.sql"
         sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")

@@ -26,7 +26,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
 
     def test_every_table_has_a_primary_key_and_utf8mb4_charset(self):
         self.assertTrue(self.tables)
-        self.assertEqual(len(self.tables), 24)
+        self.assertEqual(len(self.tables), 26)
         for table_name, definition in self.tables.items():
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"(?m)^\s*PRIMARY KEY\s*\(")
@@ -109,6 +109,25 @@ class ConsolidatedSchemaTests(unittest.TestCase):
         )
         self.assertIn("FOREIGN KEY (`tenant_id`, `ricetta_id`)", allergens)
         self.assertIn("chk_ricetta_allergeni_codice", allergens)
+
+    def test_sales_document_and_lines_are_persisted_tenant_scoped(self):
+        sale = self.tables["vendite"]
+        self.assertRegex(sale, r"`numero`\s+bigint unsigned NOT NULL")
+        self.assertRegex(sale, r"`data_vendita`\s+datetime NOT NULL")
+        self.assertRegex(sale, r"`cliente_id`\s+bigint DEFAULT NULL")
+        self.assertIn("UNIQUE KEY `uq_vendite_tenant_numero` (`tenant_id`, `numero`)", sale)
+        self.assertIn("CHECK (`tipo_documento` IN ('DDT', 'RICEVUTA'))", sale)
+        self.assertIn("FOREIGN KEY (`tenant_id`, `cliente_id`)", sale)
+
+        lines = self.tables["righe_vendita"]
+        self.assertRegex(lines, r"`quantita`\s+decimal\(12,3\) NOT NULL")
+        self.assertRegex(lines, r"`prezzo_unitario`\s+decimal\(12,4\) NOT NULL")
+        self.assertRegex(lines, r"`iva_percentuale`\s+decimal\(5,2\) NOT NULL")
+        self.assertIn("FOREIGN KEY (`tenant_id`, `vendita_id`)", lines)
+        self.assertIn("FOREIGN KEY (`tenant_id`, `lotto_id`)", lines)
+        self.assertIn("FOREIGN KEY (`tenant_id`, `articolo_id`)", lines)
+        self.assertIn("`quantita` > 0", lines)
+        self.assertIn("`iva_percentuale` <= 100", lines)
 
     def test_lot_expiration_and_best_before_are_mutually_exclusive(self):
         definition = self.tables["lotti"]
