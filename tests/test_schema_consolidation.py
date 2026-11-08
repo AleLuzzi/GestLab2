@@ -70,6 +70,20 @@ class ConsolidatedSchemaTests(unittest.TestCase):
         self.assertIn("FOREIGN KEY (`tenant_id`, `articolo_id`)", definition)
         self.assertIn("fk_ricette_articolo", definition)
 
+    def test_tenant_stores_osa_data_for_product_labels(self):
+        definition = self.tables["tenant"]
+        for column, sql_type in (
+            ("osa_ragione_sociale", "varchar\\(255\\) COLLATE utf8mb4_general_ci"),
+            ("osa_indirizzo", "varchar\\(255\\) COLLATE utf8mb4_general_ci"),
+            ("osa_laboratorio", "varchar\\(255\\) COLLATE utf8mb4_general_ci"),
+            ("osa_partita_iva", "varchar\\(20\\) COLLATE utf8mb4_general_ci"),
+        ):
+            with self.subTest(column=column):
+                self.assertRegex(
+                    definition,
+                    rf"`{column}`\s+{sql_type}\s+DEFAULT NULL",
+                )
+
     def test_recipe_ingredients_are_tenant_scoped_and_typed(self):
         definition = self.tables["ricetta_ingredienti"]
         self.assertIn("PRIMARY KEY (`tenant_id`, `ricetta_id`, `articolo_id`)", definition)

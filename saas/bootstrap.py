@@ -45,6 +45,7 @@ MIGRATION_ORDER = (
     "20261108_ricette.sql",
     "20261108_ricetta_ingredienti.sql",
     "20261108_ricetta_allergeni_durata.sql",
+    "20261108_dati_osa_tenant.sql",
 )
 
 
@@ -437,6 +438,14 @@ def _migrazione_gia_applicata(cursor, migrazione):
             and "CHK_RICETTA_ALLERGENI_CODICE" in schema_allergeni
             and "CHK_RICETTE_GIORNI_VITA" in schema_ricette
         )
+
+    if migrazione == "20261108_dati_osa_tenant.sql":
+        return {
+            "osa_ragione_sociale",
+            "osa_indirizzo",
+            "osa_laboratorio",
+            "osa_partita_iva",
+        }.issubset(_colonne_tabella(cursor, "tenant"))
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 

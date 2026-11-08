@@ -56,6 +56,7 @@ from saas.schemas import (
     SoggettoOut,
     SoggettoUpdate,
     TenantCreate,
+    TenantOsaUpdate,
     TokenResponse,
     UtenteCreate,
 )
@@ -174,6 +175,28 @@ def crea_tenant(
     """Crea un nuovo tenant (solo admin)."""
     tenant_id = tenant_repo.crea_tenant(payload.nome, payload.piano)
     return {"id": tenant_id, "nome": payload.nome, "piano": payload.piano}
+
+
+@app.get("/api/v1/tenant/osa")
+def leggi_dati_osa(user: dict = Depends(auth.require_roles("admin"))):
+    """Restituisce i dati OSA del tenant dell'admin."""
+    dati = tenant_repo.dati_osa(user["tenant_id"])
+    if dati is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant non trovato")
+    return dati
+
+
+@app.put("/api/v1/tenant/osa")
+def aggiorna_dati_osa(
+    payload: TenantOsaUpdate,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Aggiorna ragione sociale e sede OSA del tenant corrente."""
+    if not tenant_repo.aggiorna_dati_osa(
+        user["tenant_id"], payload.model_dump()
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant non trovato")
+    return payload.model_dump()
 
 
 @app.post("/api/v1/utenti", status_code=status.HTTP_201_CREATED)
@@ -1057,31 +1080,77 @@ def genera_etichetta(
     payload: EtichettaCreate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Genera il PDF di un'etichetta DYMO a partire da lotto/articolo o da payload manuale."""
+    """Genera il PDF di un'etichetta DYMO dal lotto o da dati manuali."""
     lotto_dati = None
+    osa = ""
+    prezzo_kg = payload.prezzo_kg
+    peso = str(payload.peso) if payload.peso is not None else ""
+    allergeni = payload.allergeni
+    ingredienti = payload.ingredienti
+    conservazione = payload.conservazione
     if payload.lotto_id is not None:
         lotto_dati = tracciabilita_repo.dettaglio_lotto(user["tenant_id"], payload.lotto_id)
         if lotto_dati is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato")
-
-    plu = payload.plu or (str(lotto_dati["articolo_id"]) if lotto_dati else "")
-    prodotto = payload.prodotto or (lotto_dati["articolo"] if lotto_dati else "")
-    codice = payload.codice or (lotto_dati["codice_lotto"] if lotto_dati else "")
-    lotto = payload.lotto or (lotto_dati["codice_lotto"] if lotto_dati else "")
-    scadenza = payload.scadenza or (str(lotto_dati.get("data_scadenza")) if lotto_dati and lotto_dati.get("data_scadenza") else "")
-    origine = payload.origine or (lotto_dati.get("origine") if lotto_dati else "")
+        profilo_osa = tenant_repo.dati_osa(user["tenant_id"])
+        if not profilo_osa or not profilo_osa["ragione_sociale"].strip() or not (
+            profilo_osa["indirizzo"].strip() or profilo_osa["laboratorio"].strip()
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Completa ragione sociale e sede/laboratorio OSA prima di generare l'etichetta.",
+            )
+        osa = "\n".join(
+            valore for valore in (
+                profilo_osa["ragione_sociale"],
+                profilo_osa["indirizzo"],
+                profilo_osa["laboratorio"],
+                f"P.IVA {profilo_osa['partita_iva']}" if profilo_osa["partita_iva"] else "",
+            ) if valore
+        )
+        prezzo_articolo = lotto_dati.get("prezzo_unitario")
+        prezzo_kg = (
+            f"{prezzo_articolo} €/kg"
+            if prezzo_articolo is not None and lotto_dati["unita_misura"] == "kg"
+            else f"{prezzo_articolo} €/{lotto_dati['unita_misura']}"
+            if prezzo_articolo is not None
+            else ""
+        )
+        if payload.peso is not None:
+            peso = f"{payload.peso} {lotto_dati['unita_misura']}"
+        scadenza_valore = lotto_dati.get("data_scadenza") or lotto_dati.get("data_tmc")
+        tipo_data = "SCADENZA" if lotto_dati.get("data_scadenza") else "TMC"
+        scadenza = (
+            f"{tipo_data}: {scadenza_valore}" if scadenza_valore else ""
+        )
+        codice = lotto_dati["codice_lotto"]
+        lotto = lotto_dati["codice_lotto"]
+        prodotto = lotto_dati["articolo"]
+        plu = str(lotto_dati["articolo_id"])
+        origine = lotto_dati.get("origine") or ""
+    else:
+        plu = payload.plu
+        prodotto = payload.prodotto
+        codice = payload.codice
+        lotto = payload.lotto
+        scadenza = payload.scadenza
+        origine = payload.origine
 
     pdf = printing_service.genera_etichetta_dymo_pdf(
         plu=plu,
         prodotto=prodotto,
-        prezzo_kg=payload.prezzo_kg,
-        ingredienti=payload.ingredienti or "",
+        prezzo_kg=prezzo_kg,
+        ingredienti=ingredienti,
         codice=codice,
         lotto=lotto,
         scadenza=scadenza,
         origine=origine,
+        allergeni=allergeni,
+        conservazione=conservazione,
+        osa=osa,
+        peso=peso,
     )
-    file_name = (lotto or plu or "etichetta").replace("/", "_")
+    file_name = str(lotto or plu or "etichetta").replace("/", "_")
     return Response(
         content=pdf,
         media_type="application/pdf",

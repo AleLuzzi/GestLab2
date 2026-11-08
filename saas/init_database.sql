@@ -18,6 +18,10 @@ CREATE TABLE IF NOT EXISTS `tenant` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `nome` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `piano` varchar(50) COLLATE utf8mb4_general_ci DEFAULT 'basic',
+  `osa_ragione_sociale` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `osa_indirizzo` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `osa_laboratorio` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `osa_partita_iva` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `attivo` tinyint(1) DEFAULT 1,
   `creato_il` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)

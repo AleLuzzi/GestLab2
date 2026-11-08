@@ -354,14 +354,21 @@ def genera_scheda_lotto_pdf(dettaglio, genealogia) -> bytes:
 # ------------------------------------------------------------------------- #
 
 def genera_etichetta_dymo_pdf(plu, prodotto, prezzo_kg="", ingredienti="",
-                              codice="", lotto="", scadenza="", origine="") -> bytes:
+                              codice="", lotto="", scadenza="", origine="",
+                              allergeni=None, conservazione="", osa="",
+                              peso="") -> bytes:
     """Genera il PDF dell'etichetta DYMO (formato 54x101 mm).
 
     Integra i dati di lotto e scadenza necessari nel flusso di laboratorio.
     """
     try:
-        from reportlab.pdfgen import canvas as pdfcanvas
+        from reportlab.lib import colors
         from reportlab.lib.pagesizes import mm
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib.units import mm as millimeter
+        from reportlab.pdfgen import canvas as pdfcanvas
+        from reportlab.platypus import KeepInFrame, Paragraph, Spacer
+        from xml.sax.saxutils import escape
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
             "reportlab non installato. Aggiungerlo a requirements.txt."
@@ -369,37 +376,70 @@ def genera_etichetta_dymo_pdf(plu, prodotto, prezzo_kg="", ingredienti="",
 
     width, height = 54 * mm, 101 * mm  # formato DYMO 54x101 mm
     buffer = io.BytesIO()
-    c = pdfcanvas.Canvas(buffer, pagesize=(width, height))
+    c = pdfcanvas.Canvas(buffer, pagesize=(width, height), pageCompression=0)
 
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(width / 2, height - 20 * mm, str(plu))
-
-    c.setFont("Helvetica-Bold", 9)
-    c.drawCentredString(width / 2, height - 30 * mm, str(prodotto).upper())
-
-    c.setFont("Helvetica", 8)
+    normal = ParagraphStyle(
+        "LabelNormal", fontName="Helvetica", fontSize=6, leading=7.1,
+        spaceAfter=1.5,
+    )
+    heading = ParagraphStyle(
+        "LabelHeading", fontName="Helvetica-Bold", fontSize=9, leading=10,
+        alignment=1, spaceAfter=2,
+    )
+    allergen_style = ParagraphStyle(
+        "LabelAllergens", parent=normal, fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#9a3412"), borderColor=colors.HexColor("#9a3412"),
+        borderWidth=0.6, borderPadding=2, spaceBefore=1, spaceAfter=2,
+    )
+    story = [
+        Paragraph(escape(str(prodotto)).upper(), heading),
+        Paragraph(f"PLU / COD: {escape(str(plu))}", normal),
+    ]
     if prezzo_kg:
-        c.drawString(5 * mm, height - 45 * mm, "PREZZO: {}".format(prezzo_kg))
-
-    if codice:
-        c.drawString(5 * mm, height - 53 * mm, "COD: {}".format(codice))
-
+        story.append(Paragraph(f"PREZZO: {escape(str(prezzo_kg))}", normal))
+    if peso:
+        story.append(Paragraph(f"PESO: {escape(str(peso))}", normal))
     if lotto:
-        c.setFont("Helvetica", 6)
-        c.drawString(5 * mm, height - 62 * mm, f"LOTTO: {lotto[:24]}")
+        story.append(Paragraph(f"LOTTO: {escape(str(lotto))}", normal))
+    elif codice:
+        story.append(Paragraph(f"COD: {escape(str(codice))}", normal))
     if scadenza:
-        c.setFont("Helvetica", 6)
-        c.drawString(5 * mm, height - 68 * mm, f"SCAD: {scadenza}")
+        story.append(Paragraph(escape(str(scadenza)), normal))
     if origine:
-        c.setFont("Helvetica", 6)
-        c.drawString(5 * mm, height - 74 * mm, f"ORIG: {origine[:28]}")
+        story.append(Paragraph(f"ORIGINE: {escape(str(origine))}", normal))
+    if ingredienti:
+        story.append(Paragraph(f"<b>INGREDIENTI:</b> {escape(str(ingredienti))}", normal))
+    if allergeni:
+        etichette = {
+            "frutta_a_guscio": "frutta a guscio",
+        }
+        testo_allergeni = ", ".join(
+            etichette.get(str(allergene), str(allergene).replace("_", " "))
+            for allergene in allergeni
+        )
+        story.append(Paragraph(
+            f"ALLERGENI: {escape(testo_allergeni.upper())}",
+            allergen_style,
+        ))
+    if conservazione:
+        story.append(Paragraph(
+            f"<b>CONSERVAZIONE:</b> {escape(str(conservazione))}",
+            normal,
+        ))
+    if osa:
+        story.append(Spacer(1, 1 * millimeter))
+        story.append(Paragraph(f"<b>OSA</b><br/>{escape(str(osa)).replace(chr(10), '<br/>')}", normal))
 
-    # Ingredienti (testo su piu' righe)
-    y = height - 82 * mm
-    c.setFont("Helvetica", 6)
-    for line in str(ingredienti).splitlines()[:8]:
-        c.drawString(5 * mm, y, line[:40])
-        y -= 4 * mm
+    content = KeepInFrame(
+        width - 8 * millimeter,
+        height - 8 * millimeter,
+        story,
+        mode="shrink",
+        hAlign="LEFT",
+        vAlign="TOP",
+    )
+    content.wrapOn(c, width - 8 * millimeter, height - 8 * millimeter)
+    content.drawOn(c, 4 * millimeter, 4 * millimeter)
 
     c.showPage()
     c.save()

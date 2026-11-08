@@ -5,7 +5,8 @@ import {
 import { loadDashboard } from "../features/dashboard.js";
 import { openIngressoMerce } from "../features/ingresso-merce.js";
 import { loadMenu } from "../features/menu.js";
-import { loadPrintJobs } from "../features/printing.js";
+import { loadLabelLots, loadPrintJobs } from "../features/printing.js";
+import { loadDatiOsa } from "../features/admin.js";
 import { loadProgressivi } from "../features/progressivi.js";
 import { loadTracciabilita } from "../features/tracciabilita.js";
 import { loadVendite } from "../features/vendite.js";
@@ -45,6 +46,8 @@ function switchView(view) {
     progressivi: loadProgressivi,
     menu: loadMenu,
     printjobs: loadPrintJobs,
+    stampa: loadLabelLots,
+    admin: loadDatiOsa,
     tracciabilita: loadTracciabilita,
     vendite: loadVendite,
   };

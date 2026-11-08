@@ -63,14 +63,49 @@ async function generaScontrino() {
 }
 
 async function generaEtichetta() {
+  $("et-error").textContent = "";
   const payload = {
+    lotto_id: $("et-lotto").value ? Number($("et-lotto").value) : null,
     plu: $("et-plu").value,
     prodotto: $("et-prodotto").value,
     prezzo_kg: $("et-prezzo").value,
     ingredienti: $("et-ingredienti").value,
     codice: $("et-codice").value,
+    allergeni: [...$("et-allergeni").selectedOptions].map((option) => option.value),
+    conservazione: $("et-conservazione").value,
+    peso: $("et-peso").value || null,
   };
-  await downloadPost("/api/v1/etichetta", payload, "etichetta_" + (payload.plu || "x") + ".pdf");
+  try {
+    const blob = await apiBlob("/api/v1/etichetta", payload);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `etichetta_${payload.lotto_id || payload.plu || "x"}.pdf`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    $("et-error").textContent = `Impossibile generare l'etichetta: ${error.message}`;
+  }
+}
+
+export async function loadLabelLots() {
+  const select = $("et-lotto");
+  try {
+    const lots = await api("/api/v1/tracciabilita/lotti");
+    const options = [new Option("Etichetta manuale (senza lotto)", "")];
+    lots.forEach((lotto) => {
+      const option = new Option(
+        `${lotto.codice_lotto} · ${lotto.articolo}`,
+        String(lotto.id),
+      );
+      options.push(option);
+    });
+    const selected = select.value;
+    select.replaceChildren(...options);
+    select.value = options.some((option) => option.value === selected) ? selected : "";
+  } catch (error) {
+    $("et-error").textContent = `Impossibile caricare i lotti: ${error.message}`;
+  }
 }
 
 async function downloadPost(path, body, filename) {
@@ -116,6 +151,13 @@ export function initPrinting() {
   $("btn-add-sco").addEventListener("click", addScoRiga);
   $("btn-gen-sco").addEventListener("click", generaScontrino);
   $("btn-gen-et").addEventListener("click", generaEtichetta);
+  $("et-lotto").addEventListener("change", () => {
+    const isLotLabel = Boolean($("et-lotto").value);
+    $("et-plu").disabled = isLotLabel;
+    $("et-prodotto").disabled = isLotLabel;
+    $("et-prezzo").disabled = isLotLabel;
+    $("et-codice").disabled = isLotLabel;
+  });
   $("btn-refresh-jobs").addEventListener("click", loadPrintJobs);
   addDdtRiga();
   addScoRiga();

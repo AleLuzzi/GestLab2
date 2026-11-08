@@ -92,6 +92,47 @@ class BootstrapMigrationsTests(unittest.TestCase):
             )
         )
 
+    def test_osa_tenant_migration_is_additive_and_recognized_only_when_complete(self):
+        migration = "20261108_dati_osa_tenant.sql"
+        self.assertIn(migration, bootstrap.MIGRATION_ORDER)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        for column in (
+            "osa_ragione_sociale",
+            "osa_indirizzo",
+            "osa_laboratorio",
+            "osa_partita_iva",
+        ):
+            self.assertIn(f"ADD COLUMN `{column}`", sql)
+
+        class OsaCursor:
+            def __init__(self, columns):
+                self.columns = columns
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query == "SHOW COLUMNS FROM `tenant`":
+                    self.result = [(column,) for column in self.columns]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchall(self):
+                return self.result
+
+        required = {
+            "osa_ragione_sociale",
+            "osa_indirizzo",
+            "osa_laboratorio",
+            "osa_partita_iva",
+        }
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                OsaCursor(required - {"osa_laboratorio"}), migration
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(OsaCursor(required), migration)
+        )
+
     def test_new_database_records_current_schema_as_migration_baseline(self):
         cursor = MigrationCursor()
         commits = []

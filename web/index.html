@@ -703,14 +703,41 @@
 
         <!-- Etichetta -->
         <div id="tab-etichetta" class="tab-panel">
+          <label>Lotto
+            <select id="et-lotto">
+              <option value="">Etichetta manuale (senza lotto)</option>
+            </select>
+          </label>
           <div class="row">
             <label>PLU <input type="text" id="et-plu" /></label>
             <label>Prodotto <input type="text" id="et-prodotto" /></label>
-            <label>Prezzo €/kg <input type="text" id="et-prezzo" /></label>
+            <label>Prezzo commerciale <input type="text" id="et-prezzo" placeholder="Automatico dall'articolo" /></label>
+            <label>Peso confezione <input type="number" id="et-peso" min="0.001" step="0.001" inputmode="decimal" /></label>
           </div>
-          <label>Ingredienti <input type="text" id="et-ingredienti" /></label>
+          <label>Ingredienti <textarea id="et-ingredienti" maxlength="1000" rows="2"></textarea></label>
+          <label>Allergeni
+            <select id="et-allergeni" multiple size="5">
+              <option value="glutine">Glutine</option>
+              <option value="crostacei">Crostacei</option>
+              <option value="uova">Uova</option>
+              <option value="pesce">Pesce</option>
+              <option value="arachidi">Arachidi</option>
+              <option value="soia">Soia</option>
+              <option value="latte">Latte</option>
+              <option value="frutta_a_guscio">Frutta a guscio</option>
+              <option value="sedano">Sedano</option>
+              <option value="senape">Senape</option>
+              <option value="sesamo">Sesamo</option>
+              <option value="solfiti">Solfiti</option>
+              <option value="lupini">Lupini</option>
+              <option value="molluschi">Molluschi</option>
+            </select>
+          </label>
+          <label>Conservazione <textarea id="et-conservazione" maxlength="1000" rows="2"></textarea></label>
           <label>Codice <input type="text" id="et-codice" /></label>
+          <p class="sales-help">Verifica ingredienti e allergeni con l'OSA prima della stampa; l'etichetta non è una certificazione legale.</p>
           <button id="btn-gen-et" class="btn primary">Genera etichetta (PDF)</button>
+          <div id="et-error" class="error"></div>
         </div>
       </section>
 
@@ -731,6 +758,15 @@
         <div class="panel-head">
           <h2>Admin</h2>
           <button id="btn-back-admin" class="btn ghost" type="button">Torna a Configurazioni</button>
+        </div>
+        <div class="form-card">
+          <h3>Dati OSA del tenant</h3>
+          <label>Ragione sociale <input type="text" id="osa-ragione-sociale" maxlength="255" /></label>
+          <label>Sede <input type="text" id="osa-indirizzo" maxlength="255" /></label>
+          <label>Laboratorio <input type="text" id="osa-laboratorio" maxlength="255" /></label>
+          <label>Partita IVA <input type="text" id="osa-partita-iva" maxlength="20" /></label>
+          <button id="btn-salva-osa" class="btn primary" type="button">Salva dati OSA</button>
+          <div id="osa-error" class="error"></div>
         </div>
         <div class="form-card">
           <h3>Crea utente nel tenant</h3>
@@ -758,6 +794,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261108-1"></script>
+<script type="module" src="/static/js/app.js?v=20261108-2"></script>
 </body>
 </html>

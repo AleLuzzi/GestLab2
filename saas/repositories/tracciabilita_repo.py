@@ -678,7 +678,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "d.fornitore_id, "
             "w.data_lavorazione, w.descrizione, "
             "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore), "
-            "l.note_lotto, l.data_tmc "
+            "l.note_lotto, l.data_tmc, a.prezzo_unitario "
             "FROM lotti l "
             "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "LEFT JOIN documenti_ingresso d "
@@ -704,6 +704,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "data_creazione": row[6],
             "data_scadenza": row[7],
             "data_tmc": _row_value(row, 24),
+            "prezzo_unitario": _row_value(row, 25),
             "lotto_fornitore": row[8],
             "origine": row[9],
             "temperatura_ingresso": str(row[10]) if row[10] is not None else None,

@@ -106,7 +106,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | DDT persistente legato a lotti e cliente | A | `POST /api/v1/ddt` genera PDF da payload libero; campo `fornitore` fuorviante in vendita. |
 | Scontrino non fiscale da vendita | A | `POST /api/v1/scontrino` genera ESC/POS da payload libero, senza magazzino. |
 | Menu / listino banco | P | `GET /api/v1/menu` legge gli articoli attivi; la configurazione Bizerba non è il catalogo. |
-| Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'endpoint etichetta può derivare scadenza e origine da `lotto_id`, ma la maschera resta in gran parte manuale. |
+| Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'etichetta PDF parte da lotto, usa prezzo commerciale dell'articolo e dati OSA del tenant; ingredienti, allergeni e conservazione sono disponibili ma la derivazione automatica dalla ricetta resta da completare. |
 | Lookup EAN | P | API + campo dashboard; EAN e prezzo sono dati dell'articolo. |
 | Dashboard operativa | P | Conteggio anagrafiche/lotti/job in [`web/js/features/dashboard.js`](../web/js/features/dashboard.js). Niente scadenze, giacenze critiche, vendite. |
 | HACCP / temperature | A | — |
@@ -352,9 +352,11 @@ l’etichetta usa gli ingredienti della ricetta, non un campo libero vuoto.
 
 ### 5.5 Etichette da dati, non da form vuoto
 
-Oggi `POST /api/v1/etichetta` e la maschera Stampa chiedono ancora PLU,
-prodotto, prezzo, ingredienti e codice; se viene fornito `lotto_id`, l'API
-precompila scadenza e origine dai dati del lotto.
+La maschera Stampa consente di selezionare un lotto: denominazione, codice
+interno, scadenza/TMC, origine e prezzo commerciale vengono recuperati dai dati
+tenant-scoped del lotto e dell'articolo. Ingredienti, allergeni e conservazione
+sono stampabili, ma l'operatore li inserisce ancora manualmente; gli admin
+configurano ragione sociale, sede, laboratorio e P.IVA OSA del tenant.
 
 Obiettivo:
 
@@ -366,7 +368,9 @@ Obiettivo:
 
 **Criterio:** etichetta di un preparato contiene lotto, scadenza,
 ingredienti/allergeni derivati, senza ricopiarli a mano (override opzionale
-solo per admin).
+solo per admin). La stampa dal lotto e il profilo OSA sono disponibili; la
+derivazione da ricetta e l'invio alla coda/Local Print Agent restano da
+completare.
 
 ### 5.6 Inventario
 

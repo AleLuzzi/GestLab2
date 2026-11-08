@@ -61,6 +61,18 @@ class TenantCreate(BaseModel):
     piano: str = "basic"
 
 
+class TenantOsaUpdate(BaseModel):
+    ragione_sociale: str = Field(default="", max_length=255)
+    indirizzo: str = Field(default="", max_length=255)
+    laboratorio: str = Field(default="", max_length=255)
+    partita_iva: str = Field(default="", max_length=20)
+
+    @field_validator("ragione_sociale", "indirizzo", "laboratorio", "partita_iva")
+    @classmethod
+    def normalizza_dato_osa(cls, value):
+        return value.strip()
+
+
 class UtenteCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=6)
@@ -522,12 +534,24 @@ class EtichettaCreate(BaseModel):
     plu: str = ""
     prodotto: str = ""
     prezzo_kg: str = ""
-    ingredienti: str = ""
+    ingredienti: str = Field(default="", max_length=1000)
     codice: str = ""
     lotto_id: int | None = None
     lotto: str = ""
     scadenza: str = ""
     origine: str = ""
+    allergeni: list[str] = Field(default_factory=list)
+    conservazione: str = Field(default="", max_length=1000)
+    peso: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
+
+    @field_validator("allergeni")
+    @classmethod
+    def valida_allergeni_etichetta(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError("Ogni allergene puo' comparire una sola volta")
+        if set(value) - set(ALLERGENI_RICETTA):
+            raise ValueError("L'etichetta contiene un allergene non riconosciuto")
+        return value
 
 
 # ------------------------------------------------------------------------- #

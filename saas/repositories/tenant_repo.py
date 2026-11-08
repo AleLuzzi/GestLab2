@@ -31,6 +31,50 @@ def trova_tenant(tenant_id):
         return {"id": row[0], "nome": row[1], "piano": row[2], "attivo": row[3]}
 
 
+def dati_osa(tenant_id):
+    """Recupera i dati OSA associati al tenant."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT osa_ragione_sociale, osa_indirizzo, osa_laboratorio, "
+            "osa_partita_iva FROM tenant WHERE id = %s",
+            (tenant_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "ragione_sociale": row[0] or "",
+            "indirizzo": row[1] or "",
+            "laboratorio": row[2] or "",
+            "partita_iva": row[3] or "",
+        }
+
+
+def aggiorna_dati_osa(tenant_id, dati):
+    """Aggiorna i dati OSA senza consentire modifiche al tenant."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE tenant SET osa_ragione_sociale = %s, osa_indirizzo = %s, "
+            "osa_laboratorio = %s, osa_partita_iva = %s WHERE id = %s",
+            (
+                dati["ragione_sociale"],
+                dati["indirizzo"],
+                dati["laboratorio"],
+                dati["partita_iva"],
+                tenant_id,
+            ),
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM tenant WHERE id = %s", (tenant_id,))
+            if cursor.fetchone() is None:
+                conn.rollback()
+                return False
+        conn.commit()
+        return True
+
+
 def trova_utente_by_email(email):
     """Recupera un utente (con tenant) tramite email."""
     with connection() as conn:
