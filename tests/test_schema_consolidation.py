@@ -26,7 +26,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
 
     def test_every_table_has_a_primary_key_and_utf8mb4_charset(self):
         self.assertTrue(self.tables)
-        self.assertEqual(len(self.tables), 23)
+        self.assertEqual(len(self.tables), 24)
         for table_name, definition in self.tables.items():
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"(?m)^\s*PRIMARY KEY\s*\(")
@@ -78,6 +78,23 @@ class ConsolidatedSchemaTests(unittest.TestCase):
         self.assertRegex(definition, r"`valore`\s+decimal\(12,3\) NOT NULL")
         self.assertIn("`obbligatorio` tinyint(1) NOT NULL DEFAULT 1", definition)
         self.assertIn("`tipo_quantita` = 'percentuale' AND `valore` <= 100", definition)
+
+    def test_recipe_allergens_and_shelf_life_are_structured(self):
+        recipe = self.tables["ricette"]
+        self.assertRegex(recipe, r"`giorni_vita`\s+int unsigned DEFAULT NULL")
+        self.assertRegex(
+            recipe, r"`istruzioni_conservazione`\s+varchar\(1000\) DEFAULT NULL"
+        )
+        self.assertRegex(
+            recipe, r"`istruzioni_cottura`\s+varchar\(1000\) DEFAULT NULL"
+        )
+        self.assertIn("chk_ricette_giorni_vita", recipe)
+        allergens = self.tables["ricetta_allergeni"]
+        self.assertIn(
+            "PRIMARY KEY (`tenant_id`, `ricetta_id`, `codice`)", allergens
+        )
+        self.assertIn("FOREIGN KEY (`tenant_id`, `ricetta_id`)", allergens)
+        self.assertIn("chk_ricetta_allergeni_codice", allergens)
 
     def test_lot_expiration_and_best_before_are_mutually_exclusive(self):
         definition = self.tables["lotti"]

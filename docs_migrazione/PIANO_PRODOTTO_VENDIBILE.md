@@ -333,9 +333,16 @@ impanate, ecc.):
 
 - anagrafica ricetta per tenant: articolo output, rese attese, scarto atteso;
 - righe: articolo input, quantità per kg (o %) di output, obbligatorietà;
-- allergeni e lista ingredienti **della ricetta** (base etichetta);
-- giorni di vita del prodotto;
-- istruzioni (temperatura cottura consigliata, conservazione).
+- ingredienti collegati agli articoli e allergeni scelti tra i 14 gruppi
+  controllati (base per l'etichetta);
+- giorni di vita del prodotto, facoltativi e maggiori di zero;
+- istruzioni facoltative di conservazione e cottura, fino a 1000 caratteri.
+
+L'OSA è responsabile di definire e verificare giorni di vita e istruzioni: il
+dato della ricetta non costituisce una validazione di sicurezza alimentare e
+non imposta automaticamente la scadenza del lotto. I campi sono opzionali per
+le ricette esistenti e la migrazione `20261108_ricetta_allergeni_durata.sql`
+preserva i dati correnti.
 
 La registrazione lavorazione può partire dalla ricetta: precompila input
 (lotti FEFO) e output; l’operatore conferma pesi reali.

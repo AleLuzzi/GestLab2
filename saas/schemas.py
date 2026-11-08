@@ -10,6 +10,24 @@ from decimal import Decimal
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
+ALLERGENI_RICETTA = (
+    "glutine",
+    "crostacei",
+    "uova",
+    "pesce",
+    "arachidi",
+    "soia",
+    "latte",
+    "frutta_a_guscio",
+    "sedano",
+    "senape",
+    "sesamo",
+    "solfiti",
+    "lupini",
+    "molluschi",
+)
+
+
 # ------------------------------------------------------------------------- #
 #  Auth
 # ------------------------------------------------------------------------- #
@@ -165,6 +183,10 @@ class RicettaCreate(BaseModel):
     resa_attesa: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     scarto_atteso: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=3)
     ingredienti: list[RicettaIngredienteCreate] = Field(default_factory=list)
+    allergeni: list[str] = Field(default_factory=list)
+    giorni_vita: int | None = Field(default=None, gt=0)
+    istruzioni_conservazione: str | None = Field(default=None, max_length=1000)
+    istruzioni_cottura: str | None = Field(default=None, max_length=1000)
 
     @field_validator("nome")
     @classmethod
@@ -182,6 +204,24 @@ class RicettaCreate(BaseModel):
             raise ValueError("Ogni articolo puo' comparire una sola volta nella ricetta")
         return value
 
+    @field_validator("allergeni")
+    @classmethod
+    def valida_allergeni(cls, value):
+        if len(value) != len(set(value)):
+            raise ValueError("Ogni allergene puo' comparire una sola volta")
+        allergeni_non_validi = set(value) - set(ALLERGENI_RICETTA)
+        if allergeni_non_validi:
+            raise ValueError("La ricetta contiene un allergene non riconosciuto")
+        return value
+
+    @field_validator("istruzioni_conservazione", "istruzioni_cottura")
+    @classmethod
+    def normalizza_istruzioni(cls, value):
+        if value is None:
+            return None
+        value = value.strip()
+        return value or None
+
 
 class RicettaUpdate(RicettaCreate):
     attiva: bool = True
@@ -197,6 +237,10 @@ class RicettaOut(BaseModel):
     scarto_atteso: Decimal
     attiva: bool
     ingredienti: list[RicettaIngredienteOut] = Field(default_factory=list)
+    allergeni: list[str] = Field(default_factory=list)
+    giorni_vita: int | None = None
+    istruzioni_conservazione: str | None = None
+    istruzioni_cottura: str | None = None
 
 
 class IngressoTracciatoRigaCreate(BaseModel):

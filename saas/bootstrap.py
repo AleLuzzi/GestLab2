@@ -44,6 +44,7 @@ MIGRATION_ORDER = (
     "20261107_movimenti_lotto_vendita.sql",
     "20261108_ricette.sql",
     "20261108_ricetta_ingredienti.sql",
+    "20261108_ricetta_allergeni_durata.sql",
 )
 
 
@@ -410,6 +411,31 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "FK_RICETTA_INGREDIENTI_RICETTA" in schema
             and "FK_RICETTA_INGREDIENTI_ARTICOLO" in schema
             and "CHK_RICETTA_INGREDIENTI_QUANTITA" in schema
+        )
+
+    if migrazione == "20261108_ricetta_allergeni_durata.sql":
+        if not _tabella_esiste(cursor, "ricette") or not _tabella_esiste(
+            cursor, "ricetta_allergeni"
+        ):
+            return False
+        colonne_ricette = _colonne_tabella(cursor, "ricette")
+        if not {
+            "giorni_vita",
+            "istruzioni_conservazione",
+            "istruzioni_cottura",
+        }.issubset(colonne_ricette):
+            return False
+        colonne_allergeni = _colonne_tabella(cursor, "ricetta_allergeni")
+        if not {"tenant_id", "ricetta_id", "codice"}.issubset(colonne_allergeni):
+            return False
+        cursor.execute("SHOW CREATE TABLE `ricetta_allergeni`")
+        schema_allergeni = cursor.fetchone()[1].upper()
+        cursor.execute("SHOW CREATE TABLE `ricette`")
+        schema_ricette = cursor.fetchone()[1].upper()
+        return (
+            "FK_RICETTA_ALLERGENI_RICETTA" in schema_allergeni
+            and "CHK_RICETTA_ALLERGENI_CODICE" in schema_allergeni
+            and "CHK_RICETTE_GIORNI_VITA" in schema_ricette
         )
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")

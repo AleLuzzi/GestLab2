@@ -14,13 +14,20 @@ from saas.schemas import RicettaCreate
 
 class RicettaCursor:
     def __init__(
-        self, articolo=(8,), ricetta=None, ricette=(), articoli_input=(), ingredienti=()
+        self,
+        articolo=(8,),
+        ricetta=None,
+        ricette=(),
+        articoli_input=(),
+        ingredienti=(),
+        allergeni=(),
     ):
         self.articolo = articolo
         self.ricetta = ricetta
         self.ricette = list(ricette)
         self.articoli_input = list(articoli_input)
         self.ingredienti = list(ingredienti)
+        self.allergeni = list(allergeni)
         self.ricetta_esistente = True
         self.lastrowid = 17
         self.statements = []
@@ -42,6 +49,8 @@ class RicettaCursor:
         query = self.statements[-1][0]
         if "utilizzabile_come_input" in query:
             return self.articoli_input
+        if "FROM ricetta_allergeni" in query:
+            return self.allergeni
         if "FROM ricetta_ingredienti" in query:
             return self.ingredienti
         return self.ricette
@@ -127,6 +136,40 @@ class RicetteTests(unittest.TestCase):
                 ],
             )
 
+    def test_recipe_schema_validates_allergens_lifetime_and_instructions(self):
+        recipe = RicettaCreate(
+            nome="Salsiccia",
+            articolo_id=8,
+            resa_attesa=1,
+            allergeni=["glutine", "latte"],
+            giorni_vita=3,
+            istruzioni_conservazione="  Conservare tra 0 e 4 °C  ",
+            istruzioni_cottura="Cuocere completamente",
+        )
+
+        self.assertEqual(recipe.allergeni, ["glutine", "latte"])
+        self.assertEqual(recipe.giorni_vita, 3)
+        self.assertEqual(recipe.istruzioni_conservazione, "Conservare tra 0 e 4 °C")
+        self.assertEqual(recipe.istruzioni_cottura, "Cuocere completamente")
+        with self.assertRaises(ValueError):
+            RicettaCreate(
+                nome="Salsiccia",
+                articolo_id=8,
+                resa_attesa=1,
+                allergeni=["latte", "latte"],
+            )
+        with self.assertRaises(ValueError):
+            RicettaCreate(
+                nome="Salsiccia",
+                articolo_id=8,
+                resa_attesa=1,
+                allergeni=["non_riconosciuto"],
+            )
+        with self.assertRaises(ValueError):
+            RicettaCreate(
+                nome="Salsiccia", articolo_id=8, resa_attesa=1, giorni_vita=0
+            )
+
     def test_create_recipe_is_tenant_scoped_and_atomic(self):
         result_row = (
             17,
@@ -162,6 +205,57 @@ class RicetteTests(unittest.TestCase):
             if query.startswith("INSERT INTO ricette")
         )
         self.assertEqual(insert[0], 42)
+        self.assertEqual(conn.commits, 1)
+        self.assertEqual(conn.rollbacks, 0)
+
+    def test_update_recipe_replaces_allergens_and_shelf_life_atomically(self):
+        result_row = (
+            17,
+            "Salsiccia",
+            8,
+            "Salsiccia",
+            "kg",
+            Decimal("8.000"),
+            Decimal("0.500"),
+            1,
+            2,
+            "Conservare a 4 °C",
+            "Cuocere completamente",
+        )
+        cursor = RicettaCursor(
+            ricetta=result_row, allergeni=[("latte",)]
+        )
+        conn = RicettaConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            recipe = tracciabilita_repo.aggiorna_ricetta(
+                42,
+                17,
+                "Salsiccia",
+                8,
+                8,
+                0.5,
+                True,
+                allergeni=["latte"],
+                giorni_vita=2,
+                istruzioni_conservazione="Conservare a 4 °C",
+                istruzioni_cottura="Cuocere completamente",
+            )
+
+        update = next(
+            params
+            for query, params in cursor.statements
+            if query.startswith("UPDATE ricette")
+        )
+        self.assertEqual(update[5:8], (2, "Conservare a 4 °C", "Cuocere completamente"))
+        self.assertEqual(recipe["allergeni"], ["latte"])
+        self.assertTrue(
+            any(query.startswith("DELETE FROM ricetta_allergeni") for query, _ in cursor.statements)
+        )
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
 
@@ -282,7 +376,11 @@ class RicetteTests(unittest.TestCase):
             Decimal("0.800"),
             1,
         )
-        cursor = RicettaCursor(ricette=[recipe_row], ingredienti=[ingredient_row])
+        cursor = RicettaCursor(
+            ricette=[recipe_row],
+            ingredienti=[ingredient_row],
+            allergeni=[(17, "latte")],
+        )
         conn = RicettaConnection(cursor)
 
         @contextmanager
@@ -294,9 +392,66 @@ class RicetteTests(unittest.TestCase):
 
         self.assertEqual(recipes[0]["ingredienti"][0]["articolo_nome"], "Carne")
         self.assertEqual(recipes[0]["ingredienti"][0]["valore"], "0.800")
+        self.assertEqual(recipes[0]["allergeni"], ["latte"])
         ingredient_query, ingredient_params = cursor.statements[1]
         self.assertIn("WHERE ri.tenant_id = %s", ingredient_query)
         self.assertEqual(ingredient_params, (42,))
+        allergen_query, allergen_params = cursor.statements[2]
+        self.assertIn("WHERE tenant_id = %s", allergen_query)
+        self.assertEqual(allergen_params, (42,))
+
+    def test_create_recipe_persists_allergens_lifetime_and_instructions(self):
+        result_row = (
+            17,
+            "Salsiccia",
+            8,
+            "Salsiccia",
+            "kg",
+            Decimal("9.500"),
+            Decimal("0.250"),
+            1,
+            3,
+            "Conservare a 4 °C",
+            "Cuocere completamente",
+        )
+        cursor = RicettaCursor(
+            ricetta=result_row, allergeni=[("latte",), ("glutine",)]
+        )
+        conn = RicettaConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            recipe = tracciabilita_repo.crea_ricetta(
+                42,
+                "Salsiccia",
+                8,
+                Decimal("9.500"),
+                Decimal("0.250"),
+                allergeni=["latte", "glutine"],
+                giorni_vita=3,
+                istruzioni_conservazione="Conservare a 4 °C",
+                istruzioni_cottura="Cuocere completamente",
+            )
+
+        self.assertEqual(recipe["allergeni"], ["glutine", "latte"])
+        self.assertEqual(recipe["giorni_vita"], 3)
+        insert = next(
+            params
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO ricette")
+        )
+        self.assertEqual(insert[-3:], (3, "Conservare a 4 °C", "Cuocere completamente"))
+        allergen_inserts = [
+            params
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO ricetta_allergeni")
+        ]
+        self.assertEqual(allergen_inserts, [(42, 17, "glutine"), (42, 17, "latte")])
+        self.assertEqual(conn.commits, 1)
+        self.assertEqual(conn.rollbacks, 0)
 
     def test_update_recipe_replaces_ingredients_in_same_transaction(self):
         result_row = (
@@ -473,7 +628,9 @@ class RicetteTests(unittest.TestCase):
             crea_ricetta(payload, {"tenant_id": 42})
 
         self.assertEqual(create_recipe.call_args.args[0], 42)
-        self.assertEqual(create_recipe.call_args.args[-1], payload.ingredienti)
+        self.assertEqual(create_recipe.call_args.args[5], payload.ingredienti)
+        self.assertEqual(create_recipe.call_args.args[6], payload.allergeni)
+        self.assertEqual(create_recipe.call_args.args[7], payload.giorni_vita)
 
     def test_bootstrap_registers_recipe_migration(self):
         migration = "20261108_ricette.sql"
@@ -490,6 +647,15 @@ class RicetteTests(unittest.TestCase):
         )
         self.assertIn("FOREIGN KEY (`tenant_id`, `ricetta_id`)", ingredient_sql)
         self.assertIn("FOREIGN KEY (`tenant_id`, `articolo_id`)", ingredient_sql)
+
+        enrichment_migration = "20261108_ricetta_allergeni_durata.sql"
+        self.assertIn(enrichment_migration, bootstrap.MIGRATION_ORDER)
+        enrichment_sql = Path(bootstrap.MIGRATIONS_DIR, enrichment_migration).read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("ADD COLUMN `giorni_vita`", enrichment_sql)
+        self.assertIn("fk_ricetta_allergeni_ricetta", enrichment_sql)
+        self.assertIn("chk_ricetta_allergeni_codice", enrichment_sql)
 
     def test_bootstrap_recognizes_only_complete_recipe_migration(self):
         cursor = object()
@@ -581,6 +747,46 @@ class RicetteTests(unittest.TestCase):
             self.assertFalse(
                 bootstrap._migrazione_gia_applicata(
                     CompleteIngredientSchemaCursor(), migration
+                )
+            )
+
+    def test_bootstrap_recognizes_recipe_allergen_lifetime_migration(self):
+        migration = "20261108_ricetta_allergeni_durata.sql"
+        columns = {
+            "giorni_vita",
+            "istruzioni_conservazione",
+            "istruzioni_cottura",
+        }
+        allergen_columns = {"tenant_id", "ricetta_id", "codice"}
+
+        class CompleteSchemaCursor:
+            def execute(self, query, params=None):
+                self.query = query
+
+            def fetchone(self):
+                if self.query == "SHOW CREATE TABLE `ricette`":
+                    return (
+                        "ricette",
+                        "CREATE TABLE ricette CONSTRAINT chk_ricette_giorni_vita",
+                    )
+                return (
+                    "ricetta_allergeni",
+                    "CREATE TABLE ricetta_allergeni "
+                    "CONSTRAINT fk_ricetta_allergeni_ricetta "
+                    "CHECK chk_ricetta_allergeni_codice",
+                )
+
+        with (
+            patch.object(bootstrap, "_tabella_esiste", return_value=True),
+            patch.object(
+                bootstrap,
+                "_colonne_tabella",
+                side_effect=[columns, allergen_columns],
+            ),
+        ):
+            self.assertTrue(
+                bootstrap._migrazione_gia_applicata(
+                    CompleteSchemaCursor(), migration
                 )
             )
 

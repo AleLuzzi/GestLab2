@@ -436,6 +436,10 @@ def crea_ricetta(
         payload.resa_attesa,
         payload.scarto_atteso,
         payload.ingredienti,
+        payload.allergeni,
+        payload.giorni_vita,
+        payload.istruzioni_conservazione,
+        payload.istruzioni_cottura,
     )
     if ricetta is None:
         raise HTTPException(
@@ -461,6 +465,10 @@ def aggiorna_ricetta(
         payload.scarto_atteso,
         payload.attiva,
         payload.ingredienti,
+        payload.allergeni,
+        payload.giorni_vita,
+        payload.istruzioni_conservazione,
+        payload.istruzioni_cottura,
     )
     if ricetta is None:
         raise HTTPException(

@@ -212,6 +212,10 @@ def _ricetta_da_riga(row):
         "scarto_atteso": str(row[6]),
         "attiva": bool(row[7]),
         "ingredienti": [],
+        "allergeni": [],
+        "giorni_vita": row[8] if len(row) > 8 else None,
+        "istruzioni_conservazione": row[9] if len(row) > 9 else None,
+        "istruzioni_cottura": row[10] if len(row) > 10 else None,
     }
 
 
@@ -240,6 +244,28 @@ def _carica_ingredienti_ricetta(cursor, tenant_id, ricetta_id):
         (tenant_id, ricetta_id),
     )
     return _ingredienti_da_righe(cursor.fetchall())
+
+
+def _carica_allergeni_ricetta(cursor, tenant_id, ricetta_id):
+    cursor.execute(
+        "SELECT codice FROM ricetta_allergeni "
+        "WHERE tenant_id = %s AND ricetta_id = %s ORDER BY codice",
+        (tenant_id, ricetta_id),
+    )
+    return sorted(row[0] for row in cursor.fetchall())
+
+
+def _salva_allergeni_ricetta(cursor, tenant_id, ricetta_id, allergeni):
+    cursor.execute(
+        "DELETE FROM ricetta_allergeni WHERE tenant_id = %s AND ricetta_id = %s",
+        (tenant_id, ricetta_id),
+    )
+    for allergene in sorted(allergeni or []):
+        cursor.execute(
+            "INSERT INTO ricetta_allergeni (tenant_id, ricetta_id, codice) "
+            "VALUES (%s, %s, %s)",
+            (tenant_id, ricetta_id, allergene),
+        )
 
 
 def _salva_ingredienti_ricetta(cursor, tenant_id, ricetta_id, ingredienti):
@@ -293,7 +319,8 @@ def lista_ricette(tenant_id):
         cursor = conn.cursor()
         cursor.execute(
             "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
-            "r.resa_attesa, r.scarto_atteso, r.attiva "
+            "r.resa_attesa, r.scarto_atteso, r.attiva, r.giorni_vita, "
+            "r.istruzioni_conservazione, r.istruzioni_cottura "
             "FROM ricette r JOIN articoli a "
             "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
             "WHERE r.tenant_id = %s ORDER BY r.nome, r.id",
@@ -317,15 +344,33 @@ def lista_ricette(tenant_id):
         ingredienti_per_ricetta = {}
         for row in cursor.fetchall():
             ingredienti_per_ricetta.setdefault(row[0], []).append(row)
+        cursor.execute(
+            "SELECT ricetta_id, codice FROM ricetta_allergeni "
+            "WHERE tenant_id = %s ORDER BY ricetta_id, codice",
+            (tenant_id,),
+        )
+        allergeni_per_ricetta = {}
+        for ricetta_id, codice in cursor.fetchall():
+            allergeni_per_ricetta.setdefault(ricetta_id, []).append(codice)
         for ricetta in ricette:
             ricetta["ingredienti"] = _ingredienti_da_righe(
                 ingredienti_per_ricetta.get(ricetta["id"], [])
             )
+            ricetta["allergeni"] = allergeni_per_ricetta.get(ricetta["id"], [])
         return ricette
 
 
 def crea_ricetta(
-    tenant_id, nome, articolo_id, resa_attesa, scarto_atteso, ingredienti=None
+    tenant_id,
+    nome,
+    articolo_id,
+    resa_attesa,
+    scarto_atteso,
+    ingredienti=None,
+    allergeni=None,
+    giorni_vita=None,
+    istruzioni_conservazione=None,
+    istruzioni_cottura=None,
 ):
     with connection() as conn:
         cursor = conn.cursor()
@@ -341,9 +386,19 @@ def crea_ricetta(
 
             cursor.execute(
                 "INSERT INTO ricette "
-                "(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (tenant_id, nome.strip(), articolo_id, resa_attesa, scarto_atteso),
+                "(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso, "
+                "giorni_vita, istruzioni_conservazione, istruzioni_cottura) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    tenant_id,
+                    nome.strip(),
+                    articolo_id,
+                    resa_attesa,
+                    scarto_atteso,
+                    giorni_vita,
+                    istruzioni_conservazione,
+                    istruzioni_cottura,
+                ),
             )
             ricetta_id = cursor.lastrowid
             if not _salva_ingredienti_ricetta(
@@ -351,9 +406,11 @@ def crea_ricetta(
             ):
                 conn.rollback()
                 return None
+            _salva_allergeni_ricetta(cursor, tenant_id, ricetta_id, allergeni)
             cursor.execute(
                 "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
-                "r.resa_attesa, r.scarto_atteso, r.attiva "
+                "r.resa_attesa, r.scarto_atteso, r.attiva, r.giorni_vita, "
+                "r.istruzioni_conservazione, r.istruzioni_cottura "
                 "FROM ricette r JOIN articoli a "
                 "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
                 "WHERE r.tenant_id = %s AND r.id = %s",
@@ -364,6 +421,9 @@ def crea_ricetta(
                 raise RuntimeError("Ricetta creata ma non rileggibile")
             ricetta = _ricetta_da_riga(row)
             ricetta["ingredienti"] = _carica_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id
+            )
+            ricetta["allergeni"] = _carica_allergeni_ricetta(
                 cursor, tenant_id, ricetta_id
             )
             conn.commit()
@@ -382,6 +442,10 @@ def aggiorna_ricetta(
     scarto_atteso,
     attiva,
     ingredienti=None,
+    allergeni=None,
+    giorni_vita=None,
+    istruzioni_conservazione=None,
+    istruzioni_cottura=None,
 ):
     with connection() as conn:
         cursor = conn.cursor()
@@ -405,7 +469,8 @@ def aggiorna_ricetta(
 
             cursor.execute(
                 "UPDATE ricette SET nome = %s, articolo_id = %s, resa_attesa = %s, "
-                "scarto_atteso = %s, attiva = %s "
+                "scarto_atteso = %s, attiva = %s, giorni_vita = %s, "
+                "istruzioni_conservazione = %s, istruzioni_cottura = %s "
                 "WHERE tenant_id = %s AND id = %s",
                 (
                     nome.strip(),
@@ -413,6 +478,9 @@ def aggiorna_ricetta(
                     resa_attesa,
                     scarto_atteso,
                     int(attiva),
+                    giorni_vita,
+                    istruzioni_conservazione,
+                    istruzioni_cottura,
                     tenant_id,
                     ricetta_id,
                 ),
@@ -422,9 +490,11 @@ def aggiorna_ricetta(
             ):
                 conn.rollback()
                 return None
+            _salva_allergeni_ricetta(cursor, tenant_id, ricetta_id, allergeni)
             cursor.execute(
                 "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
-                "r.resa_attesa, r.scarto_atteso, r.attiva "
+                "r.resa_attesa, r.scarto_atteso, r.attiva, r.giorni_vita, "
+                "r.istruzioni_conservazione, r.istruzioni_cottura "
                 "FROM ricette r JOIN articoli a "
                 "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
                 "WHERE r.tenant_id = %s AND r.id = %s",
@@ -436,6 +506,9 @@ def aggiorna_ricetta(
                 return None
             ricetta = _ricetta_da_riga(row)
             ricetta["ingredienti"] = _carica_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id
+            )
+            ricetta["allergeni"] = _carica_allergeni_ricetta(
                 cursor, tenant_id, ricetta_id
             )
             conn.commit()
