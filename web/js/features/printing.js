@@ -64,8 +64,7 @@ async function generaScontrino() {
   await downloadPost("/api/v1/scontrino", payload, "scontrino.bin");
 }
 
-async function generaEtichetta() {
-  $("et-error").textContent = "";
+function payloadEtichetta() {
   const isAdmin = document.body.dataset.role === "admin";
   const payload = {
     lotto_id: $("et-lotto").value ? Number($("et-lotto").value) : null,
@@ -80,6 +79,12 @@ async function generaEtichetta() {
     payload.ingredienti = $("et-ingredienti").value;
     payload.allergeni = [...$("et-allergeni").selectedOptions].map((option) => option.value);
   }
+  return payload;
+}
+
+async function generaEtichetta() {
+  $("et-error").textContent = "";
+  const payload = payloadEtichetta();
   try {
     const blob = await apiBlob("/api/v1/etichetta", payload);
     const url = URL.createObjectURL(blob);
@@ -93,18 +98,37 @@ async function generaEtichetta() {
   }
 }
 
+async function accodaEtichetta() {
+  $("et-error").textContent = "";
+  $("et-queue-status").textContent = "";
+  try {
+    const job = await api("/api/v1/etichetta/stampa", {
+      method: "POST",
+      body: JSON.stringify(payloadEtichetta()),
+    });
+    $("et-queue-status").textContent =
+      `Etichetta accodata (job ${job.id}). Controlla la stampa sulla DYMO configurata.`;
+    await loadPrintJobs();
+  } catch (error) {
+    $("et-error").textContent = `Impossibile accodare l'etichetta: ${error.message}`;
+  }
+}
+
 async function loadLabelRecipeData(lottoId) {
   const requestId = ++labelDataRequest;
   const preview = $("et-ricetta-dati");
   const submit = $("btn-gen-et");
+  const queue = $("btn-queue-et");
   preview.textContent = "";
   $("et-ingredienti").value = "";
   $("et-allergeni").selectedIndex = -1;
   if (!lottoId) {
     submit.disabled = false;
+    queue.disabled = false;
     return;
   }
   submit.disabled = true;
+  queue.disabled = true;
 
   try {
     const lotto = await api(`/api/v1/tracciabilita/lotti/${lottoId}`);
@@ -124,7 +148,10 @@ async function loadLabelRecipeData(lottoId) {
     if (requestId !== labelDataRequest || $("et-lotto").value !== String(lottoId)) return;
     preview.textContent = `Impossibile caricare i dati della ricetta: ${error.message}`;
   } finally {
-    if (requestId === labelDataRequest) submit.disabled = false;
+    if (requestId === labelDataRequest) {
+      submit.disabled = false;
+      queue.disabled = false;
+    }
   }
 }
 
@@ -197,6 +224,7 @@ export function initPrinting() {
   $("btn-add-sco").addEventListener("click", addScoRiga);
   $("btn-gen-sco").addEventListener("click", generaScontrino);
   $("btn-gen-et").addEventListener("click", generaEtichetta);
+  $("btn-queue-et").addEventListener("click", accodaEtichetta);
   $("et-lotto").addEventListener("change", (event) => {
     const isLotLabel = Boolean($("et-lotto").value);
     $("et-plu").disabled = isLotLabel;

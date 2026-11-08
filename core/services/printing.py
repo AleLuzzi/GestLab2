@@ -502,8 +502,10 @@ def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
 #  Stampa tramite win32 (usato dall'Agent locale / desktop)
 # ------------------------------------------------------------------------- #
 
-def stampa_pdf_via_win32(pdf_bytes, nome_file="traccia.pdf", output_dir="."):
-    """Salva un PDF e lo invia alla stampante predefinita via ``win32api``.
+def stampa_pdf_via_win32(
+    pdf_bytes, nome_file="traccia.pdf", output_dir=".", printer_name=None
+):
+    """Invia un PDF a Windows Print, opzionalmente a una stampante specifica.
 
     Solo Windows (pywin32). Utile per il client desktop o il Local Print
     Agent. In SaaS la stampa e' demandata all'Agent (vedi piano).
@@ -512,9 +514,13 @@ def stampa_pdf_via_win32(pdf_bytes, nome_file="traccia.pdf", output_dir="."):
         pdf_bytes: contenuto del PDF.
         nome_file: nome del file temporaneo.
         output_dir: directory di destinazione.
+        printer_name: nome Windows della stampante di destinazione.
 
     Returns:
-        Il percorso del file salvato.
+        True se Windows ha accettato il comando di stampa.
+
+    Raises:
+        RuntimeError: se Windows/pywin32 non e' disponibile o rifiuta il job.
     """
     import os
     path = os.path.join(output_dir, nome_file)
@@ -523,7 +529,19 @@ def stampa_pdf_via_win32(pdf_bytes, nome_file="traccia.pdf", output_dir="."):
 
     try:
         import win32api
-        win32api.ShellExecute(None, "print", path, None, os.path.dirname(path), 0)
-    except ImportError:
-        pass  # su piattaforme non Windows la stampa va gestita dall'Agent
-    return path
+    except ImportError as exc:
+        raise RuntimeError(
+            "La stampa PDF richiede Windows e pywin32 sul computer dell'agent."
+        ) from exc
+
+    operation = "printto" if printer_name else "print"
+    parameters = f'"{printer_name}"' if printer_name else None
+    result = win32api.ShellExecute(
+        None, operation, path, parameters, os.path.dirname(os.path.abspath(path)), 0
+    )
+    if not isinstance(result, int) or result <= 32:
+        raise RuntimeError(
+            f"Windows non ha accettato il job per la stampante "
+            f"{printer_name or 'predefinita'}."
+        )
+    return True

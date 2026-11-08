@@ -8,6 +8,7 @@ filtrano tutti i dati per ``tenant_id`` (multi-tenancy reale, modello A:
 schema condiviso). Il client non deve mai inviare il ``tenant_id``.
 """
 
+import json
 import logging
 import os
 import uuid
@@ -1081,12 +1082,8 @@ def genera_scontrino(
     )
 
 
-@app.post("/api/v1/etichetta", response_class=Response)
-def genera_etichetta(
-    payload: EtichettaCreate,
-    user: dict = Depends(auth.require_roles("admin", "operatore")),
-):
-    """Genera il PDF di un'etichetta DYMO dal lotto o da dati manuali."""
+def _dati_etichetta(payload: EtichettaCreate, user: dict):
+    """Risolvi i dati dell'etichetta usando il lotto del tenant corrente."""
     override_ingredienti = "ingredienti" in payload.model_fields_set
     override_allergeni = "allergeni" in payload.model_fields_set
     if user.get("ruolo") != "admin" and (
@@ -1157,25 +1154,59 @@ def genera_etichetta(
         scadenza = payload.scadenza
         origine = payload.origine
 
-    pdf = printing_service.genera_etichetta_dymo_pdf(
-        plu=plu,
-        prodotto=prodotto,
-        prezzo_kg=prezzo_kg,
-        ingredienti=ingredienti,
-        codice=codice,
-        lotto=lotto,
-        scadenza=scadenza,
-        origine=origine,
-        allergeni=allergeni,
-        conservazione=conservazione,
-        osa=osa,
-        peso=peso,
-    )
-    file_name = str(lotto or plu or "etichetta").replace("/", "_")
+    return {
+        "plu": plu,
+        "prodotto": prodotto,
+        "prezzo_kg": prezzo_kg,
+        "ingredienti": ingredienti,
+        "codice": codice,
+        "lotto": lotto,
+        "scadenza": scadenza,
+        "origine": origine,
+        "allergeni": allergeni,
+        "conservazione": conservazione,
+        "osa": osa,
+        "peso": peso,
+    }
+
+
+@app.post("/api/v1/etichetta", response_class=Response)
+def genera_etichetta(
+    payload: EtichettaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Genera il PDF di un'etichetta DYMO dal lotto o da dati manuali."""
+    dati = _dati_etichetta(payload, user)
+    pdf = printing_service.genera_etichetta_dymo_pdf(**dati)
+    file_name = str(dati["lotto"] or dati["plu"] or "etichetta").replace("/", "_")
     return Response(
         content=pdf,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="etichetta_{file_name}.pdf"'},
+    )
+
+
+@app.post(
+    "/api/v1/etichetta/stampa",
+    response_model=PrintJobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def accoda_etichetta(
+    payload: EtichettaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Accoda per l'agent locale l'etichetta generata dai dati del lotto."""
+    dati = _dati_etichetta(payload, user)
+    serialized = json.dumps(dati, ensure_ascii=False)
+    job_id = print_repo.accoda_job(
+        user["tenant_id"], None, "etichetta", serialized
+    )
+    return PrintJobOut(
+        id=job_id,
+        tenant_id=user["tenant_id"],
+        tipo="etichetta",
+        stato="pending",
+        payload=serialized,
     )
 
 
@@ -1288,6 +1319,7 @@ def agent_next_job(token: str):
     job = print_repo.prendi_prossimo_job(dispositivo["id"])
     if not job:
         return {"job": None}
+    job["stampante_dymo"] = dispositivo["stampante_dymo"]
     return {"job": job}
 
 

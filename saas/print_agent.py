@@ -112,14 +112,30 @@ class PrintAgent:
 
             if tipo == "etichetta":
                 data = json.loads(payload)
+                printer_name = job.get("stampante_dymo")
+                if not printer_name:
+                    print(
+                        "[agent] Nessuna stampante DYMO configurata per il dispositivo",
+                        flush=True,
+                    )
+                    return False
                 pdf = printing_service.genera_etichetta_dymo_pdf(
                     plu=data.get("plu", ""),
                     prodotto=data.get("prodotto", ""),
                     prezzo_kg=data.get("prezzo_kg", ""),
                     ingredienti=data.get("ingredienti", ""),
                     codice=data.get("codice", ""),
+                    lotto=data.get("lotto", ""),
+                    scadenza=data.get("scadenza", ""),
+                    origine=data.get("origine", ""),
+                    allergeni=data.get("allergeni", []),
+                    conservazione=data.get("conservazione", ""),
+                    osa=data.get("osa", ""),
+                    peso=data.get("peso", ""),
                 )
-                return self._stampa_pdf(pdf, "etichetta.pdf")
+                return self._stampa_pdf(
+                    pdf, "etichetta.pdf", printer_name=printer_name
+                )
 
             if tipo == "scontrino":
                 data = json.loads(payload)
@@ -137,17 +153,15 @@ class PrintAgent:
             print(f"[agent] Errore esecuzione job {job.get('id')}: {e}", flush=True)
             return False
 
-    def _stampa_pdf(self, pdf_bytes, filename):
-        """Stampa un PDF via win32 (se disponibile), altrimenti fallback file."""
-        if printing_service.stampa_pdf_via_win32(pdf_bytes):
+    def _stampa_pdf(self, pdf_bytes, filename, printer_name=None):
+        """Invia il PDF al driver Windows; senza driver il job fallisce."""
+        if printing_service.stampa_pdf_via_win32(
+            pdf_bytes, nome_file=filename, printer_name=printer_name
+        ):
             print(f"[agent] PDF stampato ({len(pdf_bytes)} bytes)", flush=True)
             return True
-        # Fallback: salva su file temporaneo
-        path = os.path.join(os.path.expanduser("~"), filename)
-        with open(path, "wb") as f:
-            f.write(pdf_bytes)
-        print(f"[agent] Fallback: PDF salvato in {path}", flush=True)
-        return True
+        print("[agent] Il driver non ha accettato il job PDF", flush=True)
+        return False
 
     def _stampa_escpos(self, escpos_bytes):
         """Stampa ESC/POS via win32 raw (se disponibile), altrimenti file."""

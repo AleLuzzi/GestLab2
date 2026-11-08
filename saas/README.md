@@ -141,10 +141,22 @@ curl -X POST http://localhost:8000/api/v1/dispositivi \
 python -m saas.print_agent --token <TOKEN_DISPOSITIVO> --interval 5
 ```
 
+Sul PC Windows dell'agent installare anche il driver DYMO e `pywin32`
+nell'ambiente Python usato per avviarlo (`python -m pip install pywin32`).
+Non aggiungere `pywin32` alle dipendenze del backend SaaS, che può girare su
+Linux.
+
 Il token può anche essere letto da `config.ini` (sezione `[Stampante]`,
 chiave `agent_token`) solo in sviluppo. In produzione impostare
 `GESTLAB_ENV=production` e fornire `GESTLAB_AGENT_TOKEN` tramite variabile
 d'ambiente o Secret Manager; il fallback a `config.ini` è disabilitato.
+
+Per stampare un'etichetta dalla console usare **Stampa su DYMO**: l'API
+risolve i dati del lotto nel tenant, accoda il job e l'agent lo invia al nome
+stampante `stampante_dymo` registrato per il dispositivo. Il nome deve
+corrispondere a una stampante installata su Windows. Lo stato `done` indica
+che Windows ha accettato il comando di stampa; verificare comunque la stampa
+fisica e la resa dell'etichetta sul modello DYMO previsto.
 
 ## Note multi-tenant
 
