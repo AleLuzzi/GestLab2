@@ -981,6 +981,7 @@ def registra_lavorazione_tracciata(
             data=payload.data,
             descrizione=payload.descrizione,
             operatore_id=payload.operatore_id,
+            ricetta_id=payload.ricetta_id,
             input_lavorazione=payload.input,
             output=payload.output,
             scarti=payload.scarti,
@@ -1008,6 +1009,11 @@ def registra_lavorazione_tracciata(
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except tracciabilita_repo.ArticoloNonUtilizzabileComeInput as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+    except tracciabilita_repo.RicettaNonTrovata as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "La ricetta non esiste, non è attiva o non corrisponde al prodotto",
+        ) from error
 
 
 # ------------------------------------------------------------------------- #
@@ -1081,12 +1087,22 @@ def genera_etichetta(
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
     """Genera il PDF di un'etichetta DYMO dal lotto o da dati manuali."""
+    override_ingredienti = "ingredienti" in payload.model_fields_set
+    override_allergeni = "allergeni" in payload.model_fields_set
+    if user.get("ruolo") != "admin" and (
+        override_ingredienti or override_allergeni
+    ):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Solo un admin può modificare ingredienti o allergeni dell'etichetta.",
+        )
+
     lotto_dati = None
     osa = ""
     prezzo_kg = payload.prezzo_kg
     peso = str(payload.peso) if payload.peso is not None else ""
-    allergeni = payload.allergeni
-    ingredienti = payload.ingredienti
+    allergeni = payload.allergeni or []
+    ingredienti = payload.ingredienti or ""
     conservazione = payload.conservazione
     if payload.lotto_id is not None:
         lotto_dati = tracciabilita_repo.dettaglio_lotto(user["tenant_id"], payload.lotto_id)
@@ -1128,6 +1144,11 @@ def genera_etichetta(
         prodotto = lotto_dati["articolo"]
         plu = str(lotto_dati["articolo_id"])
         origine = lotto_dati.get("origine") or ""
+        dati_etichetta = lotto_dati.get("dati_etichetta") or {}
+        if not override_ingredienti:
+            ingredienti = dati_etichetta.get("ingredienti", "")
+        if not override_allergeni:
+            allergeni = dati_etichetta.get("allergeni", [])
     else:
         plu = payload.plu
         prodotto = payload.prodotto

@@ -133,6 +133,53 @@ class BootstrapMigrationsTests(unittest.TestCase):
             bootstrap._migrazione_gia_applicata(OsaCursor(required), migration)
         )
 
+    def test_work_recipe_migration_is_ordered_and_requires_column_and_foreign_key(self):
+        migration = "20261108_lavorazioni_ricetta.sql"
+        self.assertIn(migration, bootstrap.MIGRATION_ORDER)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("ADD COLUMN `ricetta_id`", sql)
+        self.assertIn("REFERENCES `ricette` (`tenant_id`, `id`)", sql)
+
+        class RecipeWorkCursor:
+            def __init__(self, columns, create_table):
+                self.columns = columns
+                self.create_table = create_table
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query == "SHOW COLUMNS FROM `lavorazioni`":
+                    self.result = [(column,) for column in self.columns]
+                elif query == "SHOW CREATE TABLE `lavorazioni`":
+                    self.result = [("lavorazioni", self.create_table)]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchall(self):
+                return self.result
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+        applied_schema = (
+            "CONSTRAINT `fk_lavorazioni_ricetta` FOREIGN KEY (...) "
+            "KEY `idx_lavorazioni_ricetta` (...)"
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                RecipeWorkCursor({"id"}, applied_schema), migration
+            )
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                RecipeWorkCursor({"id", "ricetta_id"}, ""), migration
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                RecipeWorkCursor({"id", "ricetta_id"}, applied_schema), migration
+            )
+        )
+
     def test_new_database_records_current_schema_as_migration_baseline(self):
         cursor = MigrationCursor()
         commits = []

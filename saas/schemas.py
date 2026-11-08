@@ -309,6 +309,7 @@ class LavorazioneCreate(BaseModel):
     data: date
     descrizione: str = Field(default="", max_length=255)
     operatore_id: int = Field(..., gt=0)
+    ricetta_id: int | None = Field(default=None, gt=0)
     input: list[LavorazioneInputCreate] = Field(..., min_length=1)
     output: list[LavorazioneOutputCreate] = Field(..., min_length=1)
     scarti: list[LavorazioneScartoCreate] = Field(default_factory=list)
@@ -534,19 +535,21 @@ class EtichettaCreate(BaseModel):
     plu: str = ""
     prodotto: str = ""
     prezzo_kg: str = ""
-    ingredienti: str = Field(default="", max_length=1000)
+    ingredienti: str | None = Field(default=None, max_length=1000)
     codice: str = ""
     lotto_id: int | None = None
     lotto: str = ""
     scadenza: str = ""
     origine: str = ""
-    allergeni: list[str] = Field(default_factory=list)
+    allergeni: list[str] | None = None
     conservazione: str = Field(default="", max_length=1000)
     peso: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=3)
 
     @field_validator("allergeni")
     @classmethod
     def valida_allergeni_etichetta(cls, value):
+        if value is None:
+            return value
         if len(value) != len(set(value)):
             raise ValueError("Ogni allergene puo' comparire una sola volta")
         if set(value) - set(ALLERGENI_RICETTA):

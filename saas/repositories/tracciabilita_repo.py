@@ -33,6 +33,10 @@ class GiacenzaInsufficiente(Exception):
 class ArticoloNonUtilizzabileComeInput(Exception):
     """L'articolo del lotto non è abilitato come input di lavorazione."""
 
+
+class RicettaNonTrovata(Exception):
+    """Ricetta assente, inattiva o non associata all'articolo prodotto."""
+
 class LottoScaduto(Exception):
     """Un lotto con data di scadenza superata non può essere lavorato."""
 
@@ -678,7 +682,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "d.fornitore_id, "
             "w.data_lavorazione, w.descrizione, "
             "COALESCE(NULLIF(TRIM(CONCAT_WS(' ', dp.nome, dp.cognome)), ''), w.operatore), "
-            "l.note_lotto, l.data_tmc, a.prezzo_unitario "
+            "l.note_lotto, l.data_tmc, a.prezzo_unitario, w.ricetta_id "
             "FROM lotti l "
             "JOIN articoli a ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "LEFT JOIN documenti_ingresso d "
@@ -716,6 +720,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
             "note_lotto": _row_value(row, 23),
             "documento_ingresso": None,
             "lavorazione": None,
+            "dati_etichetta": {"ingredienti": "", "allergeni": []},
         }
         if row[14] is not None:
             risultato["documento_ingresso"] = {
@@ -781,6 +786,36 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 )
         risultato["lavorazioni_successive"] = list(lavorazioni_successive.values())
         if row[15] is not None:
+            ricetta_id = _row_value(row, 26)
+            if ricetta_id is not None:
+                cursor.execute(
+                    "SELECT nome, istruzioni_conservazione FROM ricette "
+                    "WHERE tenant_id = %s AND id = %s",
+                    (tenant_id, ricetta_id),
+                )
+                ricetta = cursor.fetchone()
+                if ricetta is not None:
+                    cursor.execute(
+                        "SELECT a.nome FROM ricetta_ingredienti ri "
+                        "JOIN articoli a "
+                        "ON a.tenant_id = ri.tenant_id AND a.id = ri.articolo_id "
+                        "WHERE ri.tenant_id = %s AND ri.ricetta_id = %s "
+                        "ORDER BY ri.posizione",
+                        (tenant_id, ricetta_id),
+                    )
+                    ingredienti = ", ".join(item[0] for item in cursor.fetchall())
+                    cursor.execute(
+                        "SELECT codice FROM ricetta_allergeni "
+                        "WHERE tenant_id = %s AND ricetta_id = %s ORDER BY codice",
+                        (tenant_id, ricetta_id),
+                    )
+                    risultato["dati_etichetta"] = {
+                        "ricetta_id": ricetta_id,
+                        "ricetta_nome": ricetta[0],
+                        "ingredienti": ingredienti,
+                        "allergeni": [item[0] for item in cursor.fetchall()],
+                        "conservazione": ricetta[1] or "",
+                    }
             cursor.execute(
                 "SELECT li.lotto_id, lp.codice_lotto, ap.nome, li.quantita "
                 "FROM lavorazione_input li "
@@ -970,7 +1005,14 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
 
 
 def registra_lavorazione(
-    tenant_id, data, descrizione, operatore_id, input_lavorazione, output, scarti
+    tenant_id,
+    data,
+    descrizione,
+    operatore_id,
+    input_lavorazione,
+    output,
+    scarti,
+    ricetta_id=None,
 ):
     """Consuma i lotti di input e crea un lotto V per ogni prodotto ottenuto."""
     quantita_input = defaultdict(Decimal)
@@ -1050,11 +1092,32 @@ def registra_lavorazione(
             if len(articoli) != len(articolo_ids):
                 raise ArticoloNonTrovato
 
+            if ricetta_id is not None:
+                cursor.execute(
+                    "SELECT articolo_id FROM ricette "
+                    "WHERE tenant_id = %s AND id = %s AND attiva = 1 "
+                    "FOR UPDATE",
+                    (tenant_id, ricetta_id),
+                )
+                ricetta = cursor.fetchone()
+                if (
+                    ricetta is None
+                    or ricetta[0] not in {riga.articolo_id for riga in output}
+                ):
+                    raise RicettaNonTrovata
+
             cursor.execute(
                 "INSERT INTO lavorazioni "
-                "(tenant_id, data_lavorazione, descrizione, operatore_id, operatore) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (tenant_id, data, descrizione, operatore_id, operatore),
+                "(tenant_id, data_lavorazione, descrizione, operatore_id, operatore, "
+                "ricetta_id) VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    tenant_id,
+                    data,
+                    descrizione,
+                    operatore_id,
+                    operatore,
+                    ricetta_id,
+                ),
             )
             lavorazione_id = cursor.lastrowid
 

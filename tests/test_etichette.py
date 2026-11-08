@@ -58,7 +58,9 @@ class EtichetteTests(unittest.TestCase):
                 return_value=b"%PDF-label",
             ) as genera_pdf,
         ):
-            response = genera_etichetta(payload, {"tenant_id": 42})
+            response = genera_etichetta(
+                payload, {"tenant_id": 42, "ruolo": "admin"}
+            )
 
         self.assertEqual(response.body, b"%PDF-label")
         kwargs = genera_pdf.call_args.kwargs
@@ -70,6 +72,52 @@ class EtichetteTests(unittest.TestCase):
         self.assertEqual(kwargs["allergeni"], ["latte"])
         self.assertIn("Macelleria Esempio", kwargs["osa"])
         self.assertIn("P.IVA 01234567890", kwargs["osa"])
+
+    def test_operator_label_uses_recipe_ingredients_and_allergens(self):
+        lotto = {
+            "id": 8,
+            "articolo_id": 3,
+            "articolo": "Salsiccia fresca",
+            "codice_lotto": "12V",
+            "data_scadenza": None,
+            "data_tmc": None,
+            "origine": "Italia",
+            "unita_misura": "kg",
+            "prezzo_unitario": "14.50",
+            "dati_etichetta": {
+                "ricetta_nome": "Salsiccia",
+                "ingredienti": "Carne, Sale",
+                "allergeni": ["latte"],
+            },
+        }
+        profilo = {
+            "ragione_sociale": "Macelleria Esempio",
+            "indirizzo": "Via Roma 1, Torino",
+            "laboratorio": "",
+            "partita_iva": "",
+        }
+        with (
+            patch("saas.main.tracciabilita_repo.dettaglio_lotto", return_value=lotto),
+            patch("saas.main.tenant_repo.dati_osa", return_value=profilo),
+            patch(
+                "saas.main.printing_service.genera_etichetta_dymo_pdf",
+                return_value=b"%PDF-label",
+            ) as genera_pdf,
+        ):
+            genera_etichetta(
+                EtichettaCreate(lotto_id=8),
+                {"tenant_id": 42, "ruolo": "operatore"},
+            )
+
+        kwargs = genera_pdf.call_args.kwargs
+        self.assertEqual(kwargs["ingredienti"], "Carne, Sale")
+        self.assertEqual(kwargs["allergeni"], ["latte"])
+
+    def test_operator_cannot_override_recipe_label_data(self):
+        payload = EtichettaCreate(lotto_id=8, ingredienti="Override")
+        with self.assertRaises(HTTPException) as raised:
+            genera_etichetta(payload, {"tenant_id": 42, "ruolo": "operatore"})
+        self.assertEqual(raised.exception.status_code, 403)
 
     def test_lot_label_requires_osa_business_name_and_site(self):
         payload = EtichettaCreate(lotto_id=8)

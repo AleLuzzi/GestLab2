@@ -341,15 +341,19 @@ CREATE TABLE IF NOT EXISTS `lavorazioni` (
   `descrizione` varchar(255) NOT NULL DEFAULT '',
   `operatore_id` int DEFAULT NULL,
   `operatore` varchar(120) DEFAULT NULL,
+  `ricetta_id` bigint DEFAULT NULL,
   `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_lavorazioni_tenant_id` (`tenant_id`, `id`),
   KEY `idx_lavorazioni_data` (`tenant_id`, `data_lavorazione`),
   KEY `idx_lavorazioni_operatore` (`tenant_id`, `operatore_id`),
+  KEY `idx_lavorazioni_ricetta` (`tenant_id`, `ricetta_id`),
   CONSTRAINT `fk_lavorazioni_tenant` FOREIGN KEY (`tenant_id`)
     REFERENCES `tenant` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_lavorazioni_operatore` FOREIGN KEY (`tenant_id`, `operatore_id`)
-    REFERENCES `dipendenti` (`tenant_id`, `ID`) ON DELETE RESTRICT
+    REFERENCES `dipendenti` (`tenant_id`, `ID`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lavorazioni_ricetta` FOREIGN KEY (`tenant_id`, `ricetta_id`)
+    REFERENCES `ricette` (`tenant_id`, `id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lotti` (

@@ -387,6 +387,45 @@ class TracciabilitaTests(unittest.TestCase):
                 ],
             )
 
+    def test_lot_detail_exposes_recipe_ingredients_and_allergens_for_label(self):
+            lotto_row = [None] * 27
+            lotto_row[0] = 9
+            lotto_row[1] = 3
+            lotto_row[2] = "Salsiccia"
+            lotto_row[15] = 20
+            lotto_row[26] = 17
+
+            def handle(query, params):
+                if query.startswith("SELECT l.id, l.articolo_id"):
+                    return [tuple(lotto_row)]
+                if query.startswith("SELECT nome, istruzioni_conservazione FROM ricette"):
+                    return [("Salsiccia fresca", "Conservare al freddo")]
+                if query.startswith("SELECT a.nome FROM ricetta_ingredienti"):
+                    return [("Carne",), ("Sale",)]
+                if query.startswith("SELECT codice FROM ricetta_allergeni"):
+                    return [("latte",)]
+                return []
+
+            cursor = FakeCursor(handle)
+
+            @contextmanager
+            def fake_connection():
+                yield FakeConnection(cursor)
+
+            with patch.object(tracciabilita_repo, "connection", fake_connection):
+                dettaglio = tracciabilita_repo.dettaglio_lotto(42, 9)
+
+            self.assertEqual(
+                dettaglio["dati_etichetta"],
+                {
+                    "ricetta_id": 17,
+                    "ricetta_nome": "Salsiccia fresca",
+                    "ingredienti": "Carne, Sale",
+                    "allergeni": ["latte"],
+                    "conservazione": "Conservare al freddo",
+                },
+            )
+
     def test_progressivo_drains_locked_select_before_updating(self):
         class FetchAllCursor(FakeCursor):
             def fetchone(self):
@@ -525,6 +564,8 @@ class TracciabilitaTests(unittest.TestCase):
                 return [(7, Decimal("5.000"), True, date(2026, 12, 1), None, date(2026, 11, 7))]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
+            if query.startswith("SELECT articolo_id FROM ricette"):
+                return [(9,)]
             if query.startswith("SELECT prog_ven"):
                 return [(10,)]
             return []
@@ -542,6 +583,7 @@ class TracciabilitaTests(unittest.TestCase):
                 data="2026-10-03",
                 descrizione="Trasformazione",
                 operatore_id=5,
+                ricetta_id=17,
                 input_lavorazione=[
                     type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
                 ],
@@ -574,7 +616,8 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(result["lotti"][0]["codice_lotto"], "11V")
         self.assertTrue(
             any(
-                "operatore_id, operatore" in query and params[-2:] == (5, "Ada Lovelace")
+                "operatore_id, operatore" in query
+                and params[-3:] == (5, "Ada Lovelace", 17)
                 for query, params in cursor.statements
             )
         )

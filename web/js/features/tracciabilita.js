@@ -813,6 +813,7 @@ function configuraFormLavorazione() {
           data: $("trace-work-date").value,
           descrizione: $("trace-work-description").value.trim(),
           operatore_id: Number($("trace-work-operator").value),
+          ricetta_id: ricetta?.id ?? null,
           input,
           output,
           scarti,

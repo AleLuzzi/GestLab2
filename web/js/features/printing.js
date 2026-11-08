@@ -1,6 +1,8 @@
 import { api, apiBlob } from "../api/client.js";
 import { $, esc } from "../core/dom.js";
 
+let labelDataRequest = 0;
+
 function switchTab(tab) {
   document.querySelectorAll(".tab-btn").forEach((button) =>
     button.classList.toggle("active", button.dataset.tab === tab));
@@ -64,17 +66,20 @@ async function generaScontrino() {
 
 async function generaEtichetta() {
   $("et-error").textContent = "";
+  const isAdmin = document.body.dataset.role === "admin";
   const payload = {
     lotto_id: $("et-lotto").value ? Number($("et-lotto").value) : null,
     plu: $("et-plu").value,
     prodotto: $("et-prodotto").value,
     prezzo_kg: $("et-prezzo").value,
-    ingredienti: $("et-ingredienti").value,
     codice: $("et-codice").value,
-    allergeni: [...$("et-allergeni").selectedOptions].map((option) => option.value),
     conservazione: $("et-conservazione").value,
     peso: $("et-peso").value || null,
   };
+  if (isAdmin) {
+    payload.ingredienti = $("et-ingredienti").value;
+    payload.allergeni = [...$("et-allergeni").selectedOptions].map((option) => option.value);
+  }
   try {
     const blob = await apiBlob("/api/v1/etichetta", payload);
     const url = URL.createObjectURL(blob);
@@ -85,6 +90,41 @@ async function generaEtichetta() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (error) {
     $("et-error").textContent = `Impossibile generare l'etichetta: ${error.message}`;
+  }
+}
+
+async function loadLabelRecipeData(lottoId) {
+  const requestId = ++labelDataRequest;
+  const preview = $("et-ricetta-dati");
+  const submit = $("btn-gen-et");
+  preview.textContent = "";
+  $("et-ingredienti").value = "";
+  $("et-allergeni").selectedIndex = -1;
+  if (!lottoId) {
+    submit.disabled = false;
+    return;
+  }
+  submit.disabled = true;
+
+  try {
+    const lotto = await api(`/api/v1/tracciabilita/lotti/${lottoId}`);
+    if (requestId !== labelDataRequest || $("et-lotto").value !== String(lottoId)) return;
+    const dati = lotto.dati_etichetta || {};
+    const allergeni = dati.allergeni || [];
+    preview.textContent = dati.ricetta_nome
+      ? `Dati ricetta ${dati.ricetta_nome}: ingredienti ${dati.ingredienti || "non configurati"}; allergeni ${allergeni.length ? allergeni.join(", ") : "nessuno indicato"}.`
+      : "Lotto senza ricetta collegata: ingredienti e allergeni non sono configurati.";
+    if (document.body.dataset.role === "admin") {
+      $("et-ingredienti").value = dati.ingredienti || "";
+      [...$("et-allergeni").options].forEach((option) => {
+        option.selected = allergeni.includes(option.value);
+      });
+    }
+  } catch (error) {
+    if (requestId !== labelDataRequest || $("et-lotto").value !== String(lottoId)) return;
+    preview.textContent = `Impossibile caricare i dati della ricetta: ${error.message}`;
+  } finally {
+    if (requestId === labelDataRequest) submit.disabled = false;
   }
 }
 
@@ -103,6 +143,12 @@ export async function loadLabelLots() {
     const selected = select.value;
     select.replaceChildren(...options);
     select.value = options.some((option) => option.value === selected) ? selected : "";
+    const isLotLabel = Boolean(select.value);
+    $("et-plu").disabled = isLotLabel;
+    $("et-prodotto").disabled = isLotLabel;
+    $("et-prezzo").disabled = isLotLabel;
+    $("et-codice").disabled = isLotLabel;
+    await loadLabelRecipeData(select.value);
   } catch (error) {
     $("et-error").textContent = `Impossibile caricare i lotti: ${error.message}`;
   }
@@ -151,12 +197,13 @@ export function initPrinting() {
   $("btn-add-sco").addEventListener("click", addScoRiga);
   $("btn-gen-sco").addEventListener("click", generaScontrino);
   $("btn-gen-et").addEventListener("click", generaEtichetta);
-  $("et-lotto").addEventListener("change", () => {
+  $("et-lotto").addEventListener("change", (event) => {
     const isLotLabel = Boolean($("et-lotto").value);
     $("et-plu").disabled = isLotLabel;
     $("et-prodotto").disabled = isLotLabel;
     $("et-prezzo").disabled = isLotLabel;
     $("et-codice").disabled = isLotLabel;
+    loadLabelRecipeData(event.target.value);
   });
   $("btn-refresh-jobs").addEventListener("click", loadPrintJobs);
   addDdtRiga();

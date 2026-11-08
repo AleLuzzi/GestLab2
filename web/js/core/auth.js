@@ -22,6 +22,7 @@ export function logout() {
 
 function showLogin() {
   logout();
+  delete document.body.dataset.role;
   $("view-login").style.display = "flex";
   $("view-app").style.display = "none";
 }
@@ -29,6 +30,7 @@ function showLogin() {
 function showApp(user, showLanding) {
   $("view-login").style.display = "none";
   $("view-app").style.display = "flex";
+  document.body.dataset.role = user.role || "";
   $("user-email").textContent = user.email || "";
   $("user-role").textContent = user.role || "";
   const isAdmin = user.role === "admin";

@@ -45,6 +45,7 @@ MIGRATION_ORDER = (
     "20261108_ricette.sql",
     "20261108_ricetta_ingredienti.sql",
     "20261108_ricetta_allergeni_durata.sql",
+    "20261108_lavorazioni_ricetta.sql",
     "20261108_dati_osa_tenant.sql",
 )
 
@@ -437,6 +438,16 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "FK_RICETTA_ALLERGENI_RICETTA" in schema_allergeni
             and "CHK_RICETTA_ALLERGENI_CODICE" in schema_allergeni
             and "CHK_RICETTE_GIORNI_VITA" in schema_ricette
+        )
+
+    if migrazione == "20261108_lavorazioni_ricetta.sql":
+        if "ricetta_id" not in _colonne_tabella(cursor, "lavorazioni"):
+            return False
+        cursor.execute("SHOW CREATE TABLE `lavorazioni`")
+        schema = cursor.fetchone()[1].upper()
+        return (
+            "FK_LAVORAZIONI_RICETTA" in schema
+            and "IDX_LAVORAZIONI_RICETTA" in schema
         )
 
     if migrazione == "20261108_dati_osa_tenant.sql":
