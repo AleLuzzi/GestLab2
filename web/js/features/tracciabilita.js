@@ -404,6 +404,86 @@ function creaFatti(entries) {
   return facts;
 }
 
+function creaFormRettifica(dettaglio) {
+  if (!["admin", "operatore"].includes(document.body.dataset.role)) return null;
+
+  const form = document.createElement("form");
+  form.className = "form-card trace-detail-block";
+  appendTesto(form, "h4", "", "Rettifica giacenza");
+  appendTesto(
+    form,
+    "p",
+    "trace-help",
+    "Inserisci un delta positivo o negativo; la giacenza non può diventare negativa.",
+  );
+
+  const deltaLabel = document.createElement("label");
+  deltaLabel.textContent = `Delta (${dettaglio.unita_misura})`;
+  const deltaInput = document.createElement("input");
+  deltaInput.type = "number";
+  deltaInput.step = "0.001";
+  deltaInput.required = true;
+  deltaInput.inputMode = "decimal";
+  deltaInput.placeholder = "-0.250";
+  deltaLabel.appendChild(deltaInput);
+  form.appendChild(deltaLabel);
+
+  const motivoLabel = document.createElement("label");
+  motivoLabel.textContent = "Motivo";
+  const motivoSelect = document.createElement("select");
+  motivoSelect.required = true;
+  [
+    ["inventario", "Inventario"],
+    ["calo", "Calo"],
+    ["reso", "Reso"],
+    ["errore", "Errore"],
+  ].forEach(([value, label]) => motivoSelect.appendChild(creaOpzione(value, label)));
+  motivoLabel.appendChild(motivoSelect);
+  form.appendChild(motivoLabel);
+
+  const feedback = appendTesto(form, "p", "trace-help", "");
+  feedback.setAttribute("role", "status");
+  feedback.setAttribute("aria-live", "polite");
+  const actions = document.createElement("div");
+  actions.className = "row";
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "btn primary";
+  submit.textContent = "Registra rettifica";
+  actions.appendChild(submit);
+  form.appendChild(actions);
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    feedback.textContent = "";
+    if (!deltaInput.value || Number(deltaInput.value) === 0) {
+      feedback.textContent = "Inserisci un delta diverso da zero.";
+      return;
+    }
+
+    submit.disabled = true;
+    try {
+      await api(
+        `/api/v1/tracciabilita/lotti/${encodeURIComponent(dettaglio.id)}/rettifiche`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            delta: deltaInput.value,
+            motivo: motivoSelect.value,
+          }),
+        },
+      );
+      await loadTracciabilita();
+      await mostraDettaglioLotto(dettaglio.id);
+    } catch (error) {
+      feedback.textContent = `Impossibile registrare la rettifica: ${error.message}`;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  return form;
+}
+
 function renderDettaglio(dettaglio) {
   dettaglioCorrente = dettaglio;
   const container = $("trace-detail");
@@ -445,6 +525,8 @@ function renderDettaglio(dettaglio) {
     ["Quantità iniziale", formattaQuantita(dettaglio.quantita_iniziale, dettaglio.unita_misura)],
     ["Disponibile", formattaQuantita(dettaglio.quantita_disponibile, dettaglio.unita_misura)],
   ]));
+  const formRettifica = creaFormRettifica(dettaglio);
+  if (formRettifica) container.appendChild(formRettifica);
 
   const metadata = document.createElement("div");
   metadata.className = "trace-detail-block";
@@ -572,11 +654,18 @@ function renderDettaglio(dettaglio) {
   const list = document.createElement("ul");
   if (dettaglio.movimenti.length) {
     dettaglio.movimenti.forEach((movimento) => {
+      const motivi = {
+        inventario: "Inventario",
+        calo: "Calo",
+        reso: "Reso",
+        errore: "Errore",
+      };
+      const motivo = movimento.motivo ? ` · ${motivi[movimento.motivo] || movimento.motivo}` : "";
       appendTesto(
         list,
         "li",
         "",
-        `${movimento.tipo} · ${formattaQuantita(movimento.quantita_delta, dettaglio.unita_misura)} · ${formattaData(movimento.creato_il)}`,
+        `${movimento.tipo}${motivo} · ${formattaQuantita(movimento.quantita_delta, dettaglio.unita_misura)} · ${formattaData(movimento.creato_il)}`,
       );
     });
   } else {

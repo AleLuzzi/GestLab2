@@ -315,6 +315,18 @@ class LavorazioneCreate(BaseModel):
     scarti: list[LavorazioneScartoCreate] = Field(default_factory=list)
 
 
+class RettificaLottoCreate(BaseModel):
+    delta: Decimal = Field(..., max_digits=12, decimal_places=3)
+    motivo: str = Field(..., pattern="^(inventario|calo|reso|errore)$")
+
+    @field_validator("delta")
+    @classmethod
+    def valida_delta_non_zero(cls, value):
+        if value == 0:
+            raise ValueError("Il delta della rettifica non può essere zero")
+        return value
+
+
 # ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #

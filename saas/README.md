@@ -86,6 +86,7 @@ saas/
 | PUT | `/api/v1/dipendenti/{id}` | admin/operatore | Aggiorna dipendente |
 | DELETE | `/api/v1/dipendenti/{id}` | admin | Elimina dipendente |
 | GET | `/api/v1/lotti/aperti` | autenticato | Lotti aperti |
+| POST | `/api/v1/tracciabilita/lotti/{id}/rettifiche` | admin/operatore | Rettifica atomica della giacenza con delta e motivo |
 | GET | `/api/v1/tracciabilita/lotti/{id}/scheda.pdf` | autenticato | Scheda PDF del lotto con genealogia e DDT d'ingresso, non certificativa |
 | GET | `/api/v1/vendite/lotti-disponibili` | autenticato | Lotti attivi con giacenza e non scaduti, ordinati FEFO; la UI vendita non è ancora collegata |
 | GET | `/api/v1/menu` | autenticato | Articoli attivi del menu |

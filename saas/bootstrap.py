@@ -47,6 +47,7 @@ MIGRATION_ORDER = (
     "20261108_ricetta_allergeni_durata.sql",
     "20261108_lavorazioni_ricetta.sql",
     "20261108_dati_osa_tenant.sql",
+    "20261108_motivo_rettifica_lotto.sql",
 )
 
 
@@ -457,6 +458,9 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "osa_laboratorio",
             "osa_partita_iva",
         }.issubset(_colonne_tabella(cursor, "tenant"))
+
+    if migrazione == "20261108_motivo_rettifica_lotto.sql":
+        return "motivo" in _colonne_tabella(cursor, "movimenti_lotto")
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 

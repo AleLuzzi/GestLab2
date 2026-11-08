@@ -146,8 +146,16 @@ running it. The canonical migration order is:
 4. `20261031_soggetti_clienti_fornitori.sql`
 5. `20261031_work_operator_id.sql`
 6. `20261107_lotti_metadata.sql`
-7. `20261107_note_lotto.sql`
-8. `20261107_movimenti_lotto_vendita.sql`
+7. `20261107_lotti_tmc.sql`
+8. `20261107_note_lotto.sql`
+9. `20261107_movimenti_lotto_vendita.sql`
+10. `20261108_ricette.sql`
+11. `20261108_ricetta_ingredienti.sql`
+12. `20261108_ricetta_allergeni_durata.sql`
+13. `20261108_lavorazioni_ricetta.sql`
+14. `20261108_dati_osa_tenant.sql`
+15. `20261108_motivo_rettifica_lotto.sql`
+9. `20261108_motivo_rettifica_lotto.sql`
 
 The order is explicit in `saas.bootstrap`; a test fails if a migration file is
 added without being included. The bootstrap first runs `init_database.sql` to

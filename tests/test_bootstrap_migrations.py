@@ -50,6 +50,37 @@ class BootstrapMigrationsTests(unittest.TestCase):
         self.assertEqual(set(bootstrap.MIGRATION_ORDER), files)
         self.assertEqual(len(bootstrap.MIGRATION_ORDER), len(files))
 
+    def test_rettifica_reason_migration_is_additive_and_recognized(self):
+        migration = "20261108_motivo_rettifica_lotto.sql"
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("ADD COLUMN `motivo`", sql)
+        self.assertIn(migration, bootstrap.MIGRATION_ORDER)
+
+        class MovementCursor:
+            def __init__(self, columns):
+                self.columns = columns
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query == "SHOW COLUMNS FROM `movimenti_lotto`":
+                    self.result = [(column,) for column in self.columns]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchall(self):
+                return self.result
+
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                MovementCursor({"tipo", "quantita_delta"}), migration
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                MovementCursor({"tipo", "quantita_delta", "motivo"}), migration
+            )
+        )
+
     def test_tmc_migration_is_additive_and_recognized_only_when_complete(self):
         migration = "20261107_lotti_tmc.sql"
         sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")

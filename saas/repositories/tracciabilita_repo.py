@@ -731,7 +731,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "fornitore_id": row[19],
             }
         cursor.execute(
-            "SELECT tipo, quantita_delta, creato_il FROM movimenti_lotto "
+            "SELECT tipo, quantita_delta, creato_il, motivo FROM movimenti_lotto "
             "WHERE tenant_id = %s AND lotto_id = %s ORDER BY id",
             (tenant_id, lotto_id),
         )
@@ -740,6 +740,7 @@ def dettaglio_lotto(tenant_id, lotto_id):
                 "tipo": item[0],
                 "quantita_delta": str(item[1]),
                 "creato_il": item[2],
+                "motivo": _row_value(item, 3),
             }
             for item in cursor.fetchall()
         ]
@@ -899,6 +900,49 @@ def _prossimo_progressivo(cursor, tenant_id, tipo_lotto):
         (numero, tenant_id),
     )
     return numero
+
+
+def rettifica_lotto(tenant_id, lotto_id, delta, motivo):
+    """Applica una rettifica tracciata e aggiorna la giacenza atomicamente."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT quantita_disponibile FROM lotti "
+                "WHERE tenant_id = %s AND id = %s FOR UPDATE",
+                (tenant_id, lotto_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise LottoNonTrovato
+
+            nuova_giacenza = Decimal(str(row[0])) + Decimal(str(delta))
+            if nuova_giacenza < 0:
+                raise GiacenzaInsufficiente(
+                    "La rettifica non può portare la giacenza sotto zero."
+                )
+
+            cursor.execute(
+                "UPDATE lotti SET quantita_disponibile = %s "
+                "WHERE tenant_id = %s AND id = %s",
+                (nuova_giacenza, tenant_id, lotto_id),
+            )
+            cursor.execute(
+                "INSERT INTO movimenti_lotto "
+                "(tenant_id, lotto_id, tipo, quantita_delta, motivo) "
+                "VALUES (%s, %s, 'RETTIFICA', %s, %s)",
+                (tenant_id, lotto_id, delta, motivo),
+            )
+            conn.commit()
+            return {
+                "lotto_id": lotto_id,
+                "quantita_disponibile": str(nuova_giacenza),
+                "delta": str(delta),
+                "motivo": motivo,
+            }
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):

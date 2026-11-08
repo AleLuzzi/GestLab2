@@ -39,6 +39,7 @@ from saas.schemas import (
     RepartoCreate,
     RepartoOut,
     RepartoUpdate,
+    RettificaLottoCreate,
     RicettaCreate,
     RicettaOut,
     RicettaUpdate,
@@ -903,6 +904,26 @@ def dettaglio_lotto_tracciato(
     if dettaglio is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato")
     return dettaglio
+
+
+@app.post("/api/v1/tracciabilita/lotti/{lotto_id}/rettifiche")
+def rettifica_lotto_tracciato(
+    lotto_id: int,
+    payload: RettificaLottoCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Rettifica la giacenza di un lotto con un movimento tenant-scoped."""
+    try:
+        return tracciabilita_repo.rettifica_lotto(
+            user["tenant_id"],
+            lotto_id,
+            payload.delta,
+            payload.motivo,
+        )
+    except tracciabilita_repo.LottoNonTrovato as error:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato") from error
+    except tracciabilita_repo.GiacenzaInsufficiente as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
 
 
 @app.get("/api/v1/tracciabilita/lotti/{lotto_id}/scheda.pdf")

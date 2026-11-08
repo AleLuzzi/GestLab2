@@ -15,9 +15,14 @@ from saas.main import (
     lista_lotti_tracciati,
     registra_ingresso_tracciato,
     registra_lavorazione_tracciata,
+    rettifica_lotto_tracciato,
     scheda_lotto_tracciato,
 )
-from saas.schemas import IngressoTracciatoCreate, LavorazioneCreate
+from saas.schemas import (
+    IngressoTracciatoCreate,
+    LavorazioneCreate,
+    RettificaLottoCreate,
+)
 
 
 class FakeCursor:
@@ -57,6 +62,99 @@ class FakeConnection:
 
 
 class TracciabilitaTests(unittest.TestCase):
+    def test_rectification_updates_V_lot_and_records_delta_and_reason(self):
+        def handle(query, params):
+            if query.startswith("SELECT quantita_disponibile FROM lotti"):
+                return [(Decimal("1.250"),)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            result = rettifica_lotto_tracciato(
+                7,
+                RettificaLottoCreate(delta="-0.250", motivo="calo"),
+                {"tenant_id": 42, "ruolo": "operatore"},
+            )
+
+        self.assertEqual(result["quantita_disponibile"], "1.000")
+        self.assertEqual(result["delta"], "-0.250")
+        self.assertEqual(result["motivo"], "calo")
+        lock_query, lock_params = cursor.statements[0]
+        self.assertIn("WHERE tenant_id = %s AND id = %s FOR UPDATE", lock_query)
+        self.assertEqual(lock_params, (42, 7))
+        movement = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO movimenti_lotto")
+        )
+        self.assertIn("'RETTIFICA'", movement[0])
+        self.assertEqual(movement[1], (42, 7, Decimal("-0.250"), "calo"))
+        self.assertEqual(conn.commits, 1)
+        self.assertEqual(conn.rollbacks, 0)
+
+    def test_rectification_rejects_negative_stock_with_conflict_and_rollback(self):
+        cursor = FakeCursor(
+            lambda query, params: [
+                (Decimal("0.250"),)
+            ] if query.startswith("SELECT quantita_disponibile FROM lotti") else []
+        )
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(HTTPException) as raised:
+                rettifica_lotto_tracciato(
+                    7,
+                    RettificaLottoCreate(delta="-0.500", motivo="errore"),
+                    {"tenant_id": 42, "ruolo": "operatore"},
+                )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(any("UPDATE lotti" in query for query, _ in cursor.statements))
+        self.assertFalse(any("INSERT INTO movimenti_lotto" in query for query, _ in cursor.statements))
+
+    def test_rectification_rolls_back_when_movement_insert_fails(self):
+        def handle(query, params):
+            if query.startswith("SELECT quantita_disponibile FROM lotti"):
+                return [(Decimal("1.250"),)]
+            if query.startswith("INSERT INTO movimenti_lotto"):
+                raise RuntimeError("movement insert failed")
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaisesRegex(RuntimeError, "movement insert failed"):
+                tracciabilita_repo.rettifica_lotto(
+                    42, 7, Decimal("-0.250"), "calo"
+                )
+
+        self.assertTrue(any("UPDATE lotti" in query for query, _ in cursor.statements))
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+
+    def test_rectification_schema_rejects_zero_delta(self):
+        with self.assertRaises(ValidationError):
+            RettificaLottoCreate(delta="0", motivo="inventario")
+        with self.assertRaises(ValidationError):
+            RettificaLottoCreate(delta="-0.250", motivo="altro")
+
     def test_unexpected_ingress_error_is_logged_and_returns_reference(self):
         payload = IngressoTracciatoCreate(
             data="2026-10-03",

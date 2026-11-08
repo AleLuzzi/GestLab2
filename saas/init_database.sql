@@ -404,6 +404,7 @@ CREATE TABLE IF NOT EXISTS `movimenti_lotto` (
   `lotto_id` bigint NOT NULL,
   `tipo` varchar(16) NOT NULL,
   `quantita_delta` decimal(12,3) NOT NULL,
+  `motivo` varchar(16) DEFAULT NULL,
   `documento_ingresso_id` bigint DEFAULT NULL,
   `lavorazione_id` bigint DEFAULT NULL,
   `creato_il` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
