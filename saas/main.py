@@ -38,6 +38,9 @@ from saas.schemas import (
     RepartoCreate,
     RepartoOut,
     RepartoUpdate,
+    RicettaCreate,
+    RicettaOut,
+    RicettaUpdate,
     FornitoreCreate,
     FornitoreOut,
     FornitoreUpdate,
@@ -404,6 +407,69 @@ def disattiva_articolo(
     """Disattiva un articolo preservando i riferimenti dei lotti storici."""
     if not tracciabilita_repo.disattiva_articolo(user["tenant_id"], articolo_id):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
+
+
+# ------------------------------------------------------------------------- #
+#  Ricette
+# ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/ricette", response_model=list[RicettaOut])
+def lista_ricette(user: dict = Depends(auth.get_current_user)):
+    """Elenco ricette del tenant corrente."""
+    return tracciabilita_repo.lista_ricette(user["tenant_id"])
+
+
+@app.post(
+    "/api/v1/ricette",
+    response_model=RicettaOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_ricetta(
+    payload: RicettaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea una ricetta associata a un articolo attivo del tenant corrente."""
+    ricetta = tracciabilita_repo.crea_ricetta(
+        user["tenant_id"],
+        payload.nome,
+        payload.articolo_id,
+        payload.resa_attesa,
+        payload.scarto_atteso,
+    )
+    if ricetta is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo prodotto non trovato")
+    return ricetta
+
+
+@app.put("/api/v1/ricette/{ricetta_id}", response_model=RicettaOut)
+def aggiorna_ricetta(
+    ricetta_id: int,
+    payload: RicettaUpdate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Aggiorna una ricetta del tenant corrente."""
+    ricetta = tracciabilita_repo.aggiorna_ricetta(
+        user["tenant_id"],
+        ricetta_id,
+        payload.nome,
+        payload.articolo_id,
+        payload.resa_attesa,
+        payload.scarto_atteso,
+        payload.attiva,
+    )
+    if ricetta is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ricetta o articolo non trovato")
+    return ricetta
+
+
+@app.delete("/api/v1/ricette/{ricetta_id}", status_code=status.HTTP_204_NO_CONTENT)
+def disattiva_ricetta(
+    ricetta_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Disattiva una ricetta senza cancellarne la configurazione."""
+    if not tracciabilita_repo.disattiva_ricetta(user["tenant_id"], ricetta_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ricetta non trovata")
 
 
 # ------------------------------------------------------------------------- #

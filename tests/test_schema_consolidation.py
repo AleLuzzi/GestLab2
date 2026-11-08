@@ -26,7 +26,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
 
     def test_every_table_has_a_primary_key_and_utf8mb4_charset(self):
         self.assertTrue(self.tables)
-        self.assertEqual(len(self.tables), 21)
+        self.assertEqual(len(self.tables), 22)
         for table_name, definition in self.tables.items():
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"(?m)^\s*PRIMARY KEY\s*\(")
@@ -44,6 +44,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
             ("fornitori", "fk_fornitori_tenant"),
             ("merceologie", "fk_merceologie_tenant"),
             ("progressivi", "fk_progressivi_tenant"),
+            ("ricette", "fk_ricette_tenant"),
         ):
             with self.subTest(table=table_name):
                 self.assertIn(constraint, self.tables[table_name])
@@ -61,6 +62,13 @@ class ConsolidatedSchemaTests(unittest.TestCase):
             self.tables["lotti"],
             r"`note_lotto`\s+varchar\(500\)\s+DEFAULT NULL",
         )
+
+    def test_recipes_link_output_article_and_expected_quantities(self):
+        definition = self.tables["ricette"]
+        self.assertRegex(definition, r"`resa_attesa`\s+decimal\(12,3\) NOT NULL")
+        self.assertRegex(definition, r"`scarto_atteso`\s+decimal\(12,3\) NOT NULL")
+        self.assertIn("FOREIGN KEY (`tenant_id`, `articolo_id`)", definition)
+        self.assertIn("fk_ricette_articolo", definition)
 
     def test_lot_expiration_and_best_before_are_mutually_exclusive(self):
         definition = self.tables["lotti"]

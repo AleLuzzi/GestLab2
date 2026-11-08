@@ -57,7 +57,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Ricette, ingredienti ed etichette
 
-- [ ] Creare l'anagrafica ricette per tenant, collegando articolo prodotto, rese e scarti attesi.
+- [x] Creare l'anagrafica ricette per tenant, collegando articolo prodotto, rese e scarti attesi. API tenant-scoped `GET/POST/PUT/DELETE /api/v1/ricette`; resa e scarto attesi sono quantità nell'unità di misura dell'articolo prodotto. Schema consolidato e migrazione `20261108_ricette.sql`; verificato da `tests/test_ricette.py` e `tests/test_schema_consolidation.py`.
 - [ ] Gestire righe ricetta con articoli input, quantità o percentuali e indicazione di obbligatorietà.
 - [ ] Strutturare ingredienti e allergeni nella ricetta; definire i giorni di vita e le istruzioni di conservazione/cottura.
 - [ ] Guidare la lavorazione da ricetta: precompilare input e lotti FEFO, poi registrare i pesi reali confermati dall'operatore.

@@ -42,6 +42,7 @@ MIGRATION_ORDER = (
     "20261107_lotti_tmc.sql",
     "20261107_note_lotto.sql",
     "20261107_movimenti_lotto_vendita.sql",
+    "20261108_ricette.sql",
 )
 
 
@@ -370,6 +371,23 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "VENDITA" in schema.upper()
             and "CHK_MOVIMENTI_LOTTO_TIPO" in schema.upper()
         )
+
+    if migrazione == "20261108_ricette.sql":
+        if not _tabella_esiste(cursor, "ricette"):
+            return False
+        colonne = _colonne_tabella(cursor, "ricette")
+        if not {
+            "tenant_id",
+            "nome",
+            "articolo_id",
+            "resa_attesa",
+            "scarto_atteso",
+            "attiva",
+        }.issubset(colonne):
+            return False
+        cursor.execute("SHOW CREATE TABLE `ricette`")
+        schema = cursor.fetchone()[1].upper()
+        return "FK_RICETTE_ARTICOLO" in schema and "CHK_RICETTE_QUANTITA" in schema
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 

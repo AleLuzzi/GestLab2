@@ -201,6 +201,138 @@ def disattiva_articolo(tenant_id, articolo_id):
         return esistente
 
 
+def _ricetta_da_riga(row):
+    return {
+        "id": row[0],
+        "nome": row[1],
+        "articolo_id": row[2],
+        "articolo_nome": row[3],
+        "unita_misura": row[4],
+        "resa_attesa": str(row[5]),
+        "scarto_atteso": str(row[6]),
+        "attiva": bool(row[7]),
+    }
+
+
+def lista_ricette(tenant_id):
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
+            "r.resa_attesa, r.scarto_atteso, r.attiva "
+            "FROM ricette r JOIN articoli a "
+            "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
+            "WHERE r.tenant_id = %s ORDER BY r.nome, r.id",
+            (tenant_id,),
+        )
+        return [_ricetta_da_riga(row) for row in cursor.fetchall()]
+
+
+def crea_ricetta(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso):
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id FROM articoli "
+                "WHERE tenant_id = %s AND id = %s AND attivo = 1 FOR UPDATE",
+                (tenant_id, articolo_id),
+            )
+            if cursor.fetchone() is None:
+                conn.rollback()
+                return None
+
+            cursor.execute(
+                "INSERT INTO ricette "
+                "(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (tenant_id, nome.strip(), articolo_id, resa_attesa, scarto_atteso),
+            )
+            ricetta_id = cursor.lastrowid
+            cursor.execute(
+                "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
+                "r.resa_attesa, r.scarto_atteso, r.attiva "
+                "FROM ricette r JOIN articoli a "
+                "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
+                "WHERE r.tenant_id = %s AND r.id = %s",
+                (tenant_id, ricetta_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise RuntimeError("Ricetta creata ma non rileggibile")
+            conn.commit()
+            return _ricetta_da_riga(row)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def aggiorna_ricetta(
+    tenant_id, ricetta_id, nome, articolo_id, resa_attesa, scarto_atteso, attiva
+):
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id FROM articoli "
+                "WHERE tenant_id = %s AND id = %s AND attivo = 1 FOR UPDATE",
+                (tenant_id, articolo_id),
+            )
+            if cursor.fetchone() is None:
+                conn.rollback()
+                return None
+
+            cursor.execute(
+                "UPDATE ricette SET nome = %s, articolo_id = %s, resa_attesa = %s, "
+                "scarto_atteso = %s, attiva = %s "
+                "WHERE tenant_id = %s AND id = %s",
+                (
+                    nome.strip(),
+                    articolo_id,
+                    resa_attesa,
+                    scarto_atteso,
+                    int(attiva),
+                    tenant_id,
+                    ricetta_id,
+                ),
+            )
+            cursor.execute(
+                "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
+                "r.resa_attesa, r.scarto_atteso, r.attiva "
+                "FROM ricette r JOIN articoli a "
+                "ON a.tenant_id = r.tenant_id AND a.id = r.articolo_id "
+                "WHERE r.tenant_id = %s AND r.id = %s",
+                (tenant_id, ricetta_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                conn.rollback()
+                return None
+            conn.commit()
+            return _ricetta_da_riga(row)
+        except Exception:
+            conn.rollback()
+            raise
+
+
+def disattiva_ricetta(tenant_id, ricetta_id):
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE ricette SET attiva = 0 WHERE tenant_id = %s AND id = %s",
+            (tenant_id, ricetta_id),
+        )
+        cursor.execute(
+            "SELECT id FROM ricette WHERE tenant_id = %s AND id = %s",
+            (tenant_id, ricetta_id),
+        )
+        esistente = cursor.fetchone() is not None
+        if esistente:
+            conn.commit()
+        else:
+            conn.rollback()
+        return esistente
+
+
 def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
     query = (
         "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, l.progressivo, "

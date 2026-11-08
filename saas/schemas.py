@@ -137,6 +137,36 @@ class ArticoloOut(BaseModel):
     utilizzabile_come_input: bool
 
 
+class RicettaCreate(BaseModel):
+    nome: str = Field(..., min_length=1, max_length=120)
+    articolo_id: int = Field(..., gt=0)
+    resa_attesa: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    scarto_atteso: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=3)
+
+    @field_validator("nome")
+    @classmethod
+    def normalizza_nome(cls, value):
+        value = value.strip()
+        if not value:
+            raise ValueError("Il nome della ricetta non puo' essere vuoto")
+        return value
+
+
+class RicettaUpdate(RicettaCreate):
+    attiva: bool = True
+
+
+class RicettaOut(BaseModel):
+    id: int
+    nome: str
+    articolo_id: int
+    articolo_nome: str
+    unita_misura: str
+    resa_attesa: Decimal
+    scarto_atteso: Decimal
+    attiva: bool
+
+
 class IngressoTracciatoRigaCreate(BaseModel):
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
