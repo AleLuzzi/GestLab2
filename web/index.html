@@ -553,6 +553,10 @@
               <span class="config-icon">⚙️</span>
               <span class="config-name">Lavorazione</span>
             </button>
+            <button class="config-card trace-nav-card" type="button" data-trace-tab="ricette" aria-selected="false">
+              <span class="config-icon">📋</span>
+              <span class="config-name">Ricette</span>
+            </button>
           </div>
         </div>
 
@@ -658,6 +662,101 @@
               <button class="btn primary" type="submit">Registra lavorazione</button>
             </div>
             <div id="trace-work-error" class="error"></div>
+          </form>
+        </div>
+
+        <div data-trace-section="ricette" class="trace-section" hidden>
+          <div class="panel-head">
+            <h3>Ricette del laboratorio</h3>
+            <button id="btn-trace-recipe-new" class="btn primary" type="button">Nuova ricetta</button>
+          </div>
+          <p class="trace-help">Configura ingredienti, allergeni e istruzioni usando i dati approvati dall'OSA. Le ricette disattivate restano nello storico e non sono disponibili per nuove lavorazioni.</p>
+          <div id="trace-recipes-error" class="error" role="alert"></div>
+          <div class="dashboard-table-wrap">
+            <table class="table trace-table">
+              <thead>
+                <tr>
+                  <th>Ricetta</th>
+                  <th>Prodotto</th>
+                  <th>Resa / scarto</th>
+                  <th>Ingredienti</th>
+                  <th>Allergeni</th>
+                  <th>Stato</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="trace-recipes-tbody"></tbody>
+            </table>
+          </div>
+
+          <form id="trace-recipe-form" class="form-card trace-recipe-form" hidden>
+            <h3 id="trace-recipe-form-title">Nuova ricetta</h3>
+            <input id="trace-recipe-id" type="hidden" />
+            <div class="row">
+              <label>Nome ricetta
+                <input id="trace-recipe-name" type="text" maxlength="120" required />
+              </label>
+              <label>Prodotto ottenuto
+                <select id="trace-recipe-product" required>
+                  <option value="">Seleziona articolo</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <label>Resa attesa
+                <input id="trace-recipe-yield" type="number" min="0.001" step="0.001" inputmode="decimal" required />
+              </label>
+              <label>Scarto atteso
+                <input id="trace-recipe-scrap" type="number" min="0" step="0.001" inputmode="decimal" value="0" required />
+              </label>
+              <label>Giorni di vita (facoltativi)
+                <input id="trace-recipe-life" type="number" min="1" step="1" inputmode="numeric" />
+              </label>
+            </div>
+            <div class="trace-recipe-ingredients">
+              <div class="trace-lines-header">
+                <h4>Ingredienti</h4>
+                <button id="btn-trace-recipe-add-ingredient" class="btn ghost" type="button">+ Aggiungi ingrediente</button>
+              </div>
+              <p class="trace-help">Indica quantità per kg di prodotto oppure percentuale. Gli ingredienti obbligatori devono essere presenti nella lavorazione.</p>
+              <div id="trace-recipe-ingredients" class="trace-recipe-ingredient-list"></div>
+            </div>
+            <fieldset class="trace-recipe-allergens">
+              <legend>Allergeni dichiarati</legend>
+              <div class="trace-recipe-allergen-grid">
+                <label><input type="checkbox" name="trace-recipe-allergen" value="glutine" /> Cereali contenenti glutine</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="crostacei" /> Crostacei</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="uova" /> Uova</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="pesce" /> Pesce</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="arachidi" /> Arachidi</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="soia" /> Soia</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="latte" /> Latte</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="frutta_a_guscio" /> Frutta a guscio</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="sedano" /> Sedano</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="senape" /> Senape</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="sesamo" /> Sesamo</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="solfiti" /> Solfiti</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="lupini" /> Lupini</label>
+                <label><input type="checkbox" name="trace-recipe-allergen" value="molluschi" /> Molluschi</label>
+              </div>
+            </fieldset>
+            <div class="row">
+              <label>Istruzioni di conservazione
+                <textarea id="trace-recipe-storage" maxlength="1000" rows="2"></textarea>
+              </label>
+              <label>Istruzioni di cottura
+                <textarea id="trace-recipe-cooking" maxlength="1000" rows="2"></textarea>
+              </label>
+            </div>
+            <label class="trace-work-confirmation">
+              <input id="trace-recipe-active" type="checkbox" checked />
+              Ricetta attiva e selezionabile per nuove lavorazioni
+            </label>
+            <div class="row">
+              <button id="btn-trace-recipe-save" class="btn primary" type="submit">Salva ricetta</button>
+              <button id="btn-trace-recipe-cancel" class="btn ghost" type="button">Annulla</button>
+            </div>
+            <div id="trace-recipe-form-error" class="error" role="alert"></div>
           </form>
         </div>
       </section>

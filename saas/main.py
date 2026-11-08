@@ -1167,6 +1167,8 @@ def _dati_etichetta(payload: EtichettaCreate, user: dict):
             ingredienti = dati_etichetta.get("ingredienti", "")
         if not override_allergeni:
             allergeni = dati_etichetta.get("allergeni", [])
+        if not conservazione:
+            conservazione = dati_etichetta.get("conservazione", "")
     else:
         plu = payload.plu
         prodotto = payload.prodotto

@@ -120,6 +120,62 @@ class EtichetteTests(unittest.TestCase):
         self.assertEqual(kwargs["ingredienti"], "Carne, Sale")
         self.assertEqual(kwargs["allergeni"], ["latte"])
 
+    def test_salsiccia_recipe_lot_generates_complete_operator_label(self):
+        lotto = {
+            "id": 12,
+            "articolo_id": 3,
+            "articolo": "Salsiccia fresca",
+            "codice_lotto": "12V",
+            "data_scadenza": "2026-11-18",
+            "data_tmc": None,
+            "origine": "Italia, suino",
+            "unita_misura": "kg",
+            "prezzo_unitario": "14.50",
+            "dati_etichetta": {
+                "ricetta_nome": "Salsiccia fresca",
+                "ingredienti": "Carne suina, sale, latte",
+                "allergeni": ["latte"],
+                "conservazione": "Conservare refrigerato a 0-4 C",
+            },
+        }
+        profilo = {
+            "ragione_sociale": "Macelleria Esempio",
+            "indirizzo": "Via Roma 1, Torino",
+            "laboratorio": "",
+            "partita_iva": "01234567890",
+        }
+
+        with (
+            patch("saas.main.tracciabilita_repo.dettaglio_lotto", return_value=lotto),
+            patch("saas.main.tenant_repo.dati_osa", return_value=profilo),
+        ):
+            response = genera_etichetta(
+                EtichettaCreate(lotto_id=12, peso="0.250"),
+                {"tenant_id": 42, "ruolo": "operatore"},
+            )
+
+        self.assertEqual(response.media_type, "application/pdf")
+        self.assertTrue(response.body.startswith(b"%PDF"))
+        for testo in (
+            "SALSICCIA FRESCA",
+            "14.50",
+            "PESO: 0.250 kg",
+            "LOTTO: 12V",
+            "SCADENZA: 2026-11-18",
+            "ORIGINE: Italia, suino",
+            "INGREDIENTI:",
+            "Carne suina, sale, latte",
+            "ALLERGENI:",
+            "LATTE",
+            "CONSERVAZIONE:",
+            "Conservare refrigerato a",
+            "0-4 C",
+            "Macelleria Esempio",
+            "01234567890",
+        ):
+            with self.subTest(testo=testo):
+                self.assertIn(testo.encode(), response.body)
+
     def test_operator_cannot_override_recipe_label_data(self):
         payload = EtichettaCreate(lotto_id=8, ingredienti="Override")
         with self.assertRaises(HTTPException) as raised:

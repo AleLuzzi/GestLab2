@@ -472,6 +472,32 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .trace-recipe-controls label { margin: 0; }
 .trace-recipe-controls .btn { min-height: 41px; margin-bottom: 0; }
+.trace-recipe-form { max-width: none; }
+.trace-recipe-form[hidden] { display: none; }
+.trace-recipe-ingredients { margin-top: 20px; }
+.trace-recipe-ingredient-list { display: grid; gap: 10px; }
+.trace-recipe-ingredient-row {
+  display: grid; grid-template-columns: minmax(180px, 2fr) minmax(170px, 1.3fr) minmax(100px, 0.8fr) auto auto;
+  align-items: end; gap: 10px; padding: 12px; background: var(--bg-3); border: 1px solid var(--border); border-radius: 9px;
+}
+.trace-recipe-ingredient-row label { min-width: 0; margin: 0; }
+.trace-recipe-ingredient-required {
+  display: flex; align-items: center; gap: 7px; white-space: nowrap; padding-bottom: 10px;
+}
+.trace-recipe-ingredient-required input,
+.trace-recipe-allergen-grid input { width: auto; margin: 0; accent-color: var(--accent); }
+.trace-recipe-allergens {
+  margin: 20px 0; padding: 14px; border: 1px solid var(--border); border-radius: 9px;
+}
+.trace-recipe-allergens legend { padding: 0 6px; color: var(--text-dim); }
+.trace-recipe-allergen-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px;
+}
+.trace-recipe-allergen-grid label {
+  display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text);
+}
+.trace-recipe-form .row > label { min-width: min(250px, 100%); }
+.trace-recipe-edit { white-space: nowrap; }
 .trace-work-confirmation {
   display: flex;
   align-items: center;
@@ -511,6 +537,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (max-width: 760px) {
   .sales-selection-fields { grid-template-columns: 1fr; }
   .trace-recipe-controls { grid-template-columns: 1fr; align-items: stretch; }
+  .trace-recipe-ingredient-row { grid-template-columns: 1fr; }
+  .trace-recipe-ingredient-required { padding-bottom: 0; }
   .sidebar {
     position: sticky;
     top: 61px;

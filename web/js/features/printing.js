@@ -127,6 +127,7 @@ async function loadLabelRecipeData(lottoId) {
     queue.disabled = false;
     return;
   }
+  $("et-conservazione").value = "";
   submit.disabled = true;
   queue.disabled = true;
 
@@ -136,8 +137,9 @@ async function loadLabelRecipeData(lottoId) {
     const dati = lotto.dati_etichetta || {};
     const allergeni = dati.allergeni || [];
     preview.textContent = dati.ricetta_nome
-      ? `Dati ricetta ${dati.ricetta_nome}: ingredienti ${dati.ingredienti || "non configurati"}; allergeni ${allergeni.length ? allergeni.join(", ") : "nessuno indicato"}.`
-      : "Lotto senza ricetta collegata: ingredienti e allergeni non sono configurati.";
+      ? `Dati ricetta ${dati.ricetta_nome}: ingredienti ${dati.ingredienti || "non configurati"}; allergeni ${allergeni.length ? allergeni.join(", ") : "nessuno indicato"}; conservazione ${dati.conservazione || "non configurata"}.`
+      : "Lotto senza ricetta collegata: ingredienti, allergeni e conservazione non sono configurati.";
+    $("et-conservazione").value = dati.conservazione || "";
     if (document.body.dataset.role === "admin") {
       $("et-ingredienti").value = dati.ingredienti || "";
       [...$("et-allergeni").options].forEach((option) => {

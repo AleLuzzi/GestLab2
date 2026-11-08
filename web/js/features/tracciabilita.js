@@ -131,6 +131,248 @@ function riempiSelectRicette() {
   select.value = selected;
 }
 
+function renderRicette() {
+  const tbody = $("trace-recipes-tbody");
+  const canManage = ["admin", "operatore"].includes(document.body.dataset.role);
+  $("btn-trace-recipe-new").hidden = !canManage;
+  tbody.replaceChildren();
+  if (!ricette.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 7;
+    cell.className = "empty";
+    cell.textContent = "Nessuna ricetta configurata.";
+    row.appendChild(cell);
+    tbody.appendChild(row);
+    riempiSelectRicette();
+    return;
+  }
+
+  ricette.forEach((ricetta) => {
+    const row = document.createElement("tr");
+    const ingredienti = ricetta.ingredienti.map((ingrediente) => {
+      const valore = ingrediente.tipo_quantita === "percentuale"
+        ? `${ingrediente.valore}%`
+        : `${ingrediente.valore} ${ingrediente.unita_misura}/kg`;
+      return `${ingrediente.articolo_nome}: ${valore}${ingrediente.obbligatorio ? "" : " (facoltativo)"}`;
+    }).join(", ");
+    const values = [
+      ricetta.nome,
+      `${ricetta.articolo_nome} (${ricetta.unita_misura})`,
+      `${ricetta.resa_attesa} / ${ricetta.scarto_atteso} ${ricetta.unita_misura}`,
+      ingredienti || "Nessun ingrediente",
+      ricetta.allergeni.join(", ") || "Nessuno indicato",
+      ricetta.attiva ? "Attiva" : "Disattivata",
+    ];
+    values.forEach((value) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+
+    const actions = document.createElement("td");
+    if (canManage) {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn ghost trace-recipe-edit";
+      edit.dataset.recipeId = String(ricetta.id);
+      edit.textContent = "Modifica";
+      actions.appendChild(edit);
+    } else {
+      actions.textContent = "Sola lettura";
+    }
+    row.appendChild(actions);
+    tbody.appendChild(row);
+  });
+  riempiSelectRicette();
+}
+
+function aggiungiIngredienteRicetta(ingrediente = null) {
+  const row = document.createElement("div");
+  row.className = "trace-recipe-ingredient-row";
+
+  const articleLabel = document.createElement("label");
+  articleLabel.textContent = "Articolo ingrediente";
+  const articleSelect = document.createElement("select");
+  articleSelect.dataset.field = "articolo_id";
+  articleSelect.required = true;
+  articleSelect.appendChild(creaOpzione("", "Seleziona ingrediente"));
+  articoliAttivi()
+    .filter((articolo) => articolo.utilizzabile_come_input)
+    .forEach((articolo) => articleSelect.appendChild(creaOpzione(
+      articolo.id,
+      `${articolo.nome}${articolo.codice ? ` · ${articolo.codice}` : ""} (${articolo.unita_misura})`,
+    )));
+  articleSelect.value = String(ingrediente?.articolo_id ?? "");
+  articleLabel.appendChild(articleSelect);
+  row.appendChild(articleLabel);
+
+  const typeLabel = document.createElement("label");
+  typeLabel.textContent = "Tipo quantità";
+  const typeSelect = document.createElement("select");
+  typeSelect.dataset.field = "tipo_quantita";
+  typeSelect.appendChild(creaOpzione("quantita", "Quantità per kg prodotto"));
+  typeSelect.appendChild(creaOpzione("percentuale", "Percentuale"));
+  typeSelect.value = ingrediente?.tipo_quantita ?? "quantita";
+  typeLabel.appendChild(typeSelect);
+  row.appendChild(typeLabel);
+
+  const valueLabel = document.createElement("label");
+  valueLabel.textContent = "Valore";
+  const valueInput = document.createElement("input");
+  valueInput.dataset.field = "valore";
+  valueInput.type = "number";
+  valueInput.min = "0.001";
+  valueInput.step = "0.001";
+  valueInput.inputMode = "decimal";
+  valueInput.required = true;
+  valueInput.value = String(ingrediente?.valore ?? "");
+  typeSelect.addEventListener("change", () => {
+    if (typeSelect.value === "percentuale") {
+      valueInput.max = "100";
+    } else {
+      valueInput.removeAttribute("max");
+    }
+  });
+  typeSelect.dispatchEvent(new Event("change"));
+  valueLabel.appendChild(valueInput);
+  row.appendChild(valueLabel);
+
+  const requiredLabel = document.createElement("label");
+  requiredLabel.className = "trace-recipe-ingredient-required";
+  const requiredInput = document.createElement("input");
+  requiredInput.dataset.field = "obbligatorio";
+  requiredInput.type = "checkbox";
+  requiredInput.checked = ingrediente?.obbligatorio ?? true;
+  requiredLabel.append(requiredInput, document.createTextNode("Obbligatorio"));
+  row.appendChild(requiredLabel);
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "btn danger";
+  remove.textContent = "Rimuovi";
+  remove.setAttribute("aria-label", "Rimuovi ingrediente");
+  remove.addEventListener("click", () => row.remove());
+  row.appendChild(remove);
+  $("trace-recipe-ingredients").appendChild(row);
+}
+
+function resetFormRicetta() {
+  $("trace-recipe-form").reset();
+  $("trace-recipe-id").value = "";
+  $("trace-recipe-scrap").value = "0";
+  $("trace-recipe-active").checked = true;
+  $("trace-recipe-form-title").textContent = "Nuova ricetta";
+  $("btn-trace-recipe-save").textContent = "Salva ricetta";
+  $("trace-recipe-ingredients").replaceChildren();
+  impostaMessaggio("trace-recipe-form-error");
+}
+
+function apriFormRicetta(ricetta = null) {
+  resetFormRicetta();
+  if (ricetta) {
+    $("trace-recipe-id").value = String(ricetta.id);
+    $("trace-recipe-name").value = ricetta.nome;
+    $("trace-recipe-product").value = String(ricetta.articolo_id);
+    $("trace-recipe-yield").value = String(ricetta.resa_attesa);
+    $("trace-recipe-scrap").value = String(ricetta.scarto_atteso);
+    $("trace-recipe-life").value = ricetta.giorni_vita ?? "";
+    $("trace-recipe-storage").value = ricetta.istruzioni_conservazione ?? "";
+    $("trace-recipe-cooking").value = ricetta.istruzioni_cottura ?? "";
+    $("trace-recipe-active").checked = ricetta.attiva;
+    $("trace-recipe-form-title").textContent = `Modifica ricetta: ${ricetta.nome}`;
+    $("btn-trace-recipe-save").textContent = "Salva modifiche";
+    document.querySelectorAll('input[name="trace-recipe-allergen"]').forEach((input) => {
+      input.checked = ricetta.allergeni.includes(input.value);
+    });
+    ricetta.ingredienti.forEach(aggiungiIngredienteRicetta);
+  }
+  $("trace-recipe-form").hidden = false;
+  $("trace-recipe-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function aggiornaRicette() {
+  ricette = await api("/api/v1/ricette");
+  renderRicette();
+}
+
+function configuraFormRicette() {
+  riempiSelectArticoli($("trace-recipe-product"));
+  $("trace-recipes-tbody").addEventListener("click", (event) => {
+    const button = event.target.closest(".trace-recipe-edit");
+    if (!button) return;
+    const ricetta = ricette.find((item) => String(item.id) === button.dataset.recipeId);
+    if (ricetta) apriFormRicetta(ricetta);
+  });
+  $("btn-trace-recipe-new").addEventListener("click", () => apriFormRicetta());
+  $("btn-trace-recipe-add-ingredient").addEventListener("click", () => aggiungiIngredienteRicetta());
+  $("btn-trace-recipe-cancel").addEventListener("click", () => {
+    $("trace-recipe-form").hidden = true;
+    resetFormRicetta();
+  });
+  $("trace-recipe-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    impostaMessaggio("trace-recipe-form-error");
+    const ingredienti = [...$("trace-recipe-ingredients").querySelectorAll(".trace-recipe-ingredient-row")];
+    const articoloIds = ingredienti.map((row) => row.querySelector('[data-field="articolo_id"]').value);
+    if (articoloIds.includes("")) {
+      impostaMessaggio("trace-recipe-form-error", "Seleziona un articolo per ogni ingrediente.");
+      return;
+    }
+    if (new Set(articoloIds).size !== articoloIds.length) {
+      impostaMessaggio("trace-recipe-form-error", "Ogni articolo può comparire una sola volta nella ricetta.");
+      return;
+    }
+    const payload = {
+      nome: $("trace-recipe-name").value.trim(),
+      articolo_id: Number($("trace-recipe-product").value),
+      resa_attesa: $("trace-recipe-yield").value,
+      scarto_atteso: $("trace-recipe-scrap").value,
+      ingredienti: ingredienti.map((row) => ({
+        articolo_id: Number(row.querySelector('[data-field="articolo_id"]').value),
+        tipo_quantita: row.querySelector('[data-field="tipo_quantita"]').value,
+        valore: row.querySelector('[data-field="valore"]').value,
+        obbligatorio: row.querySelector('[data-field="obbligatorio"]').checked,
+      })),
+      allergeni: [...document.querySelectorAll('input[name="trace-recipe-allergen"]:checked')]
+        .map((input) => input.value),
+      giorni_vita: $("trace-recipe-life").value ? Number($("trace-recipe-life").value) : null,
+      istruzioni_conservazione: $("trace-recipe-storage").value.trim() || null,
+      istruzioni_cottura: $("trace-recipe-cooking").value.trim() || null,
+    };
+    const recipeId = $("trace-recipe-id").value;
+    if (recipeId) payload.attiva = $("trace-recipe-active").checked;
+
+    const saveButton = $("btn-trace-recipe-save");
+    impostaMessaggio("trace-recipes-error");
+    saveButton.disabled = true;
+    try {
+      await api(
+        recipeId ? `/api/v1/ricette/${encodeURIComponent(recipeId)}` : "/api/v1/ricette",
+        {
+          method: recipeId ? "PUT" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      $("trace-recipe-form").hidden = true;
+      resetFormRicetta();
+      try {
+        await aggiornaRicette();
+        impostaMessaggio("trace-recipes-error", "Ricetta salvata.", true);
+      } catch (error) {
+        impostaMessaggio(
+          "trace-recipes-error",
+          `Ricetta salvata, ma impossibile aggiornare l'elenco: ${error.message}`,
+        );
+      }
+    } catch (error) {
+      impostaMessaggio("trace-recipe-form-error", `Impossibile salvare la ricetta: ${error.message}`);
+    } finally {
+      saveButton.disabled = false;
+    }
+  });
+}
+
 function creaRiga(containerId, fields, selectOptions, removeLabel) {
   const row = document.createElement("div");
   row.className = "trace-line";
@@ -714,6 +956,7 @@ async function mostraDettaglioLotto(lottoId, daInput = false) {
 export async function loadTracciabilita() {
   impostaMessaggio("trace-work-data-error");
   impostaMessaggio("trace-lots-error");
+  impostaMessaggio("trace-recipes-error");
   const soloDisponibili = $("trace-only-available").checked;
   const filtri = new URLSearchParams();
   if (soloDisponibili) filtri.set("solo_disponibili", "true");
@@ -762,8 +1005,13 @@ export async function loadTracciabilita() {
   } else {
     ricette = [];
     erroriDati.push(`ricette: ${risultati[4].reason?.message || risultati[4].reason}`);
+    impostaMessaggio(
+      "trace-recipes-error",
+      `Impossibile caricare le ricette: ${risultati[4].reason?.message || risultati[4].reason}`,
+    );
   }
-  riempiSelectRicette();
+  riempiSelectArticoli($("trace-recipe-product"));
+  renderRicette();
   lottiCaricati = risultati[1].status === "fulfilled"
     && risultati[2].status === "fulfilled"
     && risultati[4].status === "fulfilled";
@@ -785,7 +1033,7 @@ function attivaTab(nome) {
     section.hidden = !active;
     section.classList.toggle("active", active);
   });
-  if (nome === "lavorazione" && !lottiCaricati) loadTracciabilita();
+  if (["lavorazione", "ricette"].includes(nome) && !lottiCaricati) loadTracciabilita();
 }
 
 function configuraFormLavorazione() {
@@ -937,4 +1185,5 @@ export function initTracciabilita() {
   $("trace-date-to").addEventListener("change", loadTracciabilita);
   $("btn-trace-refresh").addEventListener("click", loadTracciabilita);
   configuraFormLavorazione();
+  configuraFormRicette();
 }
