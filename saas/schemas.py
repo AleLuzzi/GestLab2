@@ -137,11 +137,34 @@ class ArticoloOut(BaseModel):
     utilizzabile_come_input: bool
 
 
+class RicettaIngredienteCreate(BaseModel):
+    articolo_id: int = Field(..., gt=0)
+    tipo_quantita: str = Field(..., pattern="^(quantita|percentuale)$")
+    valore: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    obbligatorio: bool = True
+
+    @model_validator(mode="after")
+    def valida_percentuale(self):
+        if self.tipo_quantita == "percentuale" and self.valore > 100:
+            raise ValueError("La percentuale dell'ingrediente non puo' superare 100")
+        return self
+
+
+class RicettaIngredienteOut(BaseModel):
+    articolo_id: int
+    articolo_nome: str
+    unita_misura: str
+    tipo_quantita: str
+    valore: Decimal
+    obbligatorio: bool
+
+
 class RicettaCreate(BaseModel):
     nome: str = Field(..., min_length=1, max_length=120)
     articolo_id: int = Field(..., gt=0)
     resa_attesa: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     scarto_atteso: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=3)
+    ingredienti: list[RicettaIngredienteCreate] = Field(default_factory=list)
 
     @field_validator("nome")
     @classmethod
@@ -149,6 +172,14 @@ class RicettaCreate(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Il nome della ricetta non puo' essere vuoto")
+        return value
+
+    @field_validator("ingredienti")
+    @classmethod
+    def valida_ingredienti_univoci(cls, value):
+        articolo_ids = [ingrediente.articolo_id for ingrediente in value]
+        if len(articolo_ids) != len(set(articolo_ids)):
+            raise ValueError("Ogni articolo puo' comparire una sola volta nella ricetta")
         return value
 
 
@@ -165,6 +196,7 @@ class RicettaOut(BaseModel):
     resa_attesa: Decimal
     scarto_atteso: Decimal
     attiva: bool
+    ingredienti: list[RicettaIngredienteOut] = Field(default_factory=list)
 
 
 class IngressoTracciatoRigaCreate(BaseModel):

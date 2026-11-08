@@ -435,9 +435,13 @@ def crea_ricetta(
         payload.articolo_id,
         payload.resa_attesa,
         payload.scarto_atteso,
+        payload.ingredienti,
     )
     if ricetta is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo prodotto non trovato")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Articolo prodotto o ingrediente input non trovato o non utilizzabile",
+        )
     return ricetta
 
 
@@ -456,9 +460,13 @@ def aggiorna_ricetta(
         payload.resa_attesa,
         payload.scarto_atteso,
         payload.attiva,
+        payload.ingredienti,
     )
     if ricetta is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ricetta o articolo non trovato")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Ricetta, articolo prodotto o ingrediente input non trovato o non utilizzabile",
+        )
     return ricetta
 
 

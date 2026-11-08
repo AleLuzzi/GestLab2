@@ -211,7 +211,81 @@ def _ricetta_da_riga(row):
         "resa_attesa": str(row[5]),
         "scarto_atteso": str(row[6]),
         "attiva": bool(row[7]),
+        "ingredienti": [],
     }
+
+
+def _ingredienti_da_righe(rows):
+    return [
+        {
+            "articolo_id": row[1],
+            "articolo_nome": row[2],
+            "unita_misura": row[3],
+            "tipo_quantita": row[4],
+            "valore": str(row[5]),
+            "obbligatorio": bool(row[6]),
+        }
+        for row in rows
+    ]
+
+
+def _carica_ingredienti_ricetta(cursor, tenant_id, ricetta_id):
+    cursor.execute(
+        "SELECT ri.ricetta_id, ri.articolo_id, a.nome, a.unita_misura, "
+        "ri.tipo_quantita, ri.valore, ri.obbligatorio "
+        "FROM ricetta_ingredienti ri JOIN articoli a "
+        "ON a.tenant_id = ri.tenant_id AND a.id = ri.articolo_id "
+        "WHERE ri.tenant_id = %s AND ri.ricetta_id = %s "
+        "ORDER BY ri.posizione",
+        (tenant_id, ricetta_id),
+    )
+    return _ingredienti_da_righe(cursor.fetchall())
+
+
+def _salva_ingredienti_ricetta(cursor, tenant_id, ricetta_id, ingredienti):
+    ingredienti = list(ingredienti or [])
+    articolo_ids = [
+        ingrediente["articolo_id"]
+        if isinstance(ingrediente, dict)
+        else ingrediente.articolo_id
+        for ingrediente in ingredienti
+    ]
+    if len(articolo_ids) != len(set(articolo_ids)):
+        raise ValueError("Ogni articolo puo' comparire una sola volta nella ricetta")
+
+    if articolo_ids:
+        placeholders = ", ".join(["%s"] * len(articolo_ids))
+        cursor.execute(
+            "SELECT id FROM articoli WHERE tenant_id = %s AND attivo = 1 "
+            "AND utilizzabile_come_input = 1 "
+            f"AND id IN ({placeholders}) FOR UPDATE",
+            (tenant_id, *articolo_ids),
+        )
+        articoli_validi = {row[0] for row in cursor.fetchall()}
+        if articoli_validi != set(articolo_ids):
+            return False
+
+    cursor.execute(
+        "DELETE FROM ricetta_ingredienti WHERE tenant_id = %s AND ricetta_id = %s",
+        (tenant_id, ricetta_id),
+    )
+    for posizione, ingrediente in enumerate(ingredienti, start=1):
+        valore = ingrediente if isinstance(ingrediente, dict) else ingrediente.model_dump()
+        cursor.execute(
+            "INSERT INTO ricetta_ingredienti "
+            "(tenant_id, ricetta_id, articolo_id, posizione, tipo_quantita, "
+            "valore, obbligatorio) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (
+                tenant_id,
+                ricetta_id,
+                valore["articolo_id"],
+                posizione,
+                valore["tipo_quantita"],
+                valore["valore"],
+                int(valore["obbligatorio"]),
+            ),
+        )
+    return True
 
 
 def lista_ricette(tenant_id):
@@ -225,10 +299,34 @@ def lista_ricette(tenant_id):
             "WHERE r.tenant_id = %s ORDER BY r.nome, r.id",
             (tenant_id,),
         )
-        return [_ricetta_da_riga(row) for row in cursor.fetchall()]
+        ricette = [_ricetta_da_riga(row) for row in cursor.fetchall()]
+        if not ricette:
+            return ricette
+
+        cursor.execute(
+            "SELECT ri.ricetta_id, ri.articolo_id, a.nome, a.unita_misura, "
+            "ri.tipo_quantita, ri.valore, ri.obbligatorio "
+            "FROM ricetta_ingredienti ri JOIN articoli a "
+            "ON a.tenant_id = ri.tenant_id AND a.id = ri.articolo_id "
+            "JOIN ricette r "
+            "ON r.tenant_id = ri.tenant_id AND r.id = ri.ricetta_id "
+            "WHERE ri.tenant_id = %s "
+            "ORDER BY ri.ricetta_id, ri.posizione",
+            (tenant_id,),
+        )
+        ingredienti_per_ricetta = {}
+        for row in cursor.fetchall():
+            ingredienti_per_ricetta.setdefault(row[0], []).append(row)
+        for ricetta in ricette:
+            ricetta["ingredienti"] = _ingredienti_da_righe(
+                ingredienti_per_ricetta.get(ricetta["id"], [])
+            )
+        return ricette
 
 
-def crea_ricetta(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso):
+def crea_ricetta(
+    tenant_id, nome, articolo_id, resa_attesa, scarto_atteso, ingredienti=None
+):
     with connection() as conn:
         cursor = conn.cursor()
         try:
@@ -248,6 +346,11 @@ def crea_ricetta(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso):
                 (tenant_id, nome.strip(), articolo_id, resa_attesa, scarto_atteso),
             )
             ricetta_id = cursor.lastrowid
+            if not _salva_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id, ingredienti
+            ):
+                conn.rollback()
+                return None
             cursor.execute(
                 "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
                 "r.resa_attesa, r.scarto_atteso, r.attiva "
@@ -259,15 +362,26 @@ def crea_ricetta(tenant_id, nome, articolo_id, resa_attesa, scarto_atteso):
             row = cursor.fetchone()
             if row is None:
                 raise RuntimeError("Ricetta creata ma non rileggibile")
+            ricetta = _ricetta_da_riga(row)
+            ricetta["ingredienti"] = _carica_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id
+            )
             conn.commit()
-            return _ricetta_da_riga(row)
+            return ricetta
         except Exception:
             conn.rollback()
             raise
 
 
 def aggiorna_ricetta(
-    tenant_id, ricetta_id, nome, articolo_id, resa_attesa, scarto_atteso, attiva
+    tenant_id,
+    ricetta_id,
+    nome,
+    articolo_id,
+    resa_attesa,
+    scarto_atteso,
+    attiva,
+    ingredienti=None,
 ):
     with connection() as conn:
         cursor = conn.cursor()
@@ -276,6 +390,14 @@ def aggiorna_ricetta(
                 "SELECT id FROM articoli "
                 "WHERE tenant_id = %s AND id = %s AND attivo = 1 FOR UPDATE",
                 (tenant_id, articolo_id),
+            )
+            if cursor.fetchone() is None:
+                conn.rollback()
+                return None
+
+            cursor.execute(
+                "SELECT id FROM ricette WHERE tenant_id = %s AND id = %s FOR UPDATE",
+                (tenant_id, ricetta_id),
             )
             if cursor.fetchone() is None:
                 conn.rollback()
@@ -295,6 +417,11 @@ def aggiorna_ricetta(
                     ricetta_id,
                 ),
             )
+            if not _salva_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id, ingredienti
+            ):
+                conn.rollback()
+                return None
             cursor.execute(
                 "SELECT r.id, r.nome, r.articolo_id, a.nome, a.unita_misura, "
                 "r.resa_attesa, r.scarto_atteso, r.attiva "
@@ -307,8 +434,12 @@ def aggiorna_ricetta(
             if row is None:
                 conn.rollback()
                 return None
+            ricetta = _ricetta_da_riga(row)
+            ricetta["ingredienti"] = _carica_ingredienti_ricetta(
+                cursor, tenant_id, ricetta_id
+            )
             conn.commit()
-            return _ricetta_da_riga(row)
+            return ricetta
         except Exception:
             conn.rollback()
             raise
