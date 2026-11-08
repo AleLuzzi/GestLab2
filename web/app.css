@@ -462,6 +462,27 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   gap: 16px;
 }
 #trace-work-form { max-width: none; }
+.trace-recipe-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.6fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin: 18px 0 8px;
+}
+.trace-recipe-controls label { margin: 0; }
+.trace-recipe-controls .btn { min-height: 41px; margin-bottom: 0; }
+.trace-work-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  color: var(--text);
+}
+.trace-work-confirmation input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
 .trace-work-column { min-width: 0; }
 .trace-work-column .trace-lines-header { flex-wrap: wrap; }
 .trace-work-column .trace-lines-header .btn { padding: 8px 10px; }
@@ -488,6 +509,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 @media (max-width: 760px) {
   .sales-selection-fields { grid-template-columns: 1fr; }
+  .trace-recipe-controls { grid-template-columns: 1fr; align-items: stretch; }
   .sidebar {
     position: sticky;
     top: 61px;
