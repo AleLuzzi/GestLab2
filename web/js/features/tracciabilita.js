@@ -933,8 +933,26 @@ function renderDettaglio(dettaglio) {
       forward.appendChild(outputList);
     });
   } else {
-    appendTesto(forward, "p", "trace-muted", "Nessuna lavorazione successiva registrata.");
+    if (!dettaglio.vendite.length) {
+      appendTesto(forward, "p", "trace-muted", "Nessuna lavorazione successiva registrata.");
+    }
   }
+  appendTesto(forward, "h5", "", "Vendite collegate");
+  const salesList = document.createElement("ul");
+  if (dettaglio.vendite.length) {
+    dettaglio.vendite.forEach((vendita) => {
+      const tipoDocumento = vendita.tipo_documento === "DDT" ? "DDT" : "Ricevuta";
+      appendTesto(
+        salesList,
+        "li",
+        "",
+        `${tipoDocumento} n. ${vendita.numero} · ${formattaData(vendita.data)} · ${vendita.cliente || "Banco"} — ${formattaQuantita(vendita.quantita, vendita.unita_misura)}`,
+      );
+    });
+  } else {
+    appendTesto(salesList, "li", "trace-muted", "Nessuna vendita registrata.");
+  }
+  forward.appendChild(salesList);
   container.appendChild(forward);
 
   const movements = document.createElement("div");

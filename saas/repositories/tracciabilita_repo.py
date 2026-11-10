@@ -987,6 +987,32 @@ def dettaglio_lotto(tenant_id, lotto_id):
                     }
                 )
         risultato["lavorazioni_successive"] = list(lavorazioni_successive.values())
+        cursor.execute(
+            "SELECT v.id, v.numero, v.data_vendita, v.tipo_documento, "
+            "s.denominazione, SUM(rv.quantita), rv.unita_misura "
+            "FROM righe_vendita rv "
+            "JOIN vendite v "
+            "ON v.tenant_id = rv.tenant_id AND v.id = rv.vendita_id "
+            "LEFT JOIN soggetti s "
+            "ON s.tenant_id = v.tenant_id AND s.id = v.cliente_id "
+            "WHERE rv.tenant_id = %s AND rv.lotto_id = %s "
+            "GROUP BY v.id, v.numero, v.data_vendita, v.tipo_documento, "
+            "s.denominazione, rv.unita_misura "
+            "ORDER BY v.data_vendita, v.numero, v.id",
+            (tenant_id, lotto_id),
+        )
+        risultato["vendite"] = [
+            {
+                "id": item[0],
+                "numero": item[1],
+                "data": item[2],
+                "tipo_documento": item[3],
+                "cliente": item[4],
+                "quantita": str(item[5]),
+                "unita_misura": item[6],
+            }
+            for item in cursor.fetchall()
+        ]
         if row[15] is not None:
             ricetta_id = _row_value(row, 26)
             if ricetta_id is not None:

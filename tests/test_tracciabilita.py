@@ -522,6 +522,67 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertIn("li.tenant_id = %s AND li.lotto_id = %s", forward_query)
         self.assertEqual(params, (42, 7))
 
+    def test_lot_detail_includes_tenant_scoped_forward_sales_genealogy(self):
+        lotto_row = [None] * 25
+        lotto_row[0] = 7
+        lotto_row[1] = 3
+        lotto_row[2] = "Mezzena"
+        lotto_row[3] = "A"
+        lotto_row[4] = 1
+        lotto_row[5] = "1A"
+        lotto_row[6] = date(2026, 10, 3)
+        lotto_row[11] = Decimal("10")
+        lotto_row[12] = Decimal("8")
+        lotto_row[13] = "kg"
+        vendita_row = (
+            31,
+            8,
+            date(2026, 10, 5),
+            "DDT",
+            "Cliente Esempio",
+            Decimal("1.250"),
+            "kg",
+        )
+        cursor = FakeCursor(
+            lambda query, params: (
+                [tuple(lotto_row)]
+                if query.startswith("SELECT l.id, l.articolo_id")
+                else [vendita_row]
+                if query.startswith("SELECT v.id, v.numero, v.data_vendita")
+                else []
+            )
+        )
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            dettaglio = tracciabilita_repo.dettaglio_lotto(42, 7)
+
+        self.assertEqual(
+            dettaglio["vendite"],
+            [
+                {
+                    "id": 31,
+                    "numero": 8,
+                    "data": date(2026, 10, 5),
+                    "tipo_documento": "DDT",
+                    "cliente": "Cliente Esempio",
+                    "quantita": "1.250",
+                    "unita_misura": "kg",
+                }
+            ],
+        )
+        vendite_query, params = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("SELECT v.id, v.numero, v.data_vendita")
+        )
+        self.assertIn("rv.tenant_id = %s AND rv.lotto_id = %s", vendite_query)
+        self.assertIn("v.tenant_id = rv.tenant_id", vendite_query)
+        self.assertEqual(params, (42, 7))
+
     def test_work_output_rejects_both_expiration_and_best_before_dates(self):
         with self.assertRaises(ValidationError):
             LavorazioneCreate(
