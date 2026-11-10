@@ -894,6 +894,14 @@ def lista_lotti_tracciati(
     )
 
 
+@app.get("/api/v1/tracciabilita/inventario")
+def riepilogo_inventario_tracciato(
+    user: dict = Depends(auth.get_current_user),
+):
+    """Restituisce le giacenze teoriche sommate per articolo del tenant."""
+    return tracciabilita_repo.riepilogo_inventario(user["tenant_id"])
+
+
 @app.get("/api/v1/tracciabilita/lotti/{lotto_id}")
 def dettaglio_lotto_tracciato(
     lotto_id: int,

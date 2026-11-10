@@ -563,6 +563,22 @@
         <div id="trace-detail" class="trace-detail" hidden>        </div>
 
         <div data-trace-section="lotti" class="trace-section" hidden>
+          <div class="trace-inventory">
+            <h3>Confronto inventario per articolo</h3>
+            <p class="trace-help">La giacenza teorica somma tutti i lotti. Inserisci il conteggio fisico per vedere lo scostamento; il confronto non modifica le giacenze.</p>
+            <table class="table trace-table">
+              <thead>
+                <tr>
+                  <th>Articolo</th>
+                  <th>Giacenza teorica</th>
+                  <th>Conteggio fisico</th>
+                  <th>Scostamento</th>
+                </tr>
+              </thead>
+              <tbody id="trace-inventory-tbody"></tbody>
+            </table>
+            <div id="trace-inventory-error" class="error"></div>
+          </div>
           <div class="trace-controls">
             <label class="trace-search-field">
               <span>Filtra lotti</span>

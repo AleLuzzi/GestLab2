@@ -13,6 +13,7 @@ from core.services import printing as printing_service
 from saas.repositories import tracciabilita_repo
 from saas.main import (
     lista_lotti_tracciati,
+    riepilogo_inventario_tracciato,
     registra_ingresso_tracciato,
     registra_lavorazione_tracciata,
     rettifica_lotto_tracciato,
@@ -62,6 +63,58 @@ class FakeConnection:
 
 
 class TracciabilitaTests(unittest.TestCase):
+    def test_inventory_summary_sums_lot_stock_by_article_and_tenant(self):
+        cursor = FakeCursor(
+            lambda query, params: [
+                (3, "CST", "Costata", "kg", Decimal("9.250")),
+                (4, "SNG", "Sanguinaccio", "pz", Decimal("0.000")),
+            ]
+        )
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            result = tracciabilita_repo.riepilogo_inventario(42)
+
+        self.assertEqual(
+            result,
+            [
+                {
+                    "articolo_id": 3,
+                    "codice": "CST",
+                    "articolo": "Costata",
+                    "unita_misura": "kg",
+                    "quantita_teorica": "9.250",
+                },
+                {
+                    "articolo_id": 4,
+                    "codice": "SNG",
+                    "articolo": "Sanguinaccio",
+                    "unita_misura": "pz",
+                    "quantita_teorica": "0.000",
+                },
+            ],
+        )
+        query, params = cursor.statements[0]
+        self.assertIn("COALESCE(SUM(l.quantita_disponibile), 0)", query)
+        self.assertIn("LEFT JOIN lotti", query)
+        self.assertIn("WHERE a.tenant_id = %s", query)
+        self.assertEqual(params, (42,))
+
+    def test_inventory_endpoint_uses_authenticated_tenant(self):
+        expected = [{"articolo_id": 3, "quantita_teorica": "9.250"}]
+        with patch.object(
+            tracciabilita_repo,
+            "riepilogo_inventario",
+            return_value=expected,
+        ) as inventory:
+            result = riepilogo_inventario_tracciato({"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        inventory.assert_called_once_with(42)
+
     def test_rectification_updates_V_lot_and_records_delta_and_reason(self):
         def handle(query, params):
             if query.startswith("SELECT quantita_disponibile FROM lotti"):

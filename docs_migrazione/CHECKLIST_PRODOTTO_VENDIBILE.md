@@ -74,7 +74,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 - [x] Realizzare la UI/API di rettifica per lotto, delta e motivo (inventario, calo, reso o errore). La scheda lotto consente ad admin e operatori di registrare delta positivi o negativi con motivo; l'API ricava il tenant dal JWT.
 - [x] Aggiornare giacenza e movimento `RETTIFICA` in modo coerente e tracciabile; non consentire di correggere la giacenza modificando il lotto. Aggiornamento e movimento con motivo avvengono nella stessa transazione; migrazione additiva `20261108_motivo_rettifica_lotto.sql`.
-- [ ] Mostrare il confronto tra conteggio fisico per articolo e quantità teorica, sommando i lotti.
+- [x] Mostrare il confronto tra conteggio fisico per articolo e quantità teorica, sommando i lotti. La sezione Lotti mostra per ogni articolo la giacenza teorica aggregata tenant-scoped, consente di inserire il conteggio fisico e calcola lo scostamento senza modificare la giacenza; coperto da `tests/test_tracciabilita.py`.
 - [x] Testare, tra gli altri casi, una rettifica di −0,250 kg su un lotto `V` e verificare giacenza e storico movimenti. Coperta da `tests/test_tracciabilita.py`, inclusi giacenza insufficiente e rollback.
 
 ### HACCP lite (opzionale, solo su richiesta del pilota)

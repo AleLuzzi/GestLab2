@@ -635,6 +635,32 @@ def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
         return rows
 
 
+def riepilogo_inventario(tenant_id):
+    """Somma la giacenza teorica di tutti i lotti per articolo del tenant."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT a.id, a.codice, a.nome, a.unita_misura, "
+            "COALESCE(SUM(l.quantita_disponibile), 0) "
+            "FROM articoli a LEFT JOIN lotti l "
+            "ON l.tenant_id = a.tenant_id AND l.articolo_id = a.id "
+            "WHERE a.tenant_id = %s "
+            "GROUP BY a.id, a.codice, a.nome, a.unita_misura "
+            "ORDER BY a.nome, a.id",
+            (tenant_id,),
+        )
+        return [
+            {
+                "articolo_id": row[0],
+                "codice": row[1],
+                "articolo": row[2],
+                "unita_misura": row[3],
+                "quantita_teorica": str(row[4]),
+            }
+            for row in cursor.fetchall()
+        ]
+
+
 def lotti_disponibili_vendita(tenant_id):
     """Restituisce i lotti vendibili ordinati per FEFO."""
     with connection() as conn:

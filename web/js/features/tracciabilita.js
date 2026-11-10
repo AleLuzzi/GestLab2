@@ -6,6 +6,8 @@ let lotti = [];
 let lottiDisponibili = [];
 let dipendenti = [];
 let ricette = [];
+let inventario = [];
+const conteggiFisici = new Map();
 let lottiCaricati = false;
 let cronologiaDettaglio = [];
 let dettaglioCorrente = null;
@@ -626,6 +628,51 @@ function renderLotti() {
   });
 }
 
+function aggiornaScostamentoInventario(input) {
+  const row = input.closest("tr");
+  const scostamento = row.querySelector("[data-inventory-delta]");
+  if (!input.value || !input.validity.valid) {
+    scostamento.textContent = "—";
+    return;
+  }
+  const teorica = Number(input.dataset.quantitaTeorica);
+  const fisica = Number(input.value);
+  const delta = Math.round((fisica - teorica) * 1000) / 1000;
+  scostamento.textContent = formattaQuantita(delta, input.dataset.unitaMisura);
+}
+
+function renderInventario() {
+  const tbody = $("trace-inventory-tbody");
+  tbody.innerHTML = inventario.length
+    ? inventario.map((riga) => {
+      const conteggio = conteggiFisici.get(String(riga.articolo_id)) ?? "";
+      return `
+        <tr>
+          <td>${esc(riga.articolo)}${riga.codice ? ` · ${esc(riga.codice)}` : ""}</td>
+          <td>${esc(formattaQuantita(riga.quantita_teorica, riga.unita_misura))}</td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              step="0.001"
+              inputmode="decimal"
+              aria-label="Conteggio fisico: ${esc(riga.articolo)}"
+              data-inventory-article-id="${Number(riga.articolo_id)}"
+              data-quantita-teorica="${esc(riga.quantita_teorica)}"
+              data-unita-misura="${esc(riga.unita_misura)}"
+              value="${esc(conteggio)}"
+            />
+          </td>
+          <td data-inventory-delta>—</td>
+        </tr>`;
+    }).join("")
+    : '<tr><td colspan="4" class="empty">Nessun articolo disponibile per il confronto.</td></tr>';
+
+  tbody.querySelectorAll("[data-inventory-article-id]").forEach((input) => {
+    aggiornaScostamentoInventario(input);
+  });
+}
+
 function appendTesto(parent, tag, className, text) {
   const element = document.createElement(tag);
   if (className) element.className = className;
@@ -969,6 +1016,7 @@ export async function loadTracciabilita() {
     api("/api/v1/articoli"),
     api(`/api/v1/tracciabilita/lotti${query ? `?${query}` : ""}`),
     api("/api/v1/tracciabilita/lotti?solo_disponibili=true"),
+    api("/api/v1/tracciabilita/inventario"),
     api("/api/v1/dipendenti"),
     api("/api/v1/ricette"),
   ]);
@@ -995,26 +1043,38 @@ export async function loadTracciabilita() {
     erroriDati.push(`lotti disponibili: ${risultati[2].reason?.message || risultati[2].reason}`);
   }
   if (risultati[3].status === "fulfilled") {
-    dipendenti = risultati[3].value;
+    inventario = risultati[3].value;
+    impostaMessaggio("trace-inventory-error");
+    renderInventario();
   } else {
-    dipendenti = [];
-    erroriDati.push(`dipendenti: ${risultati[3].reason?.message || risultati[3].reason}`);
+    inventario = [];
+    $("trace-inventory-tbody").innerHTML = '<tr><td colspan="4" class="empty">Errore nel caricamento del confronto inventariale.</td></tr>';
+    impostaMessaggio(
+      "trace-inventory-error",
+      `Impossibile caricare il confronto inventariale: ${risultati[3].reason?.message || risultati[3].reason}`,
+    );
   }
   if (risultati[4].status === "fulfilled") {
-    ricette = risultati[4].value;
+    dipendenti = risultati[4].value;
+  } else {
+    dipendenti = [];
+    erroriDati.push(`dipendenti: ${risultati[4].reason?.message || risultati[4].reason}`);
+  }
+  if (risultati[5].status === "fulfilled") {
+    ricette = risultati[5].value;
   } else {
     ricette = [];
-    erroriDati.push(`ricette: ${risultati[4].reason?.message || risultati[4].reason}`);
+    erroriDati.push(`ricette: ${risultati[5].reason?.message || risultati[5].reason}`);
     impostaMessaggio(
       "trace-recipes-error",
-      `Impossibile caricare le ricette: ${risultati[4].reason?.message || risultati[4].reason}`,
+      `Impossibile caricare le ricette: ${risultati[5].reason?.message || risultati[5].reason}`,
     );
   }
   riempiSelectArticoli($("trace-recipe-product"));
   renderRicette();
   lottiCaricati = risultati[1].status === "fulfilled"
     && risultati[2].status === "fulfilled"
-    && risultati[4].status === "fulfilled";
+    && risultati[5].status === "fulfilled";
   impostaMessaggio(
     "trace-work-data-error",
     erroriDati.length ? `Impossibile caricare i dati per le lavorazioni (${erroriDati.join("; ")}).` : "",
@@ -1183,6 +1243,12 @@ export function initTracciabilita() {
   $("trace-only-available").addEventListener("change", loadTracciabilita);
   $("trace-date-from").addEventListener("change", loadTracciabilita);
   $("trace-date-to").addEventListener("change", loadTracciabilita);
+  $("trace-inventory-tbody").addEventListener("input", (event) => {
+    const input = event.target.closest("[data-inventory-article-id]");
+    if (!input) return;
+    conteggiFisici.set(input.dataset.inventoryArticleId, input.value);
+    aggiornaScostamentoInventario(input);
+  });
   $("btn-trace-refresh").addEventListener("click", loadTracciabilita);
   configuraFormLavorazione();
   configuraFormRicette();
