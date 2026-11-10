@@ -348,6 +348,10 @@ class VenditaRigheCreate(BaseModel):
     righe: list[VenditaRigaCreate] = Field(..., min_length=1)
 
 
+class VenditaCompletaCreate(VenditaCreate):
+    righe: list[VenditaRigaCreate] = Field(..., min_length=1)
+
+
 # ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #

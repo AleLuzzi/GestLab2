@@ -63,6 +63,7 @@ from saas.schemas import (
     TokenResponse,
     UtenteCreate,
     VenditaCreate,
+    VenditaCompletaCreate,
     VenditaRigheCreate,
 )
 
@@ -1028,6 +1029,47 @@ def crea_vendita(
 
 
 @app.post(
+    "/api/v1/vendite/complete",
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_vendita_completa(
+    payload: VenditaCompletaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Crea documento, righe e scarichi in un'unica transazione tenant-scoped."""
+    try:
+        return vendite_service.crea_vendita_completa(
+            tenant_id=user["tenant_id"],
+            data_vendita=payload.data,
+            cliente_id=payload.cliente_id,
+            tipo_documento=payload.tipo_documento,
+            righe=payload.righe,
+        )
+    except tracciabilita_repo.TenantVenditaNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il tenant del documento di vendita non esiste",
+        ) from error
+    except tracciabilita_repo.ClienteVenditaNonValido as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il cliente non esiste, non è attivo o non appartiene al tenant corrente",
+        ) from error
+    except tracciabilita_repo.GiacenzaInsufficiente as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.RigaVenditaNonValida as error:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Lotto, articolo o unità di misura non coerenti nella riga di vendita",
+        ) from error
+    except tracciabilita_repo.PrezzoVenditaNonValido as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il prezzo dell'articolo è cambiato o non è configurato. Aggiorna i lotti e riprova.",
+        ) from error
+
+
+@app.post(
     "/api/v1/vendite/{vendita_id}/righe",
     status_code=status.HTTP_201_CREATED,
 )
@@ -1055,6 +1097,11 @@ def aggiungi_righe_vendita(
         ) from error
     except tracciabilita_repo.GiacenzaInsufficiente as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.PrezzoVenditaNonValido as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il prezzo dell'articolo è cambiato o non è configurato. Aggiorna i lotti e riprova.",
+        ) from error
 
 
 @app.post(

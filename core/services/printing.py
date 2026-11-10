@@ -454,8 +454,8 @@ def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
                             iva="0.00") -> bytes:
     """Genera i bytes ESC/POS di uno scontrino termico.
 
-    Se ``python-escpos`` non e' disponibile, produce un testo semplificato
-    (UTF-8) che l'Agent locale puo' comunque inviare alla stampante raw.
+    Produce testo semplice UTF-8 con comando di taglio, inviabile dall'Agent
+    locale alla stampante termica raw.
 
     Args:
         testata: intestazione (nome azienda, P.IVA, ecc.).
@@ -469,33 +469,22 @@ def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
     """
     righe = righe or []
 
-    try:
-        from escpos.printer import Network  # noqa: F401
-        _use_escpos = True
-    except ImportError:
-        _use_escpos = False
-
-    if not _use_escpos:
-        # Testo semplice con chiusura (ESC/POS "cut" \x1d\x56)
-        lines = []
-        lines.append((testata or "").center(32))
-        lines.append("=" * 32)
-        for r in righe:
-            desc = str(r.get("descrizione", ""))
-            prezzo = str(r.get("prezzo", ""))
-            lines.append("{:<26}{:>6}".format(desc[:26], prezzo))
-        lines.append("=" * 32)
-        lines.append("{:<26}{:>6}".format("TOTALE", totale))
-        lines.append("{:<26}{:>6}".format("IVA", iva))
-        lines.append("")
-        lines.append("GRAZIE")
-        text = "\n".join(lines) + "\n\x1d\x56\x41"
-        return text.encode("utf-8")
-
-    # TODO: implementazione completa con python-escpos (Network/USB).
-    # Di default si produce il testo semplificato anche se la libreria e'
-    # installata, per non accoppiare il core al driver di stampa.
-    return (testata or "").encode("utf-8")
+    lines = []
+    lines.extend(line.center(32) for line in (testata or "").splitlines())
+    lines.append("=" * 32)
+    for riga in righe:
+        descrizione = str(riga.get("descrizione", ""))
+        quantita = str(riga.get("qta", ""))
+        prezzo = str(riga.get("prezzo", ""))
+        lines.append(descrizione[:32])
+        lines.append("{:<16}{:>16}".format(quantita[:16], prezzo[:16]))
+    lines.append("=" * 32)
+    lines.append("{:<26}{:>6}".format("TOTALE", totale))
+    lines.append("{:<26}{:>6}".format("IVA", iva))
+    lines.append("")
+    lines.append("GRAZIE")
+    text = "\n".join(lines) + "\n\x1d\x56\x41"
+    return text.encode("utf-8")
 
 
 # ------------------------------------------------------------------------- #

@@ -10,6 +10,33 @@ from saas.print_agent import PrintAgent
 
 
 class PrintAgentTests(unittest.TestCase):
+    def test_receipt_print_includes_quantity_and_non_fiscal_notice(self):
+        notice = (
+            "GestLab · RICEVUTA NON FISCALE #12\n"
+            "Documento non fiscale — non sostituisce lo scontrino del registratore telematico"
+        )
+
+        receipt = printing.genera_scontrino_escpos(
+            testata=notice,
+            righe=[
+                {
+                    "descrizione": "Salsiccia · lotto V-10",
+                    "prezzo": "12,50 € / kg",
+                    "qta": "1,250 kg",
+                }
+            ],
+            totale="15,63 €",
+            iva="0,00 €",
+        ).decode("utf-8")
+
+        self.assertIn("RICEVUTA NON FISCALE #12", receipt)
+        self.assertIn("non sostituisce lo scontrino", receipt)
+        self.assertIn("Salsiccia · lotto V-10", receipt)
+        self.assertIn("1,250 kg", receipt)
+        self.assertIn("12,50 € / kg", receipt)
+        self.assertIn("15,63 €", receipt)
+        self.assertIn("\x1d\x56\x41", receipt)
+
     def test_agent_job_contains_registered_dymo_name(self):
         queued_job = {
             "id": 12,

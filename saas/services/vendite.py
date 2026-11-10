@@ -18,6 +18,17 @@ def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
     )
 
 
+def crea_vendita_completa(tenant_id, data_vendita, cliente_id, tipo_documento, righe):
+    """Crea testata, righe e scarichi nella stessa transazione."""
+    return tracciabilita_repo.crea_vendita_completa(
+        tenant_id=tenant_id,
+        data_vendita=data_vendita,
+        cliente_id=cliente_id,
+        tipo_documento=tipo_documento,
+        righe=righe,
+    )
+
+
 def aggiungi_righe_vendita(tenant_id, vendita_id, righe):
     """Registra righe e scarichi di magazzino per il documento."""
     return tracciabilita_repo.aggiungi_righe_vendita(

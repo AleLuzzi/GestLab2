@@ -54,6 +54,10 @@ class RigaVenditaNonValida(Exception):
     """Lotto, articolo o unità di misura non coerenti per la riga."""
 
 
+class PrezzoVenditaNonValido(Exception):
+    """Prezzo della riga diverso dal prezzo commerciale dell'articolo."""
+
+
 class LottoScaduto(Exception):
     """Un lotto con data di scadenza superata non può essere lavorato."""
 
@@ -685,7 +689,7 @@ def lotti_disponibili_vendita(tenant_id):
         cursor.execute(
             "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, "
             "l.codice_lotto, l.data_scadenza, l.quantita_disponibile, "
-            "l.unita_misura, l.data_tmc "
+            "l.unita_misura, l.data_tmc, a.prezzo_unitario "
             "FROM lotti l JOIN articoli a "
             "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "WHERE l.tenant_id = %s AND a.attivo = 1 AND l.attivo = 1 "
@@ -707,6 +711,11 @@ def lotti_disponibili_vendita(tenant_id):
                 "quantita_disponibile": str(row[6]),
                 "unita_misura": row[7],
                 "data_tmc": _row_value(row, 8),
+                "prezzo_unitario": (
+                    str(_row_value(row, 9))
+                    if _row_value(row, 9) is not None
+                    else None
+                ),
             }
             for row in cursor.fetchall()
         ]
@@ -717,44 +726,50 @@ def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
     with connection() as conn:
         cursor = conn.cursor()
         try:
-            cursor.execute(
-                "SELECT id FROM tenant WHERE id = %s FOR UPDATE",
-                (tenant_id,),
+            testata = _crea_testata_vendita(
+                cursor, tenant_id, data_vendita, cliente_id, tipo_documento
             )
-            if cursor.fetchone() is None:
-                raise TenantVenditaNonTrovato()
-
-            if cliente_id is not None:
-                cursor.execute(
-                    "SELECT s.id FROM soggetti s "
-                    "JOIN soggetti_ruoli r ON r.tenant_id = s.tenant_id "
-                    "AND r.soggetto_id = s.id AND r.ruolo = 'cliente' "
-                    "WHERE s.tenant_id = %s AND s.id = %s AND s.attivo = 1 "
-                    "FOR UPDATE",
-                    (tenant_id, cliente_id),
-                )
-                if cursor.fetchone() is None:
-                    raise ClienteVenditaNonValido()
-
-            cursor.execute(
-                "SELECT COALESCE(MAX(numero), 0) FROM vendite WHERE tenant_id = %s",
-                (tenant_id,),
-            )
-            numero = int(cursor.fetchone()[0]) + 1
-            cursor.execute(
-                "INSERT INTO vendite "
-                "(tenant_id, numero, data_vendita, cliente_id, tipo_documento) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (tenant_id, numero, data_vendita, cliente_id, tipo_documento),
-            )
-            vendita_id = cursor.lastrowid
             conn.commit()
         except Exception:
             conn.rollback()
             raise
 
+    return testata
+
+
+def _crea_testata_vendita(cursor, tenant_id, data_vendita, cliente_id, tipo_documento):
+    cursor.execute(
+        "SELECT id FROM tenant WHERE id = %s FOR UPDATE",
+        (tenant_id,),
+    )
+    if cursor.fetchone() is None:
+        raise TenantVenditaNonTrovato()
+
+    if cliente_id is not None:
+        cursor.execute(
+            "SELECT s.id FROM soggetti s "
+            "JOIN soggetti_ruoli r ON r.tenant_id = s.tenant_id "
+            "AND r.soggetto_id = s.id AND r.ruolo = 'cliente' "
+            "WHERE s.tenant_id = %s AND s.id = %s AND s.attivo = 1 "
+            "FOR UPDATE",
+            (tenant_id, cliente_id),
+        )
+        if cursor.fetchone() is None:
+            raise ClienteVenditaNonValido()
+
+    cursor.execute(
+        "SELECT COALESCE(MAX(numero), 0) FROM vendite WHERE tenant_id = %s",
+        (tenant_id,),
+    )
+    numero = int(cursor.fetchone()[0]) + 1
+    cursor.execute(
+        "INSERT INTO vendite "
+        "(tenant_id, numero, data_vendita, cliente_id, tipo_documento) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (tenant_id, numero, data_vendita, cliente_id, tipo_documento),
+    )
     return {
-        "id": vendita_id,
+        "id": cursor.lastrowid,
         "tenant_id": tenant_id,
         "numero": numero,
         "data_vendita": data_vendita,
@@ -763,9 +778,27 @@ def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
     }
 
 
+def crea_vendita_completa(tenant_id, data_vendita, cliente_id, tipo_documento, righe):
+    """Crea documento, righe e scarichi di magazzino nella stessa transazione."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            testata = _crea_testata_vendita(
+                cursor, tenant_id, data_vendita, cliente_id, tipo_documento
+            )
+            righe_create = _registra_righe_vendita(
+                cursor, tenant_id, testata["id"], righe
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    return {**testata, "righe": righe_create}
+
+
 def aggiungi_righe_vendita(tenant_id, vendita_id, righe):
     """Registra righe e scarichi di magazzino nella stessa transazione."""
-    righe_create = []
     with connection() as conn:
         cursor = conn.cursor()
         try:
@@ -777,96 +810,104 @@ def aggiungi_righe_vendita(tenant_id, vendita_id, righe):
             if cursor.fetchone() is None:
                 raise VenditaNonTrovata()
 
-            quantita_per_lotto = defaultdict(Decimal)
-            for riga in righe:
-                quantita_per_lotto[riga.lotto_id] += Decimal(str(riga.quantita))
-
-            nuove_giacenze = {}
-            for lotto_id in sorted(quantita_per_lotto):
-                cursor.execute(
-                    "SELECT l.articolo_id, l.unita_misura, "
-                    "l.quantita_disponibile, l.attivo, "
-                    "a.unita_misura, a.attivo "
-                    "FROM lotti l JOIN articoli a "
-                    "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
-                    "WHERE l.tenant_id = %s AND l.id = %s FOR UPDATE",
-                    (tenant_id, lotto_id),
-                )
-                lotto = cursor.fetchone()
-                righe_lotto = [
-                    riga for riga in righe if riga.lotto_id == lotto_id
-                ]
-                if lotto is None or not lotto[3] or not lotto[5]:
-                    raise RigaVenditaNonValida()
-                if any(
-                    riga.articolo_id != lotto[0]
-                    or riga.unita_misura != lotto[1]
-                    or riga.unita_misura != lotto[4]
-                    for riga in righe_lotto
-                ):
-                    raise RigaVenditaNonValida()
-
-                quantita_disponibile = Decimal(str(lotto[2]))
-                quantita_venduta = quantita_per_lotto[lotto_id]
-                if quantita_venduta > quantita_disponibile:
-                    raise GiacenzaInsufficiente(
-                        f"La giacenza del lotto {lotto_id} è insufficiente."
-                    )
-
-                nuove_giacenze[lotto_id] = (
-                    quantita_disponibile - quantita_venduta
-                )
-
-            for lotto_id in sorted(nuove_giacenze):
-                nuova_giacenza = nuove_giacenze[lotto_id]
-                cursor.execute(
-                    "UPDATE lotti SET quantita_disponibile = %s, "
-                    "attivo = CASE WHEN %s = 0 THEN 0 ELSE attivo END "
-                    "WHERE tenant_id = %s AND id = %s",
-                    (nuova_giacenza, nuova_giacenza, tenant_id, lotto_id),
-                )
-
-            for riga in righe:
-                cursor.execute(
-                    "INSERT INTO righe_vendita "
-                    "(tenant_id, vendita_id, lotto_id, articolo_id, quantita, "
-                    "unita_misura, prezzo_unitario, iva_percentuale) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                    (
-                        tenant_id,
-                        vendita_id,
-                        riga.lotto_id,
-                        riga.articolo_id,
-                        riga.quantita,
-                        riga.unita_misura,
-                        riga.prezzo_unitario,
-                        riga.iva_percentuale,
-                    ),
-                )
-                riga_id = cursor.lastrowid
-                righe_create.append(
-                    {
-                        "id": riga_id,
-                        "vendita_id": vendita_id,
-                        "lotto_id": riga.lotto_id,
-                        "articolo_id": riga.articolo_id,
-                        "quantita": str(riga.quantita),
-                        "unita_misura": riga.unita_misura,
-                        "prezzo_unitario": str(riga.prezzo_unitario),
-                        "iva_percentuale": str(riga.iva_percentuale),
-                    }
-                )
-                cursor.execute(
-                    "INSERT INTO movimenti_lotto "
-                    "(tenant_id, lotto_id, tipo, quantita_delta) "
-                    "VALUES (%s, %s, 'VENDITA', %s)",
-                    (tenant_id, riga.lotto_id, -Decimal(str(riga.quantita))),
-                )
+            righe_create = _registra_righe_vendita(
+                cursor, tenant_id, vendita_id, righe
+            )
             conn.commit()
         except Exception:
             conn.rollback()
             raise
 
+    return righe_create
+
+
+def _registra_righe_vendita(cursor, tenant_id, vendita_id, righe):
+    quantita_per_lotto = defaultdict(Decimal)
+    for riga in righe:
+        quantita_per_lotto[riga.lotto_id] += Decimal(str(riga.quantita))
+
+    nuove_giacenze = {}
+    for lotto_id in sorted(quantita_per_lotto):
+        cursor.execute(
+            "SELECT l.articolo_id, l.unita_misura, "
+            "l.quantita_disponibile, l.attivo, "
+            "a.unita_misura, a.attivo, a.prezzo_unitario "
+            "FROM lotti l JOIN articoli a "
+            "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
+            "WHERE l.tenant_id = %s AND l.id = %s FOR UPDATE",
+            (tenant_id, lotto_id),
+        )
+        lotto = cursor.fetchone()
+        righe_lotto = [riga for riga in righe if riga.lotto_id == lotto_id]
+        if lotto is None or not lotto[3] or not lotto[5]:
+            raise RigaVenditaNonValida()
+        if any(
+            riga.articolo_id != lotto[0]
+            or riga.unita_misura != lotto[1]
+            or riga.unita_misura != lotto[4]
+            for riga in righe_lotto
+        ):
+            raise RigaVenditaNonValida()
+
+        prezzo_articolo = _row_value(lotto, 6)
+        if prezzo_articolo is None or any(
+            Decimal(str(riga.prezzo_unitario)) != Decimal(str(prezzo_articolo))
+            for riga in righe_lotto
+        ):
+            raise PrezzoVenditaNonValido()
+
+        quantita_disponibile = Decimal(str(lotto[2]))
+        quantita_venduta = quantita_per_lotto[lotto_id]
+        if quantita_venduta > quantita_disponibile:
+            raise GiacenzaInsufficiente(
+                f"La giacenza del lotto {lotto_id} è insufficiente."
+            )
+        nuove_giacenze[lotto_id] = quantita_disponibile - quantita_venduta
+
+    for lotto_id, nuova_giacenza in sorted(nuove_giacenze.items()):
+        cursor.execute(
+            "UPDATE lotti SET quantita_disponibile = %s, "
+            "attivo = CASE WHEN %s = 0 THEN 0 ELSE attivo END "
+            "WHERE tenant_id = %s AND id = %s",
+            (nuova_giacenza, nuova_giacenza, tenant_id, lotto_id),
+        )
+
+    righe_create = []
+    for riga in righe:
+        cursor.execute(
+            "INSERT INTO righe_vendita "
+            "(tenant_id, vendita_id, lotto_id, articolo_id, quantita, "
+            "unita_misura, prezzo_unitario, iva_percentuale) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                tenant_id,
+                vendita_id,
+                riga.lotto_id,
+                riga.articolo_id,
+                riga.quantita,
+                riga.unita_misura,
+                riga.prezzo_unitario,
+                riga.iva_percentuale,
+            ),
+        )
+        righe_create.append(
+            {
+                "id": cursor.lastrowid,
+                "vendita_id": vendita_id,
+                "lotto_id": riga.lotto_id,
+                "articolo_id": riga.articolo_id,
+                "quantita": str(riga.quantita),
+                "unita_misura": riga.unita_misura,
+                "prezzo_unitario": str(riga.prezzo_unitario),
+                "iva_percentuale": str(riga.iva_percentuale),
+            }
+        )
+        cursor.execute(
+            "INSERT INTO movimenti_lotto "
+            "(tenant_id, lotto_id, tipo, quantita_delta) "
+            "VALUES (%s, %s, 'VENDITA', %s)",
+            (tenant_id, riga.lotto_id, -Decimal(str(riga.quantita))),
+        )
     return righe_create
 
 

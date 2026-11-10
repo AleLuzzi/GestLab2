@@ -98,8 +98,8 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Banco, listini e documenti
 
-- [ ] Realizzare una UI vendita adatta al tablet: ricerca articolo, lotto FEFO modificabile, quantità/peso, totale e stampa, senza passaggi tecnici.
-- [ ] Usare il prezzo commerciale canonico dell'articolo per vendita ed etichetta; non usare `articoli_bilancia.prezzo1` come fonte del prezzo commerciale.
+- [x] Realizzare una UI vendita adatta al tablet: ricerca articolo, lotto FEFO modificabile, quantità/peso, totale e stampa, senza passaggi tecnici. La schermata Vendite consente la ricerca e la scelta dell'articolo, preseleziona il lotto FEFO modificabile, valida quantità fino a 3 decimali, calcola il totale e registra in modo atomico scarichi e documento; la ricevuta non fiscale viene accodata al Local Print Agent. Coperta da `tests/test_vendite.py` e `tests/test_print_agent.py`.
+- [x] Usare il prezzo commerciale canonico dell'articolo per vendita ed etichetta; non usare `articoli_bilancia.prezzo1` come fonte del prezzo commerciale. I lotti disponibili espongono `articoli.prezzo_unitario`, il server rifiuta prezzi non più coerenti o non configurati e l'etichetta continua a leggere lo stesso campo. Coperto da `tests/test_vendite.py` e `tests/test_etichette.py`.
 - [ ] Decidere se il listino HORECA distinto dal banco serve al pilota; in assenza di necessità, rinviarlo a v1.1.
 - [ ] Generare il DDT dal documento persistito, con mittente OSA, destinatario cliente, righe e lotto, numero progressivo e possibilità di ristampa dallo storico.
 - [ ] Verificare che ristampare lo stesso DDT mantenga numero e righe e non generi un documento orfano.

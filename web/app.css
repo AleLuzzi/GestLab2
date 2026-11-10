@@ -78,15 +78,36 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .sales-selection { max-width: none; }
 .sales-selection-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px 18px;
 }
-.sales-selection-fields select { min-height: 52px; font-size: 17px; }
+.sales-selection-fields select,
+.sales-selection-fields input { min-height: 52px; font-size: 17px; }
+.sales-selection-fields input[readonly] { color: var(--text-dim); }
 .sales-lot-summary {
   min-height: 24px;
   color: var(--text);
   font-weight: 600;
 }
+.sales-actions,
+.sales-checkout-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.sales-cart { margin-top: 24px; }
+.sales-cart .panel-head { margin-bottom: 10px; }
+.sales-cart h3 { font-size: 18px; }
+.sales-cart-table-wrap { overflow-x: auto; }
+.sales-cart .table { min-width: 640px; }
+.sales-cart .table td,
+.sales-cart .table th { padding: 12px; }
+.sales-checkout-actions { justify-content: space-between; }
+.sales-checkout-actions .sales-help { margin: 0; }
+.sales-checkout-status { min-height: 18px; margin-top: 10px; color: var(--text-dim); }
+.sales-line-remove { min-height: 44px; }
 
 .landing-panel {
   display: none;
@@ -537,8 +558,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (max-width: 1200px) {
   .trace-work-columns { grid-template-columns: 1fr; gap: 4px; }
 }
+@media (max-width: 900px) {
+  .sales-selection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 760px) {
-  .sales-selection-fields { grid-template-columns: 1fr; }
   .trace-recipe-controls { grid-template-columns: 1fr; align-items: stretch; }
   .trace-recipe-ingredient-row { grid-template-columns: 1fr; }
   .trace-recipe-ingredient-required { padding-bottom: 0; }
@@ -564,6 +587,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 
 @media (max-width: 560px) {
+  .sales-selection-fields { grid-template-columns: 1fr; }
+  .sales-checkout-actions { align-items: stretch; flex-direction: column; }
+  .sales-checkout-actions .btn { min-height: 52px; width: 100%; }
+  .sales-actions .btn { min-height: 52px; width: 100%; }
   .ingresso-steps { gap: 6px; }
   .ingresso-steps li { min-height: 48px; padding: 8px 4px; font-size: 13px; }
   .ingresso-actions { flex-direction: column-reverse; }

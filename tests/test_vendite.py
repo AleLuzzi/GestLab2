@@ -12,11 +12,17 @@ from core.services import vendite
 from saas.main import (
     aggiungi_righe_vendita,
     crea_vendita,
+    crea_vendita_completa,
     lotti_disponibili_vendita,
 )
 from saas.repositories import tracciabilita_repo
 from saas.services import vendite as vendite_service
-from saas.schemas import VenditaCreate, VenditaRigaCreate, VenditaRigheCreate
+from saas.schemas import (
+    VenditaCompletaCreate,
+    VenditaCreate,
+    VenditaRigaCreate,
+    VenditaRigheCreate,
+)
 
 
 class FakeCursor:
@@ -106,8 +112,8 @@ class ChiusuraLottoTests(unittest.TestCase):
 class LottiDisponibiliVenditaTests(unittest.TestCase):
     def test_repository_returns_available_lots_in_fefo_order(self):
         rows = [
-            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg", None),
-            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg", "2026-12-10"),
+            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg", None, Decimal("12.50")),
+            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg", "2026-12-10", Decimal("12.50")),
         ]
 
         class FakeCursor:
@@ -147,6 +153,7 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
         self.assertIn("THEN 1 ELSE 0 END", conn._cursor.query)
         self.assertEqual(lotti[0]["id"], 7)
         self.assertEqual(lotti[0]["quantita_disponibile"], "8.500")
+        self.assertEqual(lotti[0]["prezzo_unitario"], "12.50")
         self.assertIsNone(lotti[1]["data_scadenza"])
         self.assertEqual(lotti[1]["data_tmc"], "2026-12-10")
 
@@ -315,6 +322,64 @@ class CreaVenditaTests(unittest.TestCase):
         self.assertEqual(error.exception.status_code, 404)
 
 
+class CreaVenditaCompletaTests(unittest.TestCase):
+    def test_endpoint_delegates_complete_sale_with_tenant_from_jwt(self):
+        payload = VenditaCompletaCreate(
+            data=date(2026, 11, 10),
+            cliente_id=None,
+            tipo_documento="RICEVUTA",
+            righe=[
+                VenditaRigaCreate(
+                    lotto_id=7,
+                    articolo_id=3,
+                    quantita=Decimal("1.250"),
+                    unita_misura="kg",
+                    prezzo_unitario=Decimal("12.50"),
+                )
+            ],
+        )
+        expected = {"id": 81, "numero": 5, "righe": []}
+
+        with patch.object(
+            vendite_service, "crea_vendita_completa", return_value=expected
+        ) as create:
+            result = crea_vendita_completa(payload, {"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        create.assert_called_once_with(
+            tenant_id=42,
+            data_vendita=payload.data,
+            cliente_id=None,
+            tipo_documento="RICEVUTA",
+            righe=payload.righe,
+        )
+
+    def test_endpoint_translates_insufficient_stock_to_conflict(self):
+        payload = VenditaCompletaCreate(
+            data=date(2026, 11, 10),
+            tipo_documento="RICEVUTA",
+            righe=[
+                VenditaRigaCreate(
+                    lotto_id=7,
+                    articolo_id=3,
+                    quantita=Decimal("1.250"),
+                    unita_misura="kg",
+                    prezzo_unitario=Decimal("12.50"),
+                )
+            ],
+        )
+
+        with patch.object(
+            vendite_service,
+            "crea_vendita_completa",
+            side_effect=tracciabilita_repo.GiacenzaInsufficiente("stock"),
+        ):
+            with self.assertRaises(HTTPException) as error:
+                crea_vendita_completa(payload, {"tenant_id": 42})
+
+        self.assertEqual(error.exception.status_code, 409)
+
+
 class FakeRigheVenditaCursor:
     def __init__(
         self,
@@ -324,6 +389,7 @@ class FakeRigheVenditaCursor:
         fail_on_movement=False,
         vendita_tenant_id=42,
         lotti_tenant_id=None,
+        prezzo_articolo=Decimal("12.50"),
     ):
         self.vendita_esistente = vendita_esistente
         self.lotti_validi = lotti_validi if lotti_validi is not None else {7}
@@ -331,6 +397,7 @@ class FakeRigheVenditaCursor:
         self.fail_on_movement = fail_on_movement
         self.vendita_tenant_id = vendita_tenant_id
         self.lotti_tenant_id = lotti_tenant_id if lotti_tenant_id is not None else {7: 42}
+        self.prezzo_articolo = prezzo_articolo
         self.statements = []
         self.lastrowid = 100
 
@@ -359,8 +426,97 @@ class FakeRigheVenditaCursor:
                 or lotto_id not in self.giacenze
             ):
                 return None
-            return (3, "kg", self.giacenze[lotto_id], 1, "kg", 1)
+            return (3, "kg", self.giacenze[lotto_id], 1, "kg", 1, self.prezzo_articolo)
         return None
+
+
+class FakeVenditaCompletaCursor:
+    def __init__(self, giacenza=Decimal("5.000")):
+        self.giacenza = giacenza
+        self.lastrowid = 80
+        self.statements = []
+
+    def execute(self, query, params=None):
+        self.statements.append((query, params))
+        if query.startswith("INSERT INTO vendite"):
+            self.lastrowid = 81
+        elif query.startswith("INSERT INTO righe_vendita"):
+            self.lastrowid = 101
+
+    def fetchone(self):
+        query = self.statements[-1][0]
+        if query.startswith("SELECT id FROM tenant"):
+            return (42,)
+        if query.startswith("SELECT COALESCE(MAX(numero)"):
+            return (4,)
+        if query.startswith("SELECT l.articolo_id, l.unita_misura"):
+            return (3, "kg", self.giacenza, 1, "kg", 1, Decimal("12.50"))
+        return None
+
+
+class CreaVenditaCompletaRepositoryTests(unittest.TestCase):
+    def setUp(self):
+        self.riga = VenditaRigaCreate(
+            lotto_id=7,
+            articolo_id=3,
+            quantita=Decimal("1.250"),
+            unita_misura="kg",
+            prezzo_unitario=Decimal("12.50"),
+            iva_percentuale=Decimal("0.00"),
+        )
+
+    def invoke(self, giacenza=Decimal("5.000")):
+        cursor = FakeVenditaCompletaCursor(giacenza)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            result = tracciabilita_repo.crea_vendita_completa(
+                42,
+                date(2026, 11, 10),
+                None,
+                "RICEVUTA",
+                [self.riga],
+            )
+        return result, cursor, connection
+
+    def test_header_rows_and_stock_commit_together(self):
+        result, cursor, connection = self.invoke()
+
+        self.assertEqual(result["id"], 81)
+        self.assertEqual(result["numero"], 5)
+        self.assertEqual(len(result["righe"]), 1)
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
+        self.assertTrue(any(query.startswith("INSERT INTO vendite") for query, _ in cursor.statements))
+        self.assertTrue(any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements))
+        self.assertTrue(any(query.startswith("INSERT INTO movimenti_lotto") for query, _ in cursor.statements))
+
+    def test_stock_error_rolls_back_new_header(self):
+        cursor = FakeVenditaCompletaCursor(giacenza=Decimal("0.500"))
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.GiacenzaInsufficiente):
+                tracciabilita_repo.crea_vendita_completa(
+                    42,
+                    date(2026, 11, 10),
+                    None,
+                    "RICEVUTA",
+                    [self.riga],
+                )
+
+        self.assertTrue(any(query.startswith("INSERT INTO vendite") for query, _ in cursor.statements))
+        self.assertFalse(any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
 
 
 class AggiungiRigheVenditaTests(unittest.TestCase):
@@ -383,6 +539,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         fail_on_movement=False,
         vendita_tenant_id=42,
         lotti_tenant_id=None,
+        prezzo_articolo=Decimal("12.50"),
     ):
         cursor = FakeRigheVenditaCursor(
             vendita_esistente,
@@ -391,6 +548,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
             fail_on_movement,
             vendita_tenant_id,
             lotti_tenant_id,
+            prezzo_articolo,
         )
         connection = FakeConnection(cursor)
 
@@ -541,6 +699,22 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         self.assertFalse(
             any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements)
         )
+        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_noncanonical_price_is_rejected_and_rolls_back(self):
+        cursor = FakeRigheVenditaCursor(prezzo_articolo=Decimal("13.00"))
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.PrezzoVenditaNonValido):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
         self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
         self.assertEqual(connection.commits, 0)
         self.assertEqual(connection.rollbacks, 1)

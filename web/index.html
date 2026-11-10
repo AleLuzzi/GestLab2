@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261108-1" />
+  <link rel="stylesheet" href="/static/app.css?v=20261110-1" />
 </head>
 <body>
   <!-- Login view -->
@@ -273,27 +273,65 @@
       <!-- Vendite -->
       <section id="view-vendite" class="panel">
         <div class="panel-head">
-          <h2>Selezione lotto per vendita</h2>
+          <h2>Nuova vendita</h2>
           <button id="btn-refresh-sales-lots" class="btn ghost" type="button">Aggiorna lotti</button>
         </div>
-        <p class="sales-help">Per ogni articolo viene preselezionato il lotto disponibile con scadenza più vicina. Puoi scegliere un altro lotto disponibile.</p>
         <div class="form-card sales-selection">
           <div class="sales-selection-fields">
+            <label for="sales-search">Cerca articolo
+              <input id="sales-search" type="search" autocomplete="off" placeholder="Digita il nome dell'articolo" />
+            </label>
             <label for="sales-article">Articolo
               <select id="sales-article" disabled>
-                <option value="">Caricamento lotti...</option>
+                <option value="">Caricamento articoli...</option>
               </select>
             </label>
-            <label for="sales-lot">Lotto
+            <label for="sales-lot">Lotto disponibile
               <select id="sales-lot" disabled>
                 <option value="">Seleziona un articolo</option>
+              </select>
+            </label>
+            <label for="sales-quantity">Quantità / peso
+              <input id="sales-quantity" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="0,000" />
+            </label>
+            <label for="sales-price">Prezzo unitario
+              <input id="sales-price" type="text" readonly value="—" aria-label="Prezzo unitario dell'articolo" />
+            </label>
+            <label for="sales-customer">Cliente (facoltativo)
+              <select id="sales-customer">
+                <option value="">Banco / cliente non indicato</option>
               </select>
             </label>
           </div>
           <div id="sales-lot-summary" class="sales-lot-summary" role="status" aria-live="polite"></div>
           <div id="sales-selection-error" class="error" role="alert" aria-live="assertive"></div>
+          <div class="sales-actions">
+            <button id="btn-add-sales-line" class="btn ghost" type="button">Aggiungi alla vendita</button>
+          </div>
         </div>
-        <p class="sales-help">Questa schermata prepara la scelta del lotto; la registrazione e la stampa della vendita saranno collegate nel flusso vendite.</p>
+
+        <div class="sales-cart">
+          <div class="panel-head">
+            <h3>Articoli della vendita</h3>
+            <strong>Totale <span id="sales-total">0,00 €</span></strong>
+          </div>
+          <div class="sales-cart-table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Articolo / lotto</th><th>Quantità</th><th>Prezzo</th><th>Importo</th><th></th></tr>
+              </thead>
+              <tbody id="sales-cart-body">
+                <tr><td colspan="5" class="empty">Nessun articolo aggiunto</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="sales-checkout-error" class="error" role="alert" aria-live="assertive"></div>
+          <div id="sales-checkout-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
+          <div class="sales-checkout-actions">
+            <span class="sales-help">La vendita verrà registrata e la ricevuta non fiscale inviata alla coda di stampa.</span>
+            <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra e stampa</button>
+          </div>
+        </div>
       </section>
 
       <!-- Dipendenti -->
