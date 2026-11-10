@@ -721,6 +721,105 @@ def lotti_disponibili_vendita(tenant_id):
         ]
 
 
+def elenco_ddt_vendita(tenant_id):
+    """Elenca i DDT del tenant per la ristampa dallo storico."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT v.id, v.numero, v.data_vendita, "
+            "COALESCE(s.denominazione, ''), "
+            "(SELECT COUNT(*) FROM righe_vendita rv "
+            "WHERE rv.tenant_id = v.tenant_id AND rv.vendita_id = v.id) "
+            "FROM vendite v "
+            "LEFT JOIN soggetti s ON s.tenant_id = v.tenant_id "
+            "AND s.id = v.cliente_id "
+            "WHERE v.tenant_id = %s AND v.tipo_documento = 'DDT' "
+            "ORDER BY v.data_vendita DESC, v.numero DESC LIMIT 100",
+            (tenant_id,),
+        )
+        return [
+            {
+                "id": row[0],
+                "numero": row[1],
+                "data_vendita": row[2],
+                "cliente": row[3],
+                "numero_righe": row[4],
+            }
+            for row in cursor.fetchall()
+        ]
+
+
+def dettaglio_ddt_vendita(tenant_id, vendita_id):
+    """Carica i dati persistiti necessari a generare un DDT."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT v.id, v.numero, v.data_vendita, v.tipo_documento, "
+            "t.osa_ragione_sociale, t.osa_indirizzo, t.osa_laboratorio, "
+            "t.osa_partita_iva, s.denominazione, s.indirizzo, "
+            "s.numero_civico, s.cap, s.citta, s.provincia, s.paese, "
+            "s.partita_iva "
+            "FROM vendite v "
+            "JOIN tenant t ON t.id = v.tenant_id "
+            "LEFT JOIN soggetti s ON s.tenant_id = v.tenant_id "
+            "AND s.id = v.cliente_id "
+            "WHERE v.tenant_id = %s AND v.id = %s",
+            (tenant_id, vendita_id),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+
+        cursor.execute(
+            "SELECT a.nome, l.codice_lotto, rv.quantita, rv.unita_misura "
+            "FROM righe_vendita rv "
+            "JOIN articoli a ON a.tenant_id = rv.tenant_id "
+            "AND a.id = rv.articolo_id "
+            "JOIN lotti l ON l.tenant_id = rv.tenant_id "
+            "AND l.id = rv.lotto_id "
+            "WHERE rv.tenant_id = %s AND rv.vendita_id = %s "
+            "ORDER BY rv.id",
+            (tenant_id, vendita_id),
+        )
+        righe = [
+            {
+                "articolo": riga[0],
+                "lotto": riga[1],
+                "quantita": str(riga[2]),
+                "unita_misura": riga[3],
+            }
+            for riga in cursor.fetchall()
+        ]
+
+    return {
+        "id": row[0],
+        "numero": row[1],
+        "data_vendita": row[2],
+        "tipo_documento": row[3],
+        "mittente": {
+            "ragione_sociale": row[4] or "",
+            "indirizzo": row[5] or "",
+            "laboratorio": row[6] or "",
+            "partita_iva": row[7] or "",
+        },
+        "destinatario": (
+            {
+                "denominazione": row[8] or "",
+                "indirizzo": row[9] or "",
+                "numero_civico": row[10] or "",
+                "cap": row[11] or "",
+                "citta": row[12] or "",
+                "provincia": row[13] or "",
+                "paese": row[14] or "",
+                "partita_iva": row[15] or "",
+            }
+            if row[8]
+            else None
+        ),
+        "righe": righe,
+    }
+
+
 def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
     """Crea una testata con progressivo serializzato per tenant."""
     with connection() as conn:

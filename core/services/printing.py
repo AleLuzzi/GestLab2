@@ -156,6 +156,151 @@ def genera_ddt_pdf(numero, data=None, fornitore="", righe=None) -> bytes:
     return buffer.getvalue()  # bytes del PDF generato
 
 
+def genera_ddt_vendita_pdf(numero, data, mittente, destinatario, righe) -> bytes:
+    """Genera un DDT dai dati della vendita persistita."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "reportlab non installato. Aggiungerlo a requirements.txt."
+        ) from exc
+
+    from xml.sax.saxutils import escape
+
+    def paragrafo(value, style):
+        return Paragraph(escape(str(value or "")).replace("\n", "<br/>"), style)
+
+    def dettagli_soggetto(soggetto, campi):
+        return "<br/>".join(
+            escape(str(soggetto.get(campo, "")).strip())
+            for campo in campi
+            if soggetto.get(campo)
+        )
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="DdtVenditaTitle", alignment=TA_CENTER))
+    styles.add(ParagraphStyle(name="DdtVenditaCell", parent=styles["BodyText"], fontSize=8))
+    styles.add(ParagraphStyle(name="DdtVenditaSmall", parent=styles["BodyText"], fontSize=8))
+    data_formattata = data.strftime("%d/%m/%Y") if hasattr(data, "strftime") else str(data)
+    mittente_indirizzo = mittente.get("indirizzo") or mittente.get("laboratorio", "")
+    mittente_dettagli = dettagli_soggetto(
+        {
+            **mittente,
+            "indirizzo": mittente_indirizzo,
+            "partita_iva": (
+                f"P. IVA {mittente['partita_iva']}" if mittente.get("partita_iva") else ""
+            ),
+        },
+        ("indirizzo", "partita_iva"),
+    )
+    destinatario_indirizzo = " ".join(
+        value
+        for value in (
+            destinatario.get("indirizzo"),
+            destinatario.get("numero_civico"),
+            destinatario.get("cap"),
+            destinatario.get("citta"),
+            destinatario.get("provincia"),
+            destinatario.get("paese"),
+        )
+        if value
+    )
+    destinatario_partita_iva = (
+        f"P. IVA {destinatario['partita_iva']}"
+        if destinatario.get("partita_iva")
+        else ""
+    )
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    parts = [
+        Paragraph(f"Documento di Trasporto n. {escape(str(numero))}", styles["DdtVenditaTitle"]),
+        Spacer(1, 0.2 * inch),
+    ]
+    riepilogo = Table(
+        [
+            ["Numero progressivo", str(numero), "Data", data_formattata],
+            [
+                "Mittente OSA",
+                Paragraph(
+                    f"<b>{escape(mittente.get('ragione_sociale', ''))}</b>"
+                    + (f"<br/>{mittente_dettagli}" if mittente_dettagli else ""),
+                    styles["DdtVenditaSmall"],
+                ),
+                "Destinatario",
+                Paragraph(
+                    f"<b>{escape(destinatario.get('denominazione', ''))}</b>"
+                    + (
+                        f"<br/>{escape(destinatario_indirizzo)}"
+                        if destinatario_indirizzo
+                        else ""
+                    )
+                    + (
+                        f"<br/>{escape(destinatario_partita_iva)}"
+                        if destinatario_partita_iva
+                        else ""
+                    ),
+                    styles["DdtVenditaSmall"],
+                ),
+            ],
+        ],
+        colWidths=[1.15 * inch, 2.15 * inch, 0.9 * inch, 2.15 * inch],
+    )
+    riepilogo.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.black),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    parts.extend((riepilogo, Spacer(1, 0.25 * inch)))
+
+    righe_tabella = [[
+        paragrafo("Articolo", styles["DdtVenditaCell"]),
+        paragrafo("Lotto", styles["DdtVenditaCell"]),
+        paragrafo("Quantità", styles["DdtVenditaCell"]),
+    ]]
+    righe_tabella.extend(
+        [
+            paragrafo(riga["articolo"], styles["DdtVenditaCell"]),
+            paragrafo(riga["lotto"], styles["DdtVenditaCell"]),
+            paragrafo(
+                f"{riga['quantita']} {riga['unita_misura']}",
+                styles["DdtVenditaCell"],
+            ),
+        ]
+        for riga in righe
+    )
+    tabella_righe = Table(
+        righe_tabella,
+        colWidths=[3.0 * inch, 1.5 * inch, 1.85 * inch],
+        repeatRows=1,
+    )
+    tabella_righe.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.black),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    parts.append(tabella_righe)
+    doc.build(parts)
+    return buffer.getvalue()
+
+
 def genera_scheda_lotto_pdf(dettaglio, genealogia) -> bytes:
     """Genera una scheda riepilogativa del lotto e dei suoi ingressi d'origine."""
     try:

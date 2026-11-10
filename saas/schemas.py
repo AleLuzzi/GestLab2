@@ -332,6 +332,12 @@ class VenditaCreate(BaseModel):
     cliente_id: int | None = Field(default=None, gt=0)
     tipo_documento: str = Field(..., pattern="^(DDT|RICEVUTA)$")
 
+    @model_validator(mode="after")
+    def valida_destinatario_ddt(self):
+        if self.tipo_documento == "DDT" and self.cliente_id is None:
+            raise ValueError("Per un DDT è necessario selezionare un cliente.")
+        return self
+
 
 class VenditaRigaCreate(BaseModel):
     lotto_id: int = Field(..., gt=0)

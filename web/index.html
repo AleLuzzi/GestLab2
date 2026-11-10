@@ -297,9 +297,15 @@
             <label for="sales-price">Prezzo unitario
               <input id="sales-price" type="text" readonly value="—" aria-label="Prezzo unitario dell'articolo" />
             </label>
-            <label for="sales-customer">Cliente (facoltativo)
+            <label for="sales-customer">Cliente (necessario per DDT)
               <select id="sales-customer">
                 <option value="">Banco / cliente non indicato</option>
+              </select>
+            </label>
+            <label for="sales-document-type">Documento
+              <select id="sales-document-type">
+                <option value="RICEVUTA">Ricevuta non fiscale</option>
+                <option value="DDT">DDT</option>
               </select>
             </label>
           </div>
@@ -328,9 +334,26 @@
           <div id="sales-checkout-error" class="error" role="alert" aria-live="assertive"></div>
           <div id="sales-checkout-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
           <div class="sales-checkout-actions">
-            <span class="sales-help">La vendita verrà registrata e la ricevuta non fiscale inviata alla coda di stampa.</span>
-            <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra e stampa</button>
+            <span class="sales-help">La ricevuta non fiscale viene inviata alla coda; il DDT si scarica in PDF e si ristampa dallo storico.</span>
+            <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra vendita</button>
           </div>
+        </div>
+
+        <div class="sales-cart">
+          <div class="panel-head">
+            <h3>Storico DDT</h3>
+          </div>
+          <div class="sales-cart-table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Documento</th><th>Data</th><th>Cliente</th><th>Righe</th><th></th></tr>
+              </thead>
+              <tbody id="sales-history-body">
+                <tr><td colspan="5" class="empty">Caricamento storico...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="sales-history-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
         </div>
       </section>
 

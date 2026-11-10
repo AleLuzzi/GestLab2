@@ -1000,6 +1000,71 @@ def lotti_disponibili_vendita(user: dict = Depends(auth.get_current_user)):
     return vendite_service.lotti_disponibili_vendita(user["tenant_id"])
 
 
+@app.get("/api/v1/vendite/ddt")
+def elenco_ddt_vendita(user: dict = Depends(auth.get_current_user)):
+    """Elenca i DDT persistiti del tenant per la ristampa dallo storico."""
+    return vendite_service.elenco_ddt_vendita(user["tenant_id"])
+
+
+@app.get("/api/v1/vendite/{vendita_id}/ddt.pdf", response_class=Response)
+def genera_ddt_vendita(
+    vendita_id: int,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Genera il DDT esclusivamente dai dati persistiti della vendita."""
+    documento = vendite_service.dettaglio_ddt_vendita(
+        user["tenant_id"], vendita_id
+    )
+    if documento is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il documento di vendita non esiste nel tenant corrente",
+        )
+    if documento["tipo_documento"] != "DDT":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il documento selezionato non è un DDT",
+        )
+    if documento["destinatario"] is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il DDT non ha un cliente destinatario associato",
+        )
+    if not documento["righe"]:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il DDT non contiene righe di vendita",
+        )
+    mittente = documento["mittente"]
+    if not mittente["ragione_sociale"].strip() or not (
+        mittente["indirizzo"].strip() or mittente["laboratorio"].strip()
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Completa ragione sociale e sede/laboratorio OSA prima di generare il DDT.",
+        )
+
+    data_documento = documento["data_vendita"]
+    if hasattr(data_documento, "strftime"):
+        data_documento = data_documento.strftime("%d/%m/%Y")
+    pdf = printing_service.genera_ddt_vendita_pdf(
+        numero=documento["numero"],
+        data=data_documento,
+        mittente=mittente,
+        destinatario=documento["destinatario"],
+        righe=documento["righe"],
+    )
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="ddt_{documento["numero"]}.pdf"'
+            )
+        },
+    )
+
+
 @app.post(
     "/api/v1/vendite",
     status_code=status.HTTP_201_CREATED,

@@ -8,11 +8,14 @@ from unittest.mock import patch
 
 from fastapi import HTTPException
 
+from core.services import printing as printing_service
 from core.services import vendite
 from saas.main import (
     aggiungi_righe_vendita,
     crea_vendita,
     crea_vendita_completa,
+    elenco_ddt_vendita,
+    genera_ddt_vendita,
     lotti_disponibili_vendita,
 )
 from saas.repositories import tracciabilita_repo
@@ -169,6 +172,273 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
         list_lots.assert_called_once_with(42)
 
 
+class StoricoDdtVenditaTests(unittest.TestCase):
+    def test_repository_returns_tenant_scoped_ddt_history(self):
+        rows = [(81, 5, date(2026, 11, 10), "Cliente Test", 2)]
+
+        class FakeCursor:
+            def execute(self, query, params=None):
+                self.query = query
+                self.params = params
+
+            def fetchall(self):
+                return rows
+
+        class FakeConnection:
+            def __init__(self):
+                self._cursor = FakeCursor()
+
+            def cursor(self):
+                return self._cursor
+
+        conn = FakeConnection()
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            history = tracciabilita_repo.elenco_ddt_vendita(42)
+
+        self.assertEqual(conn._cursor.params, (42,))
+        self.assertIn("v.tenant_id = %s AND v.tipo_documento = 'DDT'", conn._cursor.query)
+        self.assertIn("LIMIT 100", conn._cursor.query)
+        self.assertEqual(
+            history,
+            [{
+                "id": 81,
+                "numero": 5,
+                "data_vendita": date(2026, 11, 10),
+                "cliente": "Cliente Test",
+                "numero_righe": 2,
+            }],
+        )
+
+    def test_repository_loads_ddt_header_and_rows_from_persisted_sale(self):
+        header = (
+            81, 5, date(2026, 11, 10), "DDT",
+            "Macelleria Test", "Via Roma 1", "Laboratorio", "IT123",
+            "Cliente Test", "Via Verdi", "2", "00100", "Roma", "RM", "Italia", "IT456",
+        )
+        rows = [("Salsiccia fresca", "V-25", Decimal("1.250"), "kg")]
+
+        class FakeCursor:
+            def __init__(self):
+                self.queries = []
+
+            def execute(self, query, params=None):
+                self.queries.append((query, params))
+
+            def fetchone(self):
+                return header
+
+            def fetchall(self):
+                return rows
+
+        class FakeConnection:
+            def __init__(self):
+                self._cursor = FakeCursor()
+
+            def cursor(self):
+                return self._cursor
+
+        conn = FakeConnection()
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            document = tracciabilita_repo.dettaglio_ddt_vendita(42, 81)
+
+        self.assertIn("WHERE v.tenant_id = %s AND v.id = %s", conn._cursor.queries[0][0])
+        self.assertEqual(conn._cursor.queries[0][1], (42, 81))
+        self.assertIn("WHERE rv.tenant_id = %s AND rv.vendita_id = %s", conn._cursor.queries[1][0])
+        self.assertEqual(conn._cursor.queries[1][1], (42, 81))
+        self.assertEqual(document["mittente"]["ragione_sociale"], "Macelleria Test")
+        self.assertEqual(document["destinatario"]["denominazione"], "Cliente Test")
+        self.assertEqual(
+            document["righe"],
+            [{
+                "articolo": "Salsiccia fresca",
+                "lotto": "V-25",
+                "quantita": "1.250",
+                "unita_misura": "kg",
+            }],
+        )
+
+    def test_repository_returns_none_for_sale_outside_tenant(self):
+        class FakeCursor:
+            def execute(self, query, params=None):
+                self.query = query
+                self.params = params
+
+            def fetchone(self):
+                return None
+
+        class FakeConnection:
+            def __init__(self):
+                self._cursor = FakeCursor()
+
+            def cursor(self):
+                return self._cursor
+
+        conn = FakeConnection()
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            document = tracciabilita_repo.dettaglio_ddt_vendita(42, 81)
+
+        self.assertIsNone(document)
+        self.assertEqual(conn._cursor.params, (42, 81))
+
+    def test_history_endpoint_uses_tenant_from_authenticated_user(self):
+        expected = [{"id": 81, "numero": 5}]
+
+        with patch.object(
+            vendite_service, "elenco_ddt_vendita", return_value=expected
+        ) as list_ddt:
+            result = elenco_ddt_vendita({"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        list_ddt.assert_called_once_with(42)
+
+    def test_ddt_endpoint_generates_pdf_from_persisted_document(self):
+        document = {
+            "id": 81,
+            "numero": 5,
+            "data_vendita": date(2026, 11, 10),
+            "tipo_documento": "DDT",
+            "mittente": {
+                "ragione_sociale": "Macelleria Test",
+                "indirizzo": "Via Roma 1",
+                "laboratorio": "",
+                "partita_iva": "IT123",
+            },
+            "destinatario": {"denominazione": "Cliente Test"},
+            "righe": [{
+                "articolo": "Salsiccia fresca",
+                "lotto": "V-25",
+                "quantita": "1.250",
+                "unita_misura": "kg",
+            }],
+        }
+
+        with (
+            patch.object(
+                vendite_service, "dettaglio_ddt_vendita", return_value=document
+            ) as get_document,
+            patch(
+                "saas.main.printing_service.genera_ddt_vendita_pdf",
+                return_value=b"%PDF-test",
+            ) as generate_pdf,
+        ):
+            response = genera_ddt_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+
+        get_document.assert_called_once_with(42, 81)
+        generate_pdf.assert_called_once_with(
+            numero=5,
+            data="10/11/2026",
+            mittente=document["mittente"],
+            destinatario=document["destinatario"],
+            righe=document["righe"],
+        )
+        self.assertEqual(response.media_type, "application/pdf")
+        self.assertEqual(response.body, b"%PDF-test")
+        self.assertEqual(
+            response.headers["content-disposition"],
+            'attachment; filename="ddt_5.pdf"',
+        )
+
+    def test_reprinting_reuses_same_document_number_and_rows_without_writes(self):
+        document = {
+            "id": 81,
+            "numero": 5,
+            "data_vendita": date(2026, 11, 10),
+            "tipo_documento": "DDT",
+            "mittente": {"ragione_sociale": "Macelleria Test", "indirizzo": "Via Roma"},
+            "destinatario": {"denominazione": "Cliente Test"},
+            "righe": [{
+                "articolo": "Salsiccia fresca",
+                "lotto": "V-25",
+                "quantita": "1.250",
+                "unita_misura": "kg",
+            }],
+        }
+
+        with (
+            patch.object(
+                vendite_service, "dettaglio_ddt_vendita", return_value=document
+            ) as get_document,
+            patch(
+                "saas.main.printing_service.genera_ddt_vendita_pdf",
+                side_effect=[b"%PDF-first", b"%PDF-reprint"],
+            ) as generate_pdf,
+        ):
+            first = genera_ddt_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+            again = genera_ddt_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+
+        self.assertEqual(get_document.call_count, 2)
+        self.assertEqual(generate_pdf.call_count, 2)
+        self.assertEqual(first.headers["content-disposition"], again.headers["content-disposition"])
+        self.assertEqual(first.headers["content-disposition"], 'attachment; filename="ddt_5.pdf"')
+        self.assertEqual(
+            generate_pdf.call_args_list[0].kwargs["righe"],
+            generate_pdf.call_args_list[1].kwargs["righe"],
+        )
+
+    def test_endpoint_rejects_non_ddt_documents_and_tenant_misses(self):
+        with patch.object(
+            vendite_service,
+            "dettaglio_ddt_vendita",
+            return_value={"tipo_documento": "RICEVUTA"},
+        ):
+            with self.assertRaises(HTTPException) as error:
+                genera_ddt_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+        self.assertEqual(error.exception.status_code, 409)
+
+        with patch.object(
+            vendite_service, "dettaglio_ddt_vendita", return_value=None
+        ):
+            with self.assertRaises(HTTPException) as error:
+                genera_ddt_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+        self.assertEqual(error.exception.status_code, 404)
+
+    def test_ddt_pdf_contains_persisted_sale_details(self):
+        pdf = printing_service.genera_ddt_vendita_pdf(
+            numero=5,
+            data="10/11/2026",
+            mittente={
+                "ragione_sociale": "Macelleria Test",
+                "indirizzo": "Via Roma 1",
+                "laboratorio": "",
+                "partita_iva": "IT123",
+            },
+            destinatario={
+                "denominazione": "Cliente Test",
+                "indirizzo": "Via Verdi",
+                "numero_civico": "2",
+                "cap": "00100",
+                "citta": "Roma",
+                "provincia": "RM",
+                "paese": "Italia",
+                "partita_iva": "IT456",
+            },
+            righe=[{
+                "articolo": "Salsiccia fresca",
+                "lotto": "V-25",
+                "quantita": "1.250",
+                "unita_misura": "kg",
+            }],
+        )
+
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        self.assertGreater(len(pdf), 500)
+
+
 class FakeVenditaCursor:
     def __init__(self, cliente_valido=True, numeri_per_tenant=None):
         self.cliente_valido = cliente_valido
@@ -320,6 +590,14 @@ class CreaVenditaTests(unittest.TestCase):
                 crea_vendita(payload, {"tenant_id": 42})
 
         self.assertEqual(error.exception.status_code, 404)
+
+    def test_ddt_requires_a_customer(self):
+        with self.assertRaises(ValueError):
+            VenditaCreate(
+                data=date(2026, 11, 10),
+                cliente_id=None,
+                tipo_documento="DDT",
+            )
 
 
 class CreaVenditaCompletaTests(unittest.TestCase):

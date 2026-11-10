@@ -8,6 +8,16 @@ def lotti_disponibili_vendita(tenant_id):
     return tracciabilita_repo.lotti_disponibili_vendita(tenant_id)
 
 
+def elenco_ddt_vendita(tenant_id):
+    """Restituisce lo storico DDT del tenant."""
+    return tracciabilita_repo.elenco_ddt_vendita(tenant_id)
+
+
+def dettaglio_ddt_vendita(tenant_id, vendita_id):
+    """Carica la vendita persistita da usare come sorgente del DDT."""
+    return tracciabilita_repo.dettaglio_ddt_vendita(tenant_id, vendita_id)
+
+
 def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
     """Crea un documento di vendita persistente per il tenant."""
     return tracciabilita_repo.crea_vendita(

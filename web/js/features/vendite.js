@@ -1,4 +1,4 @@
-import { api } from "../api/client.js";
+import { api, apiGetBlob } from "../api/client.js";
 import { $ } from "../core/dom.js";
 
 let lottiVendita = [];
@@ -242,6 +242,13 @@ function quantitaApi(quantitaMilli) {
 
 async function registraVendita() {
   if (registrazioneInCorso || righeVendita.length === 0) return;
+  const tipoDocumento = $("sales-document-type").value;
+  const clienteId = $("sales-customer").value;
+  if (tipoDocumento === "DDT" && !clienteId) {
+    $("sales-checkout-error").textContent = "Per un DDT seleziona un cliente.";
+    return;
+  }
+
   registrazioneInCorso = true;
   $("btn-register-sales").disabled = true;
   $("btn-add-sales-line").disabled = true;
@@ -258,7 +265,6 @@ async function registraVendita() {
     iva_percentuale: "0.00",
   }));
   const totale = righeVendita.reduce((sum, riga) => sum + riga.importoCentesimi, 0);
-  const clienteId = $("sales-customer").value;
   let vendita;
 
   try {
@@ -267,7 +273,7 @@ async function registraVendita() {
       body: JSON.stringify({
         data: dataLocaleISO(),
         cliente_id: clienteId ? Number(clienteId) : null,
-        tipo_documento: "RICEVUTA",
+        tipo_documento: tipoDocumento,
         righe,
       }),
     });
@@ -290,23 +296,36 @@ async function registraVendita() {
   renderCarrello();
 
   try {
-    await api("/api/v1/print-jobs", {
-      method: "POST",
-      body: JSON.stringify({
-        tipo: "scontrino",
-        payload: JSON.stringify({
-          testata: `GestLab · RICEVUTA NON FISCALE #${vendita.numero}\nDocumento non fiscale — non sostituisce lo scontrino del registratore telematico`,
-          righe: righeScontrino,
-          totale: formattaImporto(totale),
-          iva: "0,00 €",
-        }),
-      }),
-    });
-    $("sales-checkout-status").className = "error success";
-    $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata. Ricevuta inviata alla coda di stampa.`;
-  } catch (error) {
-    $("sales-checkout-status").className = "error";
-    $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata, ma la stampa non è stata accodata: ${error.message}. Puoi controllare la Coda stampa.`;
+    if (tipoDocumento === "DDT") {
+      try {
+        await scaricaDdt(vendita.id, null, vendita.numero);
+        $("sales-checkout-status").className = "error success";
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata. DDT scaricato; puoi ristamparlo dallo storico.`;
+      } catch (error) {
+        $("sales-checkout-status").className = "error";
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata, ma il DDT non è stato generato: ${error.message}. Puoi riprovare dallo storico.`;
+      }
+    } else {
+      try {
+        await api("/api/v1/print-jobs", {
+          method: "POST",
+          body: JSON.stringify({
+            tipo: "scontrino",
+            payload: JSON.stringify({
+              testata: `GestLab · RICEVUTA NON FISCALE #${vendita.numero}\nDocumento non fiscale — non sostituisce lo scontrino del registratore telematico`,
+              righe: righeScontrino,
+              totale: formattaImporto(totale),
+              iva: "0,00 €",
+            }),
+          }),
+        });
+        $("sales-checkout-status").className = "error success";
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata. Ricevuta inviata alla coda di stampa.`;
+      } catch (error) {
+        $("sales-checkout-status").className = "error";
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata, ma la stampa non è stata accodata: ${error.message}. Puoi controllare la Coda stampa.`;
+      }
+    }
   } finally {
     registrazioneInCorso = false;
     aggiornaTotale();
@@ -315,7 +334,71 @@ async function registraVendita() {
   }
 }
 
+async function scaricaDdt(venditaId, button = null, numero = venditaId) {
+  if (button) button.disabled = true;
+  try {
+    const blob = await apiGetBlob(`/api/v1/vendite/${venditaId}/ddt.pdf`);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ddt_${numero}.pdf`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function loadDdtHistory() {
+  const tbody = $("sales-history-body");
+  const status = $("sales-history-status");
+  tbody.replaceChildren();
+  status.textContent = "";
+  try {
+    const documenti = await api("/api/v1/vendite/ddt");
+    if (!Array.isArray(documenti)) {
+      throw new Error("La risposta dello storico DDT non è valida.");
+    }
+    if (!documenti.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.className = "empty";
+      cell.textContent = "Nessun DDT registrato";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+      return;
+    }
+    documenti.forEach((documento) => {
+      const row = document.createElement("tr");
+      [
+        `DDT ${documento.numero}`,
+        formattaData(documento.data_vendita),
+        documento.cliente || "Cliente non disponibile",
+        String(documento.numero_righe),
+      ].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      const actionCell = document.createElement("td");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn ghost sales-ddt-download";
+      button.dataset.ddtId = String(documento.id);
+      button.dataset.ddtNumber = String(documento.numero);
+      button.textContent = "Scarica / ristampa";
+      actionCell.appendChild(button);
+      row.appendChild(actionCell);
+      tbody.appendChild(row);
+    });
+  } catch (error) {
+    status.textContent = `Impossibile caricare lo storico DDT: ${error.message}`;
+  }
+}
+
 export async function loadVendite() {
+  loadDdtHistory();
   const articoloSelezionato = $("sales-article").value;
   const lottoSelezionatoId = $("sales-lot").value;
   $("sales-selection-error").textContent = "";
@@ -364,6 +447,17 @@ export function initVendite() {
     if (!button) return;
     righeVendita.splice(Number(button.dataset.index), 1);
     renderCarrello();
+  });
+  $("sales-history-body").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-ddt-id]");
+    if (!button) return;
+    $("sales-history-status").textContent = "";
+    try {
+      await scaricaDdt(button.dataset.ddtId, button, button.dataset.ddtNumber);
+      $("sales-history-status").textContent = "DDT pronto per la stampa.";
+    } catch (error) {
+      $("sales-history-status").textContent = `Impossibile generare il DDT: ${error.message}`;
+    }
   });
   $("btn-register-sales").addEventListener("click", registraVendita);
 }
