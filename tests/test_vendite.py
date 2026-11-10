@@ -393,6 +393,21 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         )
         self.assertIn("FOR UPDATE", cursor.statements[0][0])
         self.assertEqual(cursor.statements[0][1], (42, 81))
+        stock_lock = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("SELECT l.articolo_id, l.unita_misura")
+        )
+        self.assertIn("FOR UPDATE", stock_lock[0])
+        self.assertEqual(stock_lock[1], (42, 7))
+        self.assertLess(
+            cursor.statements.index(stock_lock),
+            next(
+                index
+                for index, (query, _) in enumerate(cursor.statements)
+                if query.startswith("UPDATE lotti")
+            ),
+        )
         self.assertEqual(
             next(
                 params
@@ -441,6 +456,35 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
             any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements)
         )
         self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_combined_lines_cannot_exceed_locked_lot_stock(self):
+        seconda_riga = self.riga.model_copy(
+            update={"quantita": Decimal("0.250")}
+        )
+        cursor = FakeRigheVenditaCursor(giacenze={7: Decimal("1.000")})
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.GiacenzaInsufficiente):
+                tracciabilita_repo.aggiungi_righe_vendita(
+                    42, 81, [self.riga, seconda_riga]
+                )
+
+        self.assertFalse(
+            any(
+                query.startswith("INSERT INTO righe_vendita")
+                for query, _ in cursor.statements
+            )
+        )
+        self.assertFalse(
+            any(query.startswith("UPDATE lotti") for query, _ in cursor.statements)
+        )
         self.assertEqual(connection.commits, 0)
         self.assertEqual(connection.rollbacks, 1)
 
