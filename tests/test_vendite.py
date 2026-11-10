@@ -15,6 +15,7 @@ from saas.main import (
     lotti_disponibili_vendita,
 )
 from saas.repositories import tracciabilita_repo
+from saas.services import vendite as vendite_service
 from saas.schemas import VenditaCreate, VenditaRigaCreate, VenditaRigheCreate
 
 
@@ -153,9 +154,7 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
         expected = [{"id": 7, "codice_lotto": "A-7"}]
 
         with patch.object(
-            tracciabilita_repo,
-            "lotti_disponibili_vendita",
-            return_value=expected,
+            vendite_service, "lotti_disponibili_vendita", return_value=expected
         ) as list_lots:
             result = lotti_disponibili_vendita({"tenant_id": 42})
 
@@ -270,7 +269,7 @@ class CreaVenditaTests(unittest.TestCase):
         expected = {"id": 81, "tenant_id": 42, "numero": 5}
 
         with patch.object(
-            tracciabilita_repo, "crea_vendita", return_value=expected
+            vendite_service, "crea_vendita", return_value=expected
         ) as create:
             result = crea_vendita(payload, {"tenant_id": 42})
 
@@ -290,7 +289,7 @@ class CreaVenditaTests(unittest.TestCase):
         )
 
         with patch.object(
-            tracciabilita_repo,
+            vendite_service,
             "crea_vendita",
             side_effect=tracciabilita_repo.ClienteVenditaNonValido,
         ):
@@ -547,7 +546,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         expected = [{"id": 101}]
 
         with patch.object(
-            tracciabilita_repo, "aggiungi_righe_vendita", return_value=expected
+            vendite_service, "aggiungi_righe_vendita", return_value=expected
         ) as add_lines:
             result = aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
 
@@ -561,7 +560,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
     def test_endpoint_translates_nonexistent_sale(self):
         payload = VenditaRigheCreate(righe=[self.riga])
         with patch.object(
-            tracciabilita_repo,
+            vendite_service,
             "aggiungi_righe_vendita",
             side_effect=tracciabilita_repo.VenditaNonTrovata,
         ):
@@ -573,7 +572,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
     def test_endpoint_translates_insufficient_stock_to_conflict(self):
         payload = VenditaRigheCreate(righe=[self.riga])
         with patch.object(
-            tracciabilita_repo,
+            vendite_service,
             "aggiungi_righe_vendita",
             side_effect=tracciabilita_repo.GiacenzaInsufficiente(
                 "La giacenza del lotto 7 è insufficiente."
@@ -583,6 +582,46 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
                 aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
 
         self.assertEqual(error.exception.status_code, 409)
+
+
+class VenditeServiceTests(unittest.TestCase):
+    def test_service_delegates_to_traceability_repository(self):
+        expected_lots = [{"id": 7}]
+        expected_sale = {"id": 81}
+        expected_lines = [{"id": 101}]
+
+        with (
+            patch.object(
+                tracciabilita_repo,
+                "lotti_disponibili_vendita",
+                return_value=expected_lots,
+            ) as list_lots,
+            patch.object(
+                tracciabilita_repo, "crea_vendita", return_value=expected_sale
+            ) as create_sale,
+            patch.object(
+                tracciabilita_repo,
+                "aggiungi_righe_vendita",
+                return_value=expected_lines,
+            ) as add_lines,
+        ):
+            lots = vendite_service.lotti_disponibili_vendita(42)
+            sale = vendite_service.crea_vendita(
+                42, date(2026, 11, 10), 13, "DDT"
+            )
+            lines = vendite_service.aggiungi_righe_vendita(42, 81, [])
+
+        self.assertIs(lots, expected_lots)
+        list_lots.assert_called_once_with(42)
+        self.assertIs(sale, expected_sale)
+        create_sale.assert_called_once_with(
+            tenant_id=42,
+            data_vendita=date(2026, 11, 10),
+            cliente_id=13,
+            tipo_documento="DDT",
+        )
+        self.assertIs(lines, expected_lines)
+        add_lines.assert_called_once_with(tenant_id=42, vendita_id=81, righe=[])
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from saas import auth
 from saas.repositories import print_repo, tenant_repo, tracciabilita_repo
+from saas.services import vendite as vendite_service
 from saas.schemas import (
     DdtCreate,
     DipendenteCreate,
@@ -995,7 +996,7 @@ def scheda_lotto_tracciato(
 @app.get("/api/v1/vendite/lotti-disponibili")
 def lotti_disponibili_vendita(user: dict = Depends(auth.get_current_user)):
     """Elenca i lotti vendibili in ordine FEFO per il tenant corrente."""
-    return tracciabilita_repo.lotti_disponibili_vendita(user["tenant_id"])
+    return vendite_service.lotti_disponibili_vendita(user["tenant_id"])
 
 
 @app.post(
@@ -1008,7 +1009,7 @@ def crea_vendita(
 ):
     """Registra la testata del documento di vendita per il tenant corrente."""
     try:
-        return tracciabilita_repo.crea_vendita(
+        return vendite_service.crea_vendita(
             tenant_id=user["tenant_id"],
             data_vendita=payload.data,
             cliente_id=payload.cliente_id,
@@ -1037,7 +1038,7 @@ def aggiungi_righe_vendita(
 ):
     """Registra le righe e scarica i relativi lotti atomicamente."""
     try:
-        return tracciabilita_repo.aggiungi_righe_vendita(
+        return vendite_service.aggiungi_righe_vendita(
             tenant_id=user["tenant_id"],
             vendita_id=vendita_id,
             righe=payload.righe,
