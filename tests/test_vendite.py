@@ -9,9 +9,13 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 from core.services import vendite
-from saas.main import crea_vendita, lotti_disponibili_vendita
+from saas.main import (
+    aggiungi_righe_vendita,
+    crea_vendita,
+    lotti_disponibili_vendita,
+)
 from saas.repositories import tracciabilita_repo
-from saas.schemas import VenditaCreate
+from saas.schemas import VenditaCreate, VenditaRigaCreate, VenditaRigheCreate
 
 
 class FakeCursor:
@@ -292,6 +296,146 @@ class CreaVenditaTests(unittest.TestCase):
         ):
             with self.assertRaises(HTTPException) as error:
                 crea_vendita(payload, {"tenant_id": 42})
+
+        self.assertEqual(error.exception.status_code, 404)
+
+
+class FakeRigheVenditaCursor:
+    def __init__(self, vendita_esistente=True, lotti_validi=None):
+        self.vendita_esistente = vendita_esistente
+        self.lotti_validi = lotti_validi if lotti_validi is not None else {7}
+        self.statements = []
+        self.lastrowid = 100
+
+    def execute(self, query, params=None):
+        self.statements.append((query, params))
+        if query.startswith("INSERT INTO righe_vendita"):
+            self.lastrowid += 1
+
+    def fetchone(self):
+        query, params = self.statements[-1]
+        if query.startswith("SELECT id FROM vendite"):
+            return (81,) if self.vendita_esistente else None
+        if query.startswith("SELECT l.id FROM lotti"):
+            return (params[1],) if params[1] in self.lotti_validi else None
+        return None
+
+
+class AggiungiRigheVenditaTests(unittest.TestCase):
+    def setUp(self):
+        self.riga = VenditaRigaCreate(
+            lotto_id=7,
+            articolo_id=3,
+            quantita=Decimal("1.250"),
+            unita_misura="kg",
+            prezzo_unitario=Decimal("12.5000"),
+            iva_percentuale=Decimal("10.00"),
+        )
+
+    def invoke_repository(self, righe=None, vendita_esistente=True, lotti_validi=None):
+        cursor = FakeRigheVenditaCursor(vendita_esistente, lotti_validi)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            result = tracciabilita_repo.aggiungi_righe_vendita(
+                42, 81, [self.riga] if righe is None else righe
+            )
+        return result, cursor, connection
+
+    def test_records_tenant_scoped_line_without_changing_lot_stock(self):
+        righe, cursor, connection = self.invoke_repository()
+
+        self.assertEqual(
+            righe,
+            [
+                {
+                    "id": 101,
+                    "vendita_id": 81,
+                    "lotto_id": 7,
+                    "articolo_id": 3,
+                    "quantita": "1.250",
+                    "unita_misura": "kg",
+                    "prezzo_unitario": "12.5000",
+                    "iva_percentuale": "10.00",
+                }
+            ],
+        )
+        self.assertIn("FOR UPDATE", cursor.statements[0][0])
+        self.assertEqual(cursor.statements[0][1], (42, 81))
+        self.assertEqual(
+            cursor.statements[-1][1],
+            (42, 81, 7, 3, Decimal("1.250"), "kg", Decimal("12.5000"), Decimal("10.00")),
+        )
+        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
+
+    def test_missing_sale_rolls_back(self):
+        cursor = FakeRigheVenditaCursor(vendita_esistente=False)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.VenditaNonTrovata):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_invalid_lot_rolls_back_all_lines(self):
+        riga_non_valida = self.riga.model_copy(update={"lotto_id": 8})
+        cursor = FakeRigheVenditaCursor(lotti_validi={7})
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.RigaVenditaNonValida):
+                tracciabilita_repo.aggiungi_righe_vendita(
+                    42, 81, [self.riga, riga_non_valida]
+                )
+
+        self.assertEqual(
+            sum(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements),
+            1,
+        )
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_endpoint_uses_authenticated_tenant(self):
+        payload = VenditaRigheCreate(righe=[self.riga])
+        expected = [{"id": 101}]
+
+        with patch.object(
+            tracciabilita_repo, "aggiungi_righe_vendita", return_value=expected
+        ) as add_lines:
+            result = aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        add_lines.assert_called_once_with(
+            tenant_id=42,
+            vendita_id=81,
+            righe=payload.righe,
+        )
+
+    def test_endpoint_translates_nonexistent_sale(self):
+        payload = VenditaRigheCreate(righe=[self.riga])
+        with patch.object(
+            tracciabilita_repo,
+            "aggiungi_righe_vendita",
+            side_effect=tracciabilita_repo.VenditaNonTrovata,
+        ):
+            with self.assertRaises(HTTPException) as error:
+                aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
 
         self.assertEqual(error.exception.status_code, 404)
 

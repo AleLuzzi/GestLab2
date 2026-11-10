@@ -333,6 +333,21 @@ class VenditaCreate(BaseModel):
     tipo_documento: str = Field(..., pattern="^(DDT|RICEVUTA)$")
 
 
+class VenditaRigaCreate(BaseModel):
+    lotto_id: int = Field(..., gt=0)
+    articolo_id: int = Field(..., gt=0)
+    quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
+    unita_misura: str = Field(..., min_length=1, max_length=8)
+    prezzo_unitario: Decimal = Field(..., ge=0, max_digits=12, decimal_places=4)
+    iva_percentuale: Decimal = Field(
+        default=Decimal("0.00"), ge=0, le=100, max_digits=5, decimal_places=2
+    )
+
+
+class VenditaRigheCreate(BaseModel):
+    righe: list[VenditaRigaCreate] = Field(..., min_length=1)
+
+
 # ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #

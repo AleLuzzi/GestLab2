@@ -46,6 +46,14 @@ class ClienteVenditaNonValido(Exception):
     """Cliente assente, inattivo o non associato al tenant."""
 
 
+class VenditaNonTrovata(Exception):
+    """Documento di vendita assente o non associato al tenant."""
+
+
+class RigaVenditaNonValida(Exception):
+    """Lotto, articolo o unità di misura non coerenti per la riga."""
+
+
 class LottoScaduto(Exception):
     """Un lotto con data di scadenza superata non può essere lavorato."""
 
@@ -753,6 +761,76 @@ def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
         "cliente_id": cliente_id,
         "tipo_documento": tipo_documento,
     }
+
+
+def aggiungi_righe_vendita(tenant_id, vendita_id, righe):
+    """Registra righe di vendita senza modificare la giacenza dei lotti."""
+    righe_create = []
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id FROM vendite WHERE tenant_id = %s AND id = %s "
+                "FOR UPDATE",
+                (tenant_id, vendita_id),
+            )
+            if cursor.fetchone() is None:
+                raise VenditaNonTrovata()
+
+            for riga in righe:
+                cursor.execute(
+                    "SELECT l.id FROM lotti l "
+                    "JOIN articoli a ON a.tenant_id = l.tenant_id "
+                    "AND a.id = l.articolo_id "
+                    "WHERE l.tenant_id = %s AND l.id = %s "
+                    "AND l.articolo_id = %s AND l.unita_misura = %s "
+                    "AND a.unita_misura = %s",
+                    (
+                        tenant_id,
+                        riga.lotto_id,
+                        riga.articolo_id,
+                        riga.unita_misura,
+                        riga.unita_misura,
+                    ),
+                )
+                if cursor.fetchone() is None:
+                    raise RigaVenditaNonValida()
+
+                cursor.execute(
+                    "INSERT INTO righe_vendita "
+                    "(tenant_id, vendita_id, lotto_id, articolo_id, quantita, "
+                    "unita_misura, prezzo_unitario, iva_percentuale) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                    (
+                        tenant_id,
+                        vendita_id,
+                        riga.lotto_id,
+                        riga.articolo_id,
+                        riga.quantita,
+                        riga.unita_misura,
+                        riga.prezzo_unitario,
+                        riga.iva_percentuale,
+                    ),
+                )
+                riga_id = cursor.lastrowid
+                righe_create.append(
+                    {
+                        "id": riga_id,
+                        "vendita_id": vendita_id,
+                        "lotto_id": riga.lotto_id,
+                        "articolo_id": riga.articolo_id,
+                        "quantita": str(riga.quantita),
+                        "unita_misura": riga.unita_misura,
+                        "prezzo_unitario": str(riga.prezzo_unitario),
+                        "iva_percentuale": str(riga.iva_percentuale),
+                    }
+                )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    return righe_create
 
 
 def dettaglio_lotto(tenant_id, lotto_id):

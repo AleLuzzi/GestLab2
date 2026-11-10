@@ -62,6 +62,7 @@ from saas.schemas import (
     TokenResponse,
     UtenteCreate,
     VenditaCreate,
+    VenditaRigheCreate,
 )
 
 from core.repositories.soggetti import FornitoreConStoricoError, FornitoreNonValido
@@ -1022,6 +1023,34 @@ def crea_vendita(
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             "Il cliente non esiste, non è attivo o non appartiene al tenant corrente",
+        ) from error
+
+
+@app.post(
+    "/api/v1/vendite/{vendita_id}/righe",
+    status_code=status.HTTP_201_CREATED,
+)
+def aggiungi_righe_vendita(
+    vendita_id: int,
+    payload: VenditaRigheCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Registra le righe di un documento senza scaricare i lotti."""
+    try:
+        return tracciabilita_repo.aggiungi_righe_vendita(
+            tenant_id=user["tenant_id"],
+            vendita_id=vendita_id,
+            righe=payload.righe,
+        )
+    except tracciabilita_repo.VenditaNonTrovata as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il documento di vendita non esiste nel tenant corrente",
+        ) from error
+    except tracciabilita_repo.RigaVenditaNonValida as error:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Lotto, articolo o unità di misura non coerenti nella riga di vendita",
         ) from error
 
 
