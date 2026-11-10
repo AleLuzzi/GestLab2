@@ -88,7 +88,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 ### Documento e scarico di magazzino
 
 - [x] Definire l'aggregato persistente di vendita e le relative migrazioni. Lo schema consolidato e la migrazione `20261108_vendite.sql` introducono testata tenant-scoped (`numero` univoco per tenant, data, cliente opzionale e tipo `DDT`/`RICEVUTA`) e righe collegate a lotto e articolo, con quantità, unità, prezzo e IVA informativa; vincoli e riconoscimento del bootstrap sono coperti da `tests/test_schema_consolidation.py` e `tests/test_bootstrap_migrations.py`.
-- [ ] Registrare tenant, data, numero progressivo per tenant, cliente opzionale (o banco) e tipo documento `DDT`/`RICEVUTA`.
+- [x] Registrare tenant, data, numero progressivo per tenant, cliente opzionale (o banco) e tipo documento `DDT`/`RICEVUTA`. `POST /api/v1/vendite` crea una testata tenant-scoped usando il tenant del JWT, valida un cliente attivo dello stesso tenant o accetta banco senza cliente e assegna il progressivo in modo serializzato; coperto da `tests/test_vendite.py`.
 - [ ] Registrare per ogni riga lotto, articolo, quantità, unità di misura, prezzo unitario e IVA a solo scopo informativo.
 - [ ] Implementare lo scarico parziale, il movimento `VENDITA` e la chiusura del lotto a giacenza zero, in un'unica transazione.
 - [ ] Rifiutare con HTTP 409 una vendita che eccede la giacenza disponibile; verificare concorrenza e rollback in caso di errore.

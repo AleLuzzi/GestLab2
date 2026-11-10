@@ -2,12 +2,16 @@
 
 import unittest
 from contextlib import contextmanager
+from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
+from fastapi import HTTPException
+
 from core.services import vendite
-from saas.main import lotti_disponibili_vendita
+from saas.main import crea_vendita, lotti_disponibili_vendita
 from saas.repositories import tracciabilita_repo
+from saas.schemas import VenditaCreate
 
 
 class FakeCursor:
@@ -153,6 +157,143 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
 
         self.assertEqual(result, expected)
         list_lots.assert_called_once_with(42)
+
+
+class FakeVenditaCursor:
+    def __init__(self, cliente_valido=True):
+        self.cliente_valido = cliente_valido
+        self.lastrowid = 81
+        self.statements = []
+
+    def execute(self, query, params=None):
+        self.statements.append((query, params))
+
+    def fetchone(self):
+        query = self.statements[-1][0]
+        if query.startswith("SELECT id FROM tenant"):
+            return (42,)
+        if query.startswith("SELECT s.id FROM soggetti"):
+            return (13,) if self.cliente_valido else None
+        if query.startswith("SELECT COALESCE(MAX(numero)"):
+            return (4,)
+        return None
+
+
+class CreaVenditaTests(unittest.TestCase):
+    def invoke_repository(self, cliente_id=13, cliente_valido=True):
+        cursor = FakeVenditaCursor(cliente_valido)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            result = tracciabilita_repo.crea_vendita(
+                42,
+                date(2026, 11, 10),
+                cliente_id,
+                "DDT",
+            )
+        return result, cursor, connection
+
+    def test_creates_tenant_scoped_header_with_next_number(self):
+        vendita, cursor, connection = self.invoke_repository()
+
+        self.assertEqual(
+            vendita,
+            {
+                "id": 81,
+                "tenant_id": 42,
+                "numero": 5,
+                "data_vendita": date(2026, 11, 10),
+                "cliente_id": 13,
+                "tipo_documento": "DDT",
+            },
+        )
+        self.assertIn("FOR UPDATE", cursor.statements[0][0])
+        self.assertEqual(cursor.statements[0][1], (42,))
+        self.assertEqual(
+            cursor.statements[-1][1],
+            (42, 5, date(2026, 11, 10), 13, "DDT"),
+        )
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
+
+    def test_bank_receipt_does_not_require_a_customer(self):
+        cursor = FakeVenditaCursor()
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            vendita = tracciabilita_repo.crea_vendita(
+                42, date(2026, 11, 10), None, "RICEVUTA"
+            )
+
+        self.assertIsNone(vendita["cliente_id"])
+        self.assertFalse(any("FROM soggetti s" in query for query, _ in cursor.statements))
+        self.assertEqual(
+            cursor.statements[-1][1],
+            (42, 5, date(2026, 11, 10), None, "RICEVUTA"),
+        )
+
+    def test_invalid_customer_rolls_back(self):
+        cursor = FakeVenditaCursor(cliente_valido=False)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.ClienteVenditaNonValido):
+                tracciabilita_repo.crea_vendita(
+                    42, date(2026, 11, 10), 13, "DDT"
+                )
+
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_endpoint_uses_tenant_from_authenticated_user(self):
+        payload = VenditaCreate(
+            data=date(2026, 11, 10),
+            cliente_id=13,
+            tipo_documento="DDT",
+        )
+        expected = {"id": 81, "tenant_id": 42, "numero": 5}
+
+        with patch.object(
+            tracciabilita_repo, "crea_vendita", return_value=expected
+        ) as create:
+            result = crea_vendita(payload, {"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        create.assert_called_once_with(
+            tenant_id=42,
+            data_vendita=payload.data,
+            cliente_id=13,
+            tipo_documento="DDT",
+        )
+
+    def test_endpoint_translates_invalid_customer(self):
+        payload = VenditaCreate(
+            data=date(2026, 11, 10),
+            cliente_id=13,
+            tipo_documento="DDT",
+        )
+
+        with patch.object(
+            tracciabilita_repo,
+            "crea_vendita",
+            side_effect=tracciabilita_repo.ClienteVenditaNonValido,
+        ):
+            with self.assertRaises(HTTPException) as error:
+                crea_vendita(payload, {"tenant_id": 42})
+
+        self.assertEqual(error.exception.status_code, 404)
 
 
 if __name__ == "__main__":

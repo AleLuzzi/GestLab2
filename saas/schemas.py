@@ -327,6 +327,12 @@ class RettificaLottoCreate(BaseModel):
         return value
 
 
+class VenditaCreate(BaseModel):
+    data: date
+    cliente_id: int | None = Field(default=None, gt=0)
+    tipo_documento: str = Field(..., pattern="^(DDT|RICEVUTA)$")
+
+
 # ------------------------------------------------------------------------- #
 #  Reparti
 # ------------------------------------------------------------------------- #

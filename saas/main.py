@@ -61,6 +61,7 @@ from saas.schemas import (
     TenantOsaUpdate,
     TokenResponse,
     UtenteCreate,
+    VenditaCreate,
 )
 
 from core.repositories.soggetti import FornitoreConStoricoError, FornitoreNonValido
@@ -994,6 +995,34 @@ def scheda_lotto_tracciato(
 def lotti_disponibili_vendita(user: dict = Depends(auth.get_current_user)):
     """Elenca i lotti vendibili in ordine FEFO per il tenant corrente."""
     return tracciabilita_repo.lotti_disponibili_vendita(user["tenant_id"])
+
+
+@app.post(
+    "/api/v1/vendite",
+    status_code=status.HTTP_201_CREATED,
+)
+def crea_vendita(
+    payload: VenditaCreate,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Registra la testata del documento di vendita per il tenant corrente."""
+    try:
+        return tracciabilita_repo.crea_vendita(
+            tenant_id=user["tenant_id"],
+            data_vendita=payload.data,
+            cliente_id=payload.cliente_id,
+            tipo_documento=payload.tipo_documento,
+        )
+    except tracciabilita_repo.TenantVenditaNonTrovato as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il tenant del documento di vendita non esiste",
+        ) from error
+    except tracciabilita_repo.ClienteVenditaNonValido as error:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il cliente non esiste, non è attivo o non appartiene al tenant corrente",
+        ) from error
 
 
 @app.post(

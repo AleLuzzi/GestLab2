@@ -37,6 +37,15 @@ class ArticoloNonUtilizzabileComeInput(Exception):
 class RicettaNonTrovata(Exception):
     """Ricetta assente, inattiva o non associata all'articolo prodotto."""
 
+
+class TenantVenditaNonTrovato(Exception):
+    """Tenant inesistente durante la creazione di un documento di vendita."""
+
+
+class ClienteVenditaNonValido(Exception):
+    """Cliente assente, inattivo o non associato al tenant."""
+
+
 class LottoScaduto(Exception):
     """Un lotto con data di scadenza superata non può essere lavorato."""
 
@@ -693,6 +702,57 @@ def lotti_disponibili_vendita(tenant_id):
             }
             for row in cursor.fetchall()
         ]
+
+
+def crea_vendita(tenant_id, data_vendita, cliente_id, tipo_documento):
+    """Crea una testata con progressivo serializzato per tenant."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id FROM tenant WHERE id = %s FOR UPDATE",
+                (tenant_id,),
+            )
+            if cursor.fetchone() is None:
+                raise TenantVenditaNonTrovato()
+
+            if cliente_id is not None:
+                cursor.execute(
+                    "SELECT s.id FROM soggetti s "
+                    "JOIN soggetti_ruoli r ON r.tenant_id = s.tenant_id "
+                    "AND r.soggetto_id = s.id AND r.ruolo = 'cliente' "
+                    "WHERE s.tenant_id = %s AND s.id = %s AND s.attivo = 1 "
+                    "FOR UPDATE",
+                    (tenant_id, cliente_id),
+                )
+                if cursor.fetchone() is None:
+                    raise ClienteVenditaNonValido()
+
+            cursor.execute(
+                "SELECT COALESCE(MAX(numero), 0) FROM vendite WHERE tenant_id = %s",
+                (tenant_id,),
+            )
+            numero = int(cursor.fetchone()[0]) + 1
+            cursor.execute(
+                "INSERT INTO vendite "
+                "(tenant_id, numero, data_vendita, cliente_id, tipo_documento) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (tenant_id, numero, data_vendita, cliente_id, tipo_documento),
+            )
+            vendita_id = cursor.lastrowid
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+
+    return {
+        "id": vendita_id,
+        "tenant_id": tenant_id,
+        "numero": numero,
+        "data_vendita": data_vendita,
+        "cliente_id": cliente_id,
+        "tipo_documento": tipo_documento,
+    }
 
 
 def dettaglio_lotto(tenant_id, lotto_id):
