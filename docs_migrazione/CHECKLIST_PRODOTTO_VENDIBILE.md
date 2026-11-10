@@ -94,7 +94,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 - [x] Rifiutare con HTTP 409 una vendita che eccede la giacenza disponibile; verificare concorrenza e rollback in caso di errore. L'endpoint traduce `GiacenzaInsufficiente` in HTTP 409; il repository blocca la testata e i lotti tenant-scoped con `SELECT ... FOR UPDATE`, aggrega le righe per lotto e applica scarico, righe e movimenti in un'unica transazione. `tests/test_vendite.py` verifica il lock sul lotto, il rifiuto delle quantità aggregate insufficienti, il rollback e la risposta 409.
 - [x] Estendere il servizio vendite e il repository di tracciabilità senza usare il modello legacy. Gli endpoint di vendita passano da `saas/services/vendite.py` al repository tracciabile; il test del servizio verifica la delega e quelli API la propagazione degli errori del repository.
 - [x] Collegare le vendite alla genealogia in avanti dei lotti. Il dettaglio tenant-scoped del lotto mostra i documenti collegati con progressivo, data, tipo, cliente o banco e quantità venduta; coperto da `tests/test_tracciabilita.py`.
-- [ ] Aggiungere test per scarico parziale, lotto esaurito, quantità insufficiente, numerazione e isolamento tenant.
+- [x] Aggiungere test per scarico parziale, lotto esaurito, quantità insufficiente, numerazione e isolamento tenant. `tests/test_vendite.py` verifica scarico e movimento, esaurimento, rollback per giacenza insufficiente, numerazione tenant-scoped e rifiuto di vendite o lotti appartenenti a un altro tenant.
 
 ### Banco, listini e documenti
 

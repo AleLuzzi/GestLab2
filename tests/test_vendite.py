@@ -163,8 +163,9 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
 
 
 class FakeVenditaCursor:
-    def __init__(self, cliente_valido=True):
+    def __init__(self, cliente_valido=True, numeri_per_tenant=None):
         self.cliente_valido = cliente_valido
+        self.numeri_per_tenant = numeri_per_tenant or {42: 4}
         self.lastrowid = 81
         self.statements = []
 
@@ -172,19 +173,21 @@ class FakeVenditaCursor:
         self.statements.append((query, params))
 
     def fetchone(self):
-        query = self.statements[-1][0]
+        query, params = self.statements[-1]
         if query.startswith("SELECT id FROM tenant"):
-            return (42,)
+            return (params[0],)
         if query.startswith("SELECT s.id FROM soggetti"):
             return (13,) if self.cliente_valido else None
         if query.startswith("SELECT COALESCE(MAX(numero)"):
-            return (4,)
+            return (self.numeri_per_tenant.get(params[0], 0),)
         return None
 
 
 class CreaVenditaTests(unittest.TestCase):
-    def invoke_repository(self, cliente_id=13, cliente_valido=True):
-        cursor = FakeVenditaCursor(cliente_valido)
+    def invoke_repository(
+        self, cliente_id=13, cliente_valido=True, tenant_id=42, numeri_per_tenant=None
+    ):
+        cursor = FakeVenditaCursor(cliente_valido, numeri_per_tenant)
         connection = FakeConnection(cursor)
 
         @contextmanager
@@ -193,7 +196,7 @@ class CreaVenditaTests(unittest.TestCase):
 
         with patch.object(tracciabilita_repo, "connection", fake_connection):
             result = tracciabilita_repo.crea_vendita(
-                42,
+                tenant_id,
                 date(2026, 11, 10),
                 cliente_id,
                 "DDT",
@@ -216,12 +219,25 @@ class CreaVenditaTests(unittest.TestCase):
         )
         self.assertIn("FOR UPDATE", cursor.statements[0][0])
         self.assertEqual(cursor.statements[0][1], (42,))
+        self.assertIn("WHERE tenant_id = %s", cursor.statements[2][0])
+        self.assertEqual(cursor.statements[2][1], (42,))
         self.assertEqual(
             cursor.statements[-1][1],
             (42, 5, date(2026, 11, 10), 13, "DDT"),
         )
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
+
+    def test_numbering_uses_the_current_tenants_sequence(self):
+        vendita, cursor, _ = self.invoke_repository(
+            tenant_id=99,
+            numeri_per_tenant={42: 4, 99: 2},
+        )
+
+        self.assertEqual(vendita["tenant_id"], 99)
+        self.assertEqual(vendita["numero"], 3)
+        self.assertEqual(cursor.statements[2][1], (99,))
+        self.assertEqual(cursor.statements[-1][1][0:2], (99, 3))
 
     def test_bank_receipt_does_not_require_a_customer(self):
         cursor = FakeVenditaCursor()
@@ -306,11 +322,15 @@ class FakeRigheVenditaCursor:
         lotti_validi=None,
         giacenze=None,
         fail_on_movement=False,
+        vendita_tenant_id=42,
+        lotti_tenant_id=None,
     ):
         self.vendita_esistente = vendita_esistente
         self.lotti_validi = lotti_validi if lotti_validi is not None else {7}
         self.giacenze = giacenze if giacenze is not None else {7: Decimal("5.000")}
         self.fail_on_movement = fail_on_movement
+        self.vendita_tenant_id = vendita_tenant_id
+        self.lotti_tenant_id = lotti_tenant_id if lotti_tenant_id is not None else {7: 42}
         self.statements = []
         self.lastrowid = 100
 
@@ -326,10 +346,18 @@ class FakeRigheVenditaCursor:
     def fetchone(self):
         query, params = self.statements[-1]
         if query.startswith("SELECT id FROM vendite"):
-            return (81,) if self.vendita_esistente else None
+            return (
+                (81,)
+                if self.vendita_esistente and params[0] == self.vendita_tenant_id
+                else None
+            )
         if query.startswith("SELECT l.articolo_id, l.unita_misura"):
             lotto_id = params[1]
-            if lotto_id not in self.lotti_validi or lotto_id not in self.giacenze:
+            if (
+                params[0] != self.lotti_tenant_id.get(lotto_id)
+                or lotto_id not in self.lotti_validi
+                or lotto_id not in self.giacenze
+            ):
                 return None
             return (3, "kg", self.giacenze[lotto_id], 1, "kg", 1)
         return None
@@ -353,12 +381,16 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         lotti_validi=None,
         giacenze=None,
         fail_on_movement=False,
+        vendita_tenant_id=42,
+        lotti_tenant_id=None,
     ):
         cursor = FakeRigheVenditaCursor(
             vendita_esistente,
             lotti_validi,
             giacenze,
             fail_on_movement,
+            vendita_tenant_id,
+            lotti_tenant_id,
         )
         connection = FakeConnection(cursor)
 
@@ -424,6 +456,61 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         self.assertEqual(movement[1], (42, 7, Decimal("-1.250")))
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
+
+    def test_sale_owned_by_another_tenant_is_not_accessible(self):
+        cursor = FakeRigheVenditaCursor(vendita_tenant_id=99)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.VenditaNonTrovata):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
+        sale_lookup = cursor.statements[0]
+        self.assertIn("WHERE tenant_id = %s AND id = %s", sale_lookup[0])
+        self.assertEqual(sale_lookup[1], (42, 81))
+        self.assertFalse(
+            any(
+                query.startswith("SELECT l.articolo_id")
+                for query, _ in cursor.statements
+            )
+        )
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_lot_owned_by_another_tenant_cannot_be_sold(self):
+        cursor = FakeRigheVenditaCursor(lotti_tenant_id={7: 99})
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.RigaVenditaNonValida):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
+        lot_lookup = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("SELECT l.articolo_id")
+        )
+        self.assertIn("WHERE l.tenant_id = %s AND l.id = %s", lot_lookup[0])
+        self.assertEqual(lot_lookup[1], (42, 7))
+        self.assertFalse(
+            any(query.startswith("UPDATE lotti") for query, _ in cursor.statements)
+        )
+        self.assertFalse(
+            any(
+                query.startswith("INSERT INTO righe_vendita")
+                for query, _ in cursor.statements
+            )
+        )
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
 
     def test_depleted_lot_is_closed(self):
         _, cursor, connection = self.invoke_repository(
