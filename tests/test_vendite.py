@@ -301,23 +301,38 @@ class CreaVenditaTests(unittest.TestCase):
 
 
 class FakeRigheVenditaCursor:
-    def __init__(self, vendita_esistente=True, lotti_validi=None):
+    def __init__(
+        self,
+        vendita_esistente=True,
+        lotti_validi=None,
+        giacenze=None,
+        fail_on_movement=False,
+    ):
         self.vendita_esistente = vendita_esistente
         self.lotti_validi = lotti_validi if lotti_validi is not None else {7}
+        self.giacenze = giacenze if giacenze is not None else {7: Decimal("5.000")}
+        self.fail_on_movement = fail_on_movement
         self.statements = []
         self.lastrowid = 100
 
     def execute(self, query, params=None):
         self.statements.append((query, params))
+        if query.startswith("INSERT INTO movimenti_lotto") and self.fail_on_movement:
+            raise RuntimeError("movement insert failed")
         if query.startswith("INSERT INTO righe_vendita"):
             self.lastrowid += 1
+        if query.startswith("UPDATE lotti"):
+            self.giacenze[params[3]] = params[0]
 
     def fetchone(self):
         query, params = self.statements[-1]
         if query.startswith("SELECT id FROM vendite"):
             return (81,) if self.vendita_esistente else None
-        if query.startswith("SELECT l.id FROM lotti"):
-            return (params[1],) if params[1] in self.lotti_validi else None
+        if query.startswith("SELECT l.articolo_id, l.unita_misura"):
+            lotto_id = params[1]
+            if lotto_id not in self.lotti_validi or lotto_id not in self.giacenze:
+                return None
+            return (3, "kg", self.giacenze[lotto_id], 1, "kg", 1)
         return None
 
 
@@ -332,8 +347,20 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
             iva_percentuale=Decimal("10.00"),
         )
 
-    def invoke_repository(self, righe=None, vendita_esistente=True, lotti_validi=None):
-        cursor = FakeRigheVenditaCursor(vendita_esistente, lotti_validi)
+    def invoke_repository(
+        self,
+        righe=None,
+        vendita_esistente=True,
+        lotti_validi=None,
+        giacenze=None,
+        fail_on_movement=False,
+    ):
+        cursor = FakeRigheVenditaCursor(
+            vendita_esistente,
+            lotti_validi,
+            giacenze,
+            fail_on_movement,
+        )
         connection = FakeConnection(cursor)
 
         @contextmanager
@@ -346,7 +373,7 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
             )
         return result, cursor, connection
 
-    def test_records_tenant_scoped_line_without_changing_lot_stock(self):
+    def test_records_line_deducts_stock_and_records_sale_movement(self):
         righe, cursor, connection = self.invoke_repository()
 
         self.assertEqual(
@@ -367,12 +394,72 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         self.assertIn("FOR UPDATE", cursor.statements[0][0])
         self.assertEqual(cursor.statements[0][1], (42, 81))
         self.assertEqual(
-            cursor.statements[-1][1],
-            (42, 81, 7, 3, Decimal("1.250"), "kg", Decimal("12.5000"), Decimal("10.00")),
+            next(
+                params
+                for query, params in cursor.statements
+                if query.startswith("UPDATE lotti")
+            ),
+            (Decimal("3.750"), Decimal("3.750"), 42, 7),
         )
-        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        movement = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO movimenti_lotto")
+        )
+        self.assertIn("'VENDITA'", movement[0])
+        self.assertEqual(movement[1], (42, 7, Decimal("-1.250")))
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
+
+    def test_depleted_lot_is_closed(self):
+        _, cursor, connection = self.invoke_repository(
+            giacenze={7: Decimal("1.250")}
+        )
+
+        update, params = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("UPDATE lotti")
+        )
+        self.assertIn("attivo = CASE WHEN %s = 0 THEN 0 ELSE attivo END", update)
+        self.assertEqual(params, (Decimal("0.000"), Decimal("0.000"), 42, 7))
+        self.assertEqual(connection.commits, 1)
+
+    def test_insufficient_stock_rolls_back_without_persisting_sale(self):
+        cursor = FakeRigheVenditaCursor(giacenze={7: Decimal("1.000")})
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.GiacenzaInsufficiente):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
+        self.assertFalse(
+            any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements)
+        )
+        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
+
+    def test_movement_failure_rolls_back_stock_and_sale_line(self):
+        cursor = FakeRigheVenditaCursor(fail_on_movement=True)
+        connection = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield connection
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaisesRegex(RuntimeError, "movement insert failed"):
+                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
+
+        self.assertTrue(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
+        self.assertTrue(any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements))
+        self.assertEqual(connection.commits, 0)
+        self.assertEqual(connection.rollbacks, 1)
 
     def test_missing_sale_rolls_back(self):
         cursor = FakeRigheVenditaCursor(vendita_esistente=False)
@@ -404,10 +491,10 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
                     42, 81, [self.riga, riga_non_valida]
                 )
 
-        self.assertEqual(
-            sum(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements),
-            1,
+        self.assertFalse(
+            any(query.startswith("INSERT INTO righe_vendita") for query, _ in cursor.statements)
         )
+        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
         self.assertEqual(connection.commits, 0)
         self.assertEqual(connection.rollbacks, 1)
 
@@ -438,6 +525,20 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
                 aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
 
         self.assertEqual(error.exception.status_code, 404)
+
+    def test_endpoint_translates_insufficient_stock_to_conflict(self):
+        payload = VenditaRigheCreate(righe=[self.riga])
+        with patch.object(
+            tracciabilita_repo,
+            "aggiungi_righe_vendita",
+            side_effect=tracciabilita_repo.GiacenzaInsufficiente(
+                "La giacenza del lotto 7 è insufficiente."
+            ),
+        ):
+            with self.assertRaises(HTTPException) as error:
+                aggiungi_righe_vendita(81, payload, {"tenant_id": 42})
+
+        self.assertEqual(error.exception.status_code, 409)
 
 
 if __name__ == "__main__":

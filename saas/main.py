@@ -1035,7 +1035,7 @@ def aggiungi_righe_vendita(
     payload: VenditaRigheCreate,
     user: dict = Depends(auth.require_roles("admin", "operatore")),
 ):
-    """Registra le righe di un documento senza scaricare i lotti."""
+    """Registra le righe e scarica i relativi lotti atomicamente."""
     try:
         return tracciabilita_repo.aggiungi_righe_vendita(
             tenant_id=user["tenant_id"],
@@ -1052,6 +1052,8 @@ def aggiungi_righe_vendita(
             status.HTTP_400_BAD_REQUEST,
             "Lotto, articolo o unità di misura non coerenti nella riga di vendita",
         ) from error
+    except tracciabilita_repo.GiacenzaInsufficiente as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
 
 
 @app.post(
