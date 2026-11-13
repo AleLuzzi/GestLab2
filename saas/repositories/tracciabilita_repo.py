@@ -689,7 +689,7 @@ def lotti_disponibili_vendita(tenant_id):
         cursor.execute(
             "SELECT l.id, l.articolo_id, a.nome, l.tipo_lotto, "
             "l.codice_lotto, l.data_scadenza, l.quantita_disponibile, "
-            "l.unita_misura, l.data_tmc, a.prezzo_unitario "
+            "l.unita_misura, l.data_tmc, a.prezzo_unitario, a.categoria "
             "FROM lotti l JOIN articoli a "
             "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "WHERE l.tenant_id = %s AND a.attivo = 1 AND l.attivo = 1 "
@@ -716,6 +716,7 @@ def lotti_disponibili_vendita(tenant_id):
                     if _row_value(row, 9) is not None
                     else None
                 ),
+                "categoria": _row_value(row, 10),
             }
             for row in cursor.fetchall()
         ]

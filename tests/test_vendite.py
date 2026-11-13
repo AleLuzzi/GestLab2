@@ -115,8 +115,8 @@ class ChiusuraLottoTests(unittest.TestCase):
 class LottiDisponibiliVenditaTests(unittest.TestCase):
     def test_repository_returns_available_lots_in_fefo_order(self):
         rows = [
-            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg", None, Decimal("12.50")),
-            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg", "2026-12-10", Decimal("12.50")),
+            (7, 3, "Costata", "A", "A-7", "2026-12-15", Decimal("8.500"), "kg", None, Decimal("12.50"), "Carne"),
+            (8, 3, "Costata", "V", "V-8", None, Decimal("2.000"), "kg", "2026-12-10", Decimal("12.50"), "Carne"),
         ]
 
         class FakeCursor:
@@ -157,6 +157,7 @@ class LottiDisponibiliVenditaTests(unittest.TestCase):
         self.assertEqual(lotti[0]["id"], 7)
         self.assertEqual(lotti[0]["quantita_disponibile"], "8.500")
         self.assertEqual(lotti[0]["prezzo_unitario"], "12.50")
+        self.assertEqual(lotti[0]["categoria"], "Carne")
         self.assertIsNone(lotti[1]["data_scadenza"])
         self.assertEqual(lotti[1]["data_tmc"], "2026-12-10")
 

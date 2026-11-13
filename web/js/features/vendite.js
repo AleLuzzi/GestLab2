@@ -111,7 +111,10 @@ function articoliDisponibili() {
   const articoli = new Map();
   lottiVendita.forEach((lotto) => {
     if (!articoli.has(String(lotto.articolo_id))) {
-      articoli.set(String(lotto.articolo_id), lotto.articolo);
+      articoli.set(String(lotto.articolo_id), {
+        nome: lotto.articolo,
+        categoria: lotto.categoria?.trim() || "",
+      });
     }
   });
   return articoli;
@@ -121,11 +124,16 @@ function aggiornaArticoli(articoloPreferito = $("sales-article").value) {
   const selettoreArticolo = $("sales-article");
   const articoli = articoliDisponibili();
   const ricerca = $("sales-search").value.trim().toLocaleLowerCase("it-IT");
-  const filtrati = [...articoli.entries()].filter(([, nome]) =>
-    String(nome).toLocaleLowerCase("it-IT").includes(ricerca));
+  const filtrati = [...articoli.entries()].filter(([, articolo]) =>
+    `${articolo.nome} ${articolo.categoria}`.toLocaleLowerCase("it-IT").includes(ricerca));
 
   selettoreArticolo.replaceChildren(creaOpzione("", filtrati.length ? "Seleziona articolo" : "Nessun articolo trovato"));
-  filtrati.forEach(([id, nome]) => selettoreArticolo.appendChild(creaOpzione(id, nome)));
+  filtrati.forEach(([id, articolo]) => {
+    const etichetta = articolo.categoria
+      ? `${articolo.nome} · ${articolo.categoria}`
+      : articolo.nome;
+    selettoreArticolo.appendChild(creaOpzione(id, etichetta));
+  });
 
   const selezione = filtrati.some(([id]) => id === String(articoloPreferito))
     ? String(articoloPreferito)
