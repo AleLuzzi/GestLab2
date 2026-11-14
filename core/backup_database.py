@@ -2,23 +2,30 @@
 
 Uso:
     python -m core.backup_database [percorso_output.sql]
+    python -m core.backup_database --ripristina backup.sql --database gestlab_restore
 
 Senza percorso, salva il file in ``backups/gestlab_backup_<timestamp>.sql``
 nella root del progetto. Il dump include tabelle, viste e righe; non include
-utenti MySQL, trigger, routine o eventi.
+utenti MySQL, trigger, routine o eventi. Il ripristino crea o riusa solo un
+database vuoto, diverso da quello configurato per l'applicazione.
 """
 
 import argparse
 import datetime
 import os
+import re
 import shutil
 import tempfile
 from decimal import Decimal
 
-from .db import connection
+import mysql.connector
+
+from .db import _database_tls_options, connection
+from .env import get_secret
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_BACKUP_DIR = os.path.join(PROJECT_ROOT, "backups")
+_NOME_DATABASE = re.compile(r"^[A-Za-z0-9_]+$")
 
 
 def _quote_identifier(identifier: str) -> str:
@@ -161,14 +168,115 @@ def esporta_backup(output_path: str | None = None) -> tuple[str, dict[str, int]]
     return output_path, conteggi
 
 
+def _istruzioni_sql(script: str):
+    """Separa le istruzioni del dump. I valori testuali sono esadecimali."""
+    for pezzo in script.split(";\n"):
+        righe = [
+            riga for riga in pezzo.split("\n")
+            if riga.strip() and not riga.startswith("--")
+        ]
+        istruzione = "\n".join(righe).strip()
+        if istruzione:
+            yield istruzione
+
+
+def _connessione_server(database=None):
+    """Apre una connessione fuori dal pool, verso un database scelto."""
+    host = get_secret("DB_HOST", "localhost")
+    parametri = {
+        "host": host,
+        "port": int(get_secret("DB_PORT", "3306")),
+        "user": get_secret("DB_USER", "root"),
+        "password": get_secret("DB_PWD", ""),
+        **_database_tls_options(host),
+    }
+    if database is not None:
+        parametri["database"] = database
+    return mysql.connector.connect(**parametri)
+
+
+def ripristina_backup(percorso_sql: str, database_destinazione: str) -> None:
+    """Carica un dump GestLab in un database vuoto, diverso da quello in uso.
+
+    Non elimina oggetti già presenti. Se la destinazione contiene tabelle,
+    il ripristino si interrompe prima di scrivere.
+    """
+    if not _NOME_DATABASE.fullmatch(database_destinazione or ""):
+        raise ValueError(
+            "Il database di destinazione può contenere solo lettere, cifre e underscore."
+        )
+    database_in_uso = get_secret("DB_NAME", "data")
+    if database_destinazione == database_in_uso:
+        raise RuntimeError(
+            "Il ripristino non può usare il database configurato. "
+            "Indicare un database vuoto diverso."
+        )
+
+    percorso = os.path.abspath(percorso_sql)
+    with open(percorso, encoding="utf-8") as sorgente:
+        prima_riga = sorgente.readline()
+        if "Backup GestLab" not in prima_riga:
+            raise RuntimeError("Il file non è un backup GestLab.")
+        script = prima_riga + sorgente.read()
+
+    server = _connessione_server()
+    try:
+        cursor = server.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = %s",
+            (database_destinazione,),
+        )
+        tabelle_presenti = cursor.fetchone()[0]
+        if tabelle_presenti:
+            raise RuntimeError(
+                f"Il database {database_destinazione} contiene già "
+                f"{tabelle_presenti} tabelle."
+            )
+        cursor.execute(
+            f"CREATE DATABASE IF NOT EXISTS {_quote_identifier(database_destinazione)} "
+            "DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci"
+        )
+        server.commit()
+    finally:
+        server.close()
+
+    destinazione = _connessione_server(database_destinazione)
+    try:
+        cursor = destinazione.cursor()
+        for istruzione in _istruzioni_sql(script):
+            cursor.execute(istruzione)
+        destinazione.commit()
+    except Exception:
+        destinazione.rollback()
+        raise
+    finally:
+        destinazione.close()
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Crea un backup SQL del database GestLab.")
+    parser = argparse.ArgumentParser(description="Crea o ripristina un backup SQL di GestLab.")
     parser.add_argument(
         "output",
         nargs="?",
-        help="percorso del file .sql (default: cartella backups nella root)",
+        help="percorso del file .sql da creare (default: cartella backups nella root)",
+    )
+    parser.add_argument(
+        "--ripristina",
+        metavar="FILE",
+        help="dump GestLab da caricare in un database vuoto",
+    )
+    parser.add_argument(
+        "--database",
+        help="database di destinazione, diverso da quello configurato",
     )
     args = parser.parse_args()
+
+    if args.ripristina:
+        if not args.database:
+            parser.error("--ripristina richiede --database")
+        ripristina_backup(args.ripristina, args.database)
+        print(f"Backup ripristinato in {args.database}")
+        return
 
     path, conteggi = esporta_backup(args.output)
     print(f"Backup creato: {path}")

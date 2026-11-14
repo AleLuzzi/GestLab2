@@ -24,6 +24,7 @@ import base64
 import json
 import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -58,6 +59,11 @@ class PrintAgent:
         self.base_url = base_url.rstrip("/")
         self.token = token
         self.interval = interval
+        self._stop = threading.Event()
+
+    def ferma(self):
+        """Chiede l'uscita dal ciclo. Il servizio Windows la usa allo stop."""
+        self._stop.set()
 
     # ------------------------------------------------------------------ #
     #  HTTP helpers
@@ -190,11 +196,11 @@ class PrintAgent:
     #  Loop principale
     # ------------------------------------------------------------------ #
     def run(self):
-        """Avvia il loop di polling infinito."""
+        """Avvia il ciclo di polling finché non arriva uno stop."""
         print(f"[agent] Avvio Local Print Agent -> {self.base_url}", flush=True)
         print(f"[agent] Polling ogni {self.interval}s (Ctrl+C per fermare)", flush=True)
 
-        while True:
+        while not self._stop.is_set():
             try:
                 resp = self._get(f"/agent/next-job?token={self.token}")
                 job = (resp or {}).get("job") if resp else None
@@ -217,7 +223,7 @@ class PrintAgent:
             except Exception as e:
                 print(f"[agent] Errore loop: {e}", flush=True)
 
-            time.sleep(self.interval)
+            self._stop.wait(self.interval)
 
 
 def main():

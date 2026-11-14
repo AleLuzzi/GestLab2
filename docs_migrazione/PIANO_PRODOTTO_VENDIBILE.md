@@ -593,11 +593,18 @@ imposta `GESTLAB_HOSTING` e continua a usare il database locale.
 - log operativo su `logs/gestlab-saas.log` (metodo, percorso, stato, durata) e
   error tracking: riferimento assistenza nel log e invio a Sentry se
   `SENTRY_DSN` è configurato. Coperto da `tests/test_osservabilita.py`;
-- Local Print Agent come servizio Windows documentato (installazione, token,
-  restart).
+- Local Print Agent come servizio Windows `GestLabPrintAgent`: token in
+  `%ProgramData%\GestLab\print-agent.env`, avvio automatico ritardato e
+  riavvio se il processo termina. Procedura in
+  `docs_migrazione/PRINT_AGENT_WINDOWS.md`;
 
 **Criterio:** restore di backup di prova riuscito; agent riparte al reboot del
-PC di banco; staging non è il DB di produzione.
+PC di banco; staging non è il DB di produzione. Il ripristino è stato verificato
+il 14 novembre 2026: il dump del database in uso, 36 tabelle e 15046 righe, è
+stato caricato in `gestlab_restore_20261114` con gli stessi conteggi, poi il
+database di prova è stato eliminato. Lo stesso giorno il servizio
+`GestLabPrintAgent` è risultato `AUTO_START` ritardato, in esecuzione, e di
+nuovo in esecuzione dopo un riavvio del servizio.
 
 ### 7.5 Billing
 

@@ -118,5 +118,124 @@ class BackupDatabaseTests(unittest.TestCase):
                 self.assertEqual(existing.read(), "preservare")
 
 
+class RestoreResult:
+    with_rows = False
+
+
+class RestoreCursor:
+    def __init__(self, tables=0):
+        self.tables = tables
+        self.statements = []
+
+    def execute(self, query, params=None, multi=False):
+        self.statements.append((query, params, multi))
+        if multi:
+            return iter([RestoreResult()])
+        self._row = (self.tables,)
+
+    def fetchone(self):
+        return self._row
+
+
+class RestoreConnection:
+    def __init__(self, tables=0):
+        self.cursor_obj = RestoreCursor(tables)
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = False
+
+    def cursor(self):
+        return self.cursor_obj
+
+    def commit(self):
+        self.commits += 1
+
+    def rollback(self):
+        self.rollbacks += 1
+
+    def close(self):
+        self.closed = True
+
+
+class RestoreDatabaseTests(unittest.TestCase):
+    def test_restore_refuses_the_configured_database(self):
+        with patch.object(backup_database, "get_secret", return_value="data"), \
+                patch.object(backup_database.mysql.connector, "connect") as connect:
+            with self.assertRaisesRegex(RuntimeError, "database configurato"):
+                backup_database.ripristina_backup("backup.sql", "data")
+        connect.assert_not_called()
+
+    def test_restore_refuses_an_invalid_name_and_a_foreign_file(self):
+        with self.assertRaisesRegex(ValueError, "lettere, cifre"):
+            backup_database.ripristina_backup("backup.sql", "gestlab-restore")
+        with tempfile.TemporaryDirectory() as directory:
+            percorso = os.path.join(directory, "altro.sql")
+            with open(percorso, "w", encoding="utf-8") as file:
+                file.write("-- non è un dump GestLab\n")
+            with self.assertRaisesRegex(RuntimeError, "non è un backup GestLab"):
+                backup_database.ripristina_backup(percorso, "gestlab_restore_prova")
+
+    def test_restore_executes_the_dump_and_rejects_a_populated_database(self):
+        create_statements = []
+        dump_statements = []
+
+        def connect(**kwargs):
+            if "database" not in kwargs:
+                connection = RestoreConnection(tables=0)
+                original = connection.cursor_obj.execute
+
+                def execute(query, params=None, multi=False):
+                    create_statements.append(query)
+                    return original(query, params, multi)
+
+                connection.cursor_obj.execute = execute
+                return connection
+            connection = RestoreConnection()
+
+            def execute(query, params=None, multi=False):
+                dump_statements.append(query)
+                return None
+
+            connection.cursor_obj.execute = execute
+            return connection
+
+        with tempfile.TemporaryDirectory() as directory:
+            percorso = os.path.join(directory, "backup.sql")
+            with open(percorso, "w", encoding="utf-8") as file:
+                file.write("-- Backup GestLab: schema e dati\nSELECT 1;\n")
+            with patch.object(
+                backup_database, "get_secret", side_effect=lambda name, default="": {
+                    "DB_NAME": "data",
+                    "DB_HOST": "127.0.0.1",
+                    "DB_PORT": "3306",
+                    "DB_USER": "root",
+                    "DB_PWD": "",
+                }.get(name, default)
+            ), patch.object(backup_database, "_database_tls_options", return_value={}), \
+                    patch.object(backup_database.mysql.connector, "connect", side_effect=connect):
+                backup_database.ripristina_backup(percorso, "gestlab_restore_prova")
+
+            def occupied(**kwargs):
+                return RestoreConnection(tables=3)
+
+            segreti = {
+                "DB_NAME": "data",
+                "DB_HOST": "127.0.0.1",
+                "DB_PORT": "3306",
+                "DB_USER": "root",
+                "DB_PWD": "",
+            }
+            with patch.object(
+                backup_database, "get_secret",
+                side_effect=lambda name, default="": segreti.get(name, default),
+            ), patch.object(backup_database, "_database_tls_options", return_value={}), \
+                    patch.object(backup_database.mysql.connector, "connect", side_effect=occupied):
+                with self.assertRaisesRegex(RuntimeError, "contiene già 3 tabelle"):
+                    backup_database.ripristina_backup(percorso, "gestlab_restore_prova")
+
+        self.assertIn("CREATE DATABASE IF NOT EXISTS `gestlab_restore_prova`", create_statements[1])
+        self.assertEqual(dump_statements, ["SELECT 1"])
+
+
 if __name__ == "__main__":
     unittest.main()

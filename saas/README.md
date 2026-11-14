@@ -114,6 +114,16 @@ impostazioni di ingresso merce e inventario restano specifiche dei fornitori.
 I due flussi di ingresso accettano `fornitore_id` e salvano anche il nome
 visualizzato sul documento come snapshot storico.
 
+Il backup si crea con `python -m core.backup_database` e si ricarica solo in un
+database vuoto, diverso da quello configurato:
+
+```text
+python -m core.backup_database --ripristina backups\gestlab_backup_AAAAMMGG_HHMMSS.sql --database gestlab_restore
+```
+
+Il comando rifiuta il database in uso e una destinazione che contiene già
+tabelle. Non cancella la copia: al termine della prova va eliminata a parte.
+
 Per un database già esistente, `saas.bootstrap` applica le migrazioni mancanti
 in ordine e registra ogni versione in `schema_migrations`. Prima
 dell'aggiornamento eseguire un backup. Le modifiche di schema già presenti
@@ -145,14 +155,20 @@ curl -X POST http://localhost:8000/api/v1/dispositivi \
   -d '{"nome": "Pdv 1", "stampante_dymo": "DYMO LabelWriter 450 Turbo"}'
 # -> {"id":1, "token":"<TOKEN_DISPOSITIVO>", ...}
 
-# 2) avvia il Local Print Agent sul PC del punto vendita
-python -m saas.print_agent --token <TOKEN_DISPOSITIVO> --interval 5
+# 2) sul PC di banco, in PowerShell come amministratore:
+.\deploy\installa-print-agent.ps1 -Url "https://app.example.com" -Token "<TOKEN_DISPOSITIVO>"
 ```
 
-Sul PC Windows dell'agent installare anche il driver DYMO e `pywin32`
-nell'ambiente Python usato per avviarlo (`python -m pip install pywin32`).
-Non aggiungere `pywin32` alle dipendenze del backend SaaS, che può girare su
-Linux.
+Il token viene chiesto solo in questa installazione e salvato in
+`%ProgramData%\GestLab\print-agent.env`. Lo script non lo ristampa. Il servizio
+`GestLabPrintAgent` ha avvio automatico ritardato e, se il processo termina,
+Windows lo riavvia. Al riavvio del PC parte da solo. La procedura completa è in
+`docs_migrazione/PRINT_AGENT_WINDOWS.md`.
+
+Sul PC Windows dell'agent installare anche il driver DYMO per tutti gli utenti.
+`pywin32` serve alla stampa e al servizio; lo script di installazione lo
+aggiunge nell'ambiente del banco. Non fa parte delle dipendenze del backend
+SaaS, che può girare su Linux.
 
 Il token può anche essere letto da `config.ini` (sezione `[Stampante]`,
 chiave `agent_token`) solo in sviluppo. In produzione impostare
