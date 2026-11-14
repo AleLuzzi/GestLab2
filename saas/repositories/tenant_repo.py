@@ -5,6 +5,8 @@ Questi accessi usano direttamente ``core.db.connection``. In produzione
 Il modulo appartiene al package ``saas.repositories``.
 """
 
+import mysql.connector
+
 from core.db import connection
 
 
@@ -114,3 +116,74 @@ def crea_utente(tenant_id, email, password_hash, ruolo="operatore", attivo=True)
         )
         conn.commit()
         return c.lastrowid
+
+
+def salva_token_reset(utente_id, token_hash, scade_il):
+    """Invalida i reset aperti dell'utente e registra un nuovo token (solo hash)."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "UPDATE password_reset SET usato_il = UTC_TIMESTAMP() "
+                "WHERE utente_id = %s AND usato_il IS NULL",
+                (utente_id,),
+            )
+            cursor.execute(
+                "INSERT INTO password_reset (utente_id, token_hash, scade_il) "
+                "VALUES (%s, %s, %s)",
+                (utente_id, token_hash, scade_il),
+            )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+
+
+def annulla_token_reset(token_hash):
+    """Elimina un token non ancora usato, per esempio se l'invio email fallisce."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "DELETE FROM password_reset "
+                "WHERE token_hash = %s AND usato_il IS NULL",
+                (token_hash,),
+            )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+
+
+def consuma_token_reset(token_hash, password_hash):
+    """Aggiorna la password e marca il token come usato nella stessa transazione."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id, utente_id FROM password_reset "
+                "WHERE token_hash = %s AND usato_il IS NULL "
+                "AND scade_il > UTC_TIMESTAMP() "
+                "FOR UPDATE",
+                (token_hash,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                conn.rollback()
+                return False
+            cursor.execute(
+                "UPDATE utenti SET password_hash = %s WHERE id = %s AND attivo = 1",
+                (password_hash, row[1]),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return False
+            cursor.execute(
+                "UPDATE password_reset SET usato_il = UTC_TIMESTAMP() WHERE id = %s",
+                (row[0],),
+            )
+            conn.commit()
+            return True
+        except mysql.connector.Error:
+            conn.rollback()
+            raise

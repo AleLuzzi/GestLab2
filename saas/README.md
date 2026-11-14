@@ -75,6 +75,8 @@ saas/
 |---|---|---|---|
 | POST | `/auth/login` | pubblico | Login, restituisce access+refresh |
 | POST | `/auth/refresh` | pubblico | Rinnova i token |
+| POST | `/auth/password-dimenticata` | pubblico | Invia il collegamento di reset se l'email è di un utente attivo |
+| POST | `/auth/password-reimposta` | pubblico | Imposta una nuova password con un token monouso |
 | POST | `/api/v1/tenant` | admin | Crea tenant |
 | POST | `/api/v1/utenti` | admin | Crea utente nel tenant |
 | GET | `/api/v1/soggetti` | autenticato | Elenco anagrafiche clienti/fornitori |

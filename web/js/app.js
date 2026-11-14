@@ -1,4 +1,4 @@
-import { initAuth } from "./core/auth.js";
+import { initAuth } from "./core/auth.js?v=20261114-4";
 import { initNavigation } from "./core/navigation.js?v=20261114-3";
 import { initAdmin } from "./features/admin.js";
 import { initAnagrafiche } from "./features/anagrafiche.js";

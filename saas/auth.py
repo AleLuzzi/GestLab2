@@ -5,6 +5,7 @@ Gestisce hashing delle password (bcrypt), emissione/verifica dei token JWT
 richieste autenticate.
 """
 
+import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -61,6 +62,25 @@ def verify_password(plain: str, hashed: str) -> bool:
         return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
     except ValueError:
         return False
+
+
+def valida_password(password: str) -> None:
+    """Applica la policy password di GestLab.
+
+    La password deve avere almeno 10 caratteri, una lettera e un numero.
+    Solleva ``ValueError`` con un messaggio in italiano.
+    """
+    if not isinstance(password, str) or len(password) < 10:
+        raise ValueError("La password deve contenere almeno 10 caratteri.")
+    if not any(carattere.isalpha() for carattere in password):
+        raise ValueError("La password deve contenere almeno una lettera.")
+    if not any(carattere.isdigit() for carattere in password):
+        raise ValueError("La password deve contenere almeno un numero.")
+
+
+def hash_reset_token(token: str) -> str:
+    """Restituisce l'hash SHA-256 del token di reset, mai il token in chiaro."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 # ------------------------------------------------------------------------- #

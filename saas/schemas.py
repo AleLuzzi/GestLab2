@@ -75,8 +75,21 @@ class TenantOsaUpdate(BaseModel):
 
 class UtenteCreate(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6)
+    password: str
     ruolo: str = Field(default="operatore", pattern="^(admin|operatore|viewer)$")
+
+
+class PasswordDimenticataRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordReimpostaRequest(BaseModel):
+    token: str = Field(..., min_length=20, max_length=200)
+    password: str
+
+
+class MessaggioResponse(BaseModel):
+    messaggio: str
 
 
 # ------------------------------------------------------------------------- #

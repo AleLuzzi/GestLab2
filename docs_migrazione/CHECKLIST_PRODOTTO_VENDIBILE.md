@@ -112,7 +112,7 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Autenticazione e isolamento tenant
 
-- [ ] Implementare reset password via email e policy password.
+- [x] Implementare reset password via email e policy password. La password richiede almeno 10 caratteri, una lettera e un numero su creazione utente, reimpostazione e bootstrap. `POST /auth/password-dimenticata` invia un collegamento monouso da 60 minuti e salva solo l'hash SHA-256; l'email sconosciuta riceve la stessa risposta e, senza SMTP, la richiesta risponde 503 prima della ricerca. La conferma aggiorna la password nella stessa transazione del consumo del token. UI di richiesta e conferma sulla schermata di accesso. Coperto da `tests/test_password.py`, `tests/test_schema_consolidation.py` e `tests/test_bootstrap_migrations.py`.
 - [ ] Aggiungere rate limit al login, rotazione dei refresh token e logout/revoca.
 - [ ] Verificare la protezione dal secret JWT predefinito in produzione e mantenerla coperta da test.
 - [ ] Registrare almeno le operazioni di cancellazione e rettifica in un audit log.

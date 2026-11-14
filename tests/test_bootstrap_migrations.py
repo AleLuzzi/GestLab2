@@ -378,5 +378,63 @@ class BootstrapMigrationsTests(unittest.TestCase):
             bootstrap._verifica_schema(SchemaCursor(columns, primary_keys))
 
 
+    def test_password_reset_migration_is_ordered_and_recognized_when_complete(self):
+        migration = "20261114_password_reset.sql"
+        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS `password_reset`", sql)
+        self.assertIn("`token_hash` char(64)", sql)
+        self.assertNotIn("password` varchar", sql)
+
+        class ResetCursor:
+            def __init__(self, exists=True, columns=None, schema=""):
+                self.exists = exists
+                self.columns = columns or set()
+                self.schema = schema
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query.startswith("SELECT COUNT(*) FROM information_schema.tables"):
+                    self.result = [(1 if self.exists else 0,)]
+                elif query == "SHOW COLUMNS FROM `password_reset`":
+                    self.result = [(column,) for column in self.columns]
+                elif query == "SHOW CREATE TABLE `password_reset`":
+                    self.result = [("password_reset", self.schema)]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+            def fetchall(self):
+                return self.result
+
+        required = {"utente_id", "token_hash", "scade_il", "usato_il"}
+        complete = (
+            "CONSTRAINT `fk_password_reset_utente` "
+            "UNIQUE KEY `uq_password_reset_token`"
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(ResetCursor(exists=False), migration)
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                ResetCursor(columns=required - {"usato_il"}, schema=complete),
+                migration,
+            )
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                ResetCursor(columns=required, schema="PRIMARY KEY (`id`)"),
+                migration,
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                ResetCursor(columns=required, schema=complete), migration
+            )
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

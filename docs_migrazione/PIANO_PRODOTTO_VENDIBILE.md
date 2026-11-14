@@ -89,7 +89,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 
 | Funzione | Stato | Dove / nota |
 |---|---|---|
-| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Mancano reset password, rate limit e revoca. |
+| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Reset email e policy password sono attivi. Mancano rate limit e revoca. |
 | Tenant e utenti | P | [`saas/crea_tenant.py`](../saas/crea_tenant.py), `POST /api/v1/tenant`, `POST /api/v1/utenti`. Onboarding manuale. |
 | Anagrafica clienti/fornitori (`soggetti`) | C | CRUD web e API. Soft-delete. Campi utili a FE futuri già presenti. |
 | Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
@@ -496,8 +496,14 @@ ripetibile.
 
 ### 7.1 Autenticazione e ruoli
 
-- reset password (email);
-- policy password;
+- reset password (email): `POST /auth/password-dimenticata` e
+  `POST /auth/password-reimposta`. Il token è monouso, vale 60 minuti e in
+  database si salva solo l'hash SHA-256. Se l'email non appartiene a un utente
+  attivo la risposta è la stessa e non parte alcuna email. Senza `SMTP_HOST` e
+  `SMTP_FROM` la richiesta risponde 503 prima di cercare l'utente. Se l'invio
+  fallisce il token viene annullato;
+- policy password: almeno 10 caratteri, una lettera e un numero. Vale per la
+  creazione utente, la reimpostazione e la password iniziale del bootstrap;
 - rate limit su `/auth/login`;
 - rotazione refresh token e logout/revoca;
 - rifiuto JWT secret di default in produzione;

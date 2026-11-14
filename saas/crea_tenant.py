@@ -3,14 +3,14 @@
 
 import sys
 from saas.repositories.tenant_repo import crea_tenant, crea_utente
-from saas.auth import hash_password
+from saas.auth import hash_password, valida_password
 
 def main():
     # Configurazione
     NOME_TENANT = "Azienda Esempio Srl"
     PIANO = "basic"
     EMAIL_ADMIN = "admin@azienda.it"
-    PASSWORD_ADMIN = "Admin123!"
+    PASSWORD_ADMIN = "Admin1234!"
     
     print("📋 Creazione nuovo tenant...")
     print(f"   Nome: {NOME_TENANT}")
@@ -22,6 +22,7 @@ def main():
         print(f"✓ Tenant creato con ID: {tenant_id}")
         
         # Crea l'utente admin
+        valida_password(PASSWORD_ADMIN)
         password_hash = hash_password(PASSWORD_ADMIN)
         utente_id = crea_utente(tenant_id, EMAIL_ADMIN, password_hash, ruolo='admin')
         print(f"✓ Utente admin creato con ID: {utente_id}")

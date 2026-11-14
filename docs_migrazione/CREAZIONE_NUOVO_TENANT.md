@@ -216,7 +216,7 @@ def main():
     NOME_TENANT = "Azienda Esempio Srl"
     PIANO = "basic"
     EMAIL_ADMIN = "admin@azienda.it"
-    PASSWORD_ADMIN = "Admin123!"
+    PASSWORD_ADMIN = "Admin1234!"
     
     print("📋 Creazione nuovo tenant...")
     print(f"   Nome: {NOME_TENANT}")

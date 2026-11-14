@@ -21,6 +21,13 @@ body, html { height: 100%; font-family: "Segoe UI", system-ui, sans-serif; backg
 .card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; }
 .login-card { width: 360px; }
 .login-card h1 { margin-bottom: 4px; }
+.link-button {
+  display: block; width: 100%; margin-top: 12px; padding: 0;
+  background: none; border: none; color: var(--accent-hover);
+  font-size: 14px; cursor: pointer; text-align: center;
+}
+.link-button:hover { text-decoration: underline; }
+.field-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
 .subtitle { color: var(--text-dim); margin-bottom: 20px; }
 
 label { display: block; margin-bottom: 14px; font-size: 14px; color: var(--text-dim); }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261114-2" />
+  <link rel="stylesheet" href="/static/app.css?v=20261114-4" />
 </head>
 <body>
   <!-- Login view -->
@@ -14,13 +14,32 @@
       <p class="subtitle">Gestione Laboratorio — Console</p>
       <form id="login-form">
         <label>Email
-          <input type="email" id="login-email" required placeholder="admin@tenant.local" />
+          <input type="email" id="login-email" required placeholder="admin@tenant.local" autocomplete="username" />
         </label>
         <label>Password
-          <input type="password" id="login-password" required placeholder="••••••••" />
+          <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password" />
         </label>
         <button type="submit" class="btn primary">Accedi</button>
+        <button type="button" id="btn-password-dimenticata" class="link-button">Password dimenticata</button>
         <div id="login-error" class="error"></div>
+      </form>
+      <form id="reset-request-form" hidden>
+        <p class="subtitle">Inserisci l'email dell'account. Se è registrata, riceverai un collegamento valido per 60 minuti.</p>
+        <label>Email
+          <input type="email" id="reset-email" required placeholder="admin@tenant.local" autocomplete="username" />
+        </label>
+        <button type="submit" class="btn primary">Invia collegamento</button>
+        <button type="button" id="btn-torna-login" class="link-button">Torna all'accesso</button>
+        <div id="reset-request-message" class="error"></div>
+      </form>
+      <form id="reset-confirm-form" hidden>
+        <p class="subtitle">Scegli una nuova password: almeno 10 caratteri, con una lettera e un numero.</p>
+        <label>Nuova password
+          <input type="password" id="reset-password" required autocomplete="new-password" minlength="10" />
+        </label>
+        <button type="submit" class="btn primary">Aggiorna password</button>
+        <button type="button" id="btn-annulla-reset" class="link-button">Torna all'accesso</button>
+        <div id="reset-confirm-message" class="error"></div>
       </form>
     </div>
   </div>
@@ -982,7 +1001,9 @@
         <div class="form-card">
           <h3>Crea utente nel tenant</h3>
           <label>Email <input type="email" id="usr-email" /></label>
-          <label>Password <input type="password" id="usr-password" /></label>
+          <label>Password <input type="password" id="usr-password" minlength="10" autocomplete="new-password" />
+            <span class="field-hint">Almeno 10 caratteri, con una lettera e un numero.</span>
+          </label>
           <label>Ruolo
             <select id="usr-ruolo">
               <option value="operator" selected>operatore</option>
@@ -1005,6 +1026,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261114-3"></script>
+<script type="module" src="/static/js/app.js?v=20261114-4"></script>
 </body>
 </html>

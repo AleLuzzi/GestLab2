@@ -157,6 +157,7 @@ running it. The canonical migration order is:
 14. `20261108_dati_osa_tenant.sql`
 15. `20261108_motivo_rettifica_lotto.sql`
 16. `20261108_vendite.sql`
+17. `20261114_password_reset.sql`
 
 The order is explicit in `saas.bootstrap`; a test fails if a migration file is
 added without being included. The bootstrap first runs `init_database.sql` to

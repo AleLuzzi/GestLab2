@@ -9,7 +9,7 @@ Esecuzione:
 
 Variabili d'ambiente (opzionali, per sovrascrivere le credenziali di default):
     GESTLAB_ADMIN_EMAIL     (default: admin@gestlab.it)
-    GESTLAB_ADMIN_PASSWORD  (default: Admin123!)
+    GESTLAB_ADMIN_PASSWORD  (default: Admin1234!)
     GESTLAB_TENANT_NOME     (default: Laboratorio Principale)
 """
 
@@ -26,7 +26,7 @@ from saas.repositories import tenant_repo
 
 # Credenziali admin di default (sovrascrivibili via env).
 ADMIN_EMAIL = os.environ.get("GESTLAB_ADMIN_EMAIL", "admin@gestlab.it")
-ADMIN_PASSWORD = os.environ.get("GESTLAB_ADMIN_PASSWORD", "Admin123!")
+ADMIN_PASSWORD = os.environ.get("GESTLAB_ADMIN_PASSWORD", "Admin1234!")
 TENANT_NOME = os.environ.get("GESTLAB_TENANT_NOME", "Laboratorio Principale")
 
 # Percorso del file SQL unificato.
@@ -49,6 +49,7 @@ MIGRATION_ORDER = (
     "20261108_dati_osa_tenant.sql",
     "20261108_motivo_rettifica_lotto.sql",
     "20261108_vendite.sql",
+    "20261114_password_reset.sql",
 )
 
 
@@ -514,6 +515,23 @@ def _migrazione_gia_applicata(cursor, migrazione):
             )
         )
 
+    if migrazione == "20261114_password_reset.sql":
+        if not _tabella_esiste(cursor, "password_reset"):
+            return False
+        if not {
+            "utente_id",
+            "token_hash",
+            "scade_il",
+            "usato_il",
+        }.issubset(_colonne_tabella(cursor, "password_reset")):
+            return False
+        cursor.execute("SHOW CREATE TABLE `password_reset`")
+        schema = cursor.fetchone()[1].upper()
+        return (
+            "FK_PASSWORD_RESET_UTENTE" in schema
+            and "UQ_PASSWORD_RESET_TOKEN" in schema
+        )
+
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 
 
@@ -605,6 +623,7 @@ def crea_admin():
         print(f"  OK  utente admin gia' presente (tenant {existing['tenant_id']})")
         return existing["tenant_id"]
 
+    auth.valida_password(ADMIN_PASSWORD)
     tid = tenant_repo.crea_tenant(TENANT_NOME, "basic")
     tenant_repo.crea_utente(tid, ADMIN_EMAIL, auth.hash_password(ADMIN_PASSWORD), "admin")
     print(f"  OK  tenant '{TENANT_NOME}' (id={tid}) creato")

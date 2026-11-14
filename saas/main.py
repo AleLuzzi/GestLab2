@@ -15,12 +15,14 @@ import uuid
 from datetime import date
 from logging.handlers import RotatingFileHandler
 
+import mysql.connector
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from saas import auth
 from saas.repositories import print_repo, tenant_repo, tracciabilita_repo
+from saas.services import password_reset
 from saas.services import vendite as vendite_service
 from saas.schemas import (
     DdtCreate,
@@ -30,6 +32,9 @@ from saas.schemas import (
     DispositivoCreate,
     EtichettaCreate,
     LoginRequest,
+    MessaggioResponse,
+    PasswordDimenticataRequest,
+    PasswordReimpostaRequest,
     MerceologiaCreate,
     MerceologiaOut,
     MerceologiaUpdate,
@@ -169,6 +174,40 @@ def refresh_token(payload: RefreshRequest):
     )
 
 
+@app.post("/auth/password-dimenticata", response_model=MessaggioResponse)
+def password_dimenticata(payload: PasswordDimenticataRequest):
+    """Invia il collegamento di reset se l'utente esiste, senza rivelarlo."""
+    try:
+        messaggio = password_reset.richiedi_reimpostazione(payload.email)
+    except password_reset.InvioEmailNonDisponibile as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(exc))
+    except mysql.connector.Error:
+        logger.exception("Richiesta reset password non registrata")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile registrare la richiesta di reimpostazione.",
+        )
+    return MessaggioResponse(messaggio=messaggio)
+
+
+@app.post("/auth/password-reimposta", response_model=MessaggioResponse)
+def password_reimposta(payload: PasswordReimpostaRequest):
+    """Imposta una nuova password se il token è valido e non ancora usato."""
+    try:
+        password_reset.reimposta_password(payload.token, payload.password)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+    except password_reset.TokenResetNonValido as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
+    except mysql.connector.Error:
+        logger.exception("Reimpostazione password non completata")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile aggiornare la password.",
+        )
+    return MessaggioResponse(messaggio="Password aggiornata. Ora puoi accedere.")
+
+
 # ------------------------------------------------------------------------- #
 #  Tenant / Utenti (solo admin)
 # ------------------------------------------------------------------------- #
@@ -211,6 +250,10 @@ def crea_utente(
     user: dict = Depends(auth.require_roles("admin")),
 ):
     """Crea un utente nel tenant dell'admin corrente."""
+    try:
+        auth.valida_password(payload.password)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc))
     tenant_id = user["tenant_id"]
     password_hash = auth.hash_password(payload.password)
     utente_id = tenant_repo.crea_utente(
