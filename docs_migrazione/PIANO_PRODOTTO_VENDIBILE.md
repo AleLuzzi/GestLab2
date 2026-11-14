@@ -92,7 +92,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default, coperto da `tests/test_env.py`. Reset email, policy password, rate limit sul login e rotazione/revoca dei refresh token sono attivi. Le cancellazioni e le rettifiche sono registrate in `audit_log` nella stessa transazione, coperte da `tests/test_audit.py`. |
 | Tenant e utenti | P | [`saas/crea_tenant.py`](../saas/crea_tenant.py), `POST /api/v1/tenant`, `POST /api/v1/utenti`. Onboarding manuale. |
 | Anagrafica clienti/fornitori (`soggetti`) | C | CRUD web e API. Soft-delete. Campi utili a FE futuri già presenti. |
-| Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
+| Dipendenti, reparti, merceologie | P | CRUD presente. `tenant_id` è obbligatorio e referenzia `tenant`. |
 | Catalogo articoli | C | [`articoli`](../saas/init_database.sql) è la fonte unica per anagrafica, EAN e prezzo; `articoli_bilancia` contiene solo la configurazione Bizerba collegata all'articolo. Resta da realizzare l'export Bizerba combinato. |
 | Ingresso merce tracciato → lotti `A` | C | `POST /api/v1/tracciabilita/ingressi`, UI wizard in [`web/js/features/ingresso-merce.js`](../web/js/features/ingresso-merce.js). |
 | Ingresso merce legacy | P | `POST /api/v1/ingresso-merce` risponde `410 Gone` ed è escluso da OpenAPI. Il bootstrap non crea più `ingresso_merce` e archivia la tabella esistente come `ingresso_merce_legacy_archive`; resta da verificare l'esito sui database in uso. |
@@ -117,7 +117,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 
 | Tema | Stato | Nota |
 |---|---|---|
-| Isolamento tenant | P | JWT porta `tenant_id`; tabelle legacy con `tenant_id` nullable e FK incomplete. |
+| Isolamento tenant | C | JWT porta `tenant_id`. `tenant_id` è obbligatorio con chiave esterna verso `tenant`. Un GET cross-tenant su lotti, soggetti, vendite, job di stampa e dispositivi risponde 404, coperto da `tests/test_idor.py`. |
 | Pool DB / TLS | A | [`core/db.py`](../core/db.py) apre una connessione per richiesta. |
 | Migrazioni | P | [`saas/init_database.sql`](../saas/init_database.sql) per installazioni nuove; [`saas/migrations/`](../saas/migrations/) da applicare a mano sui DB esistenti. Bootstrap non esegue tutte le migrazioni. |
 | Test | P | Unit: soggetti, tracciabilità, ingresso, dipendenti, bootstrap. E2E [`tests/test_saas_e2e.py`](../tests/test_saas_e2e.py) **distruttivo**. |
@@ -537,12 +537,17 @@ invalida il refresh precedente e il riuso revoca la famiglia.
 - `tenant_id` sempre dal JWT, mai dal body. I modelli di richiesta rifiutano
   il campo e l'agent di stampa filtra per il tenant del dispositivo.
   Coperto da `tests/test_tenant_authority.py`;
-- `tenant_id NOT NULL` ovunque;
+- `tenant_id NOT NULL` su ogni tabella che lo contiene, con chiave esterna
+  verso `tenant`. La migrazione `20261114_tenant_not_null.sql` allinea i
+  database esistenti e non prosegue se ci sono righe senza tenant.
+  Coperto da `tests/test_schema_consolidation.py`;
 - test IDOR: utente tenant A su ID di tenant B → 404 su lotti, soggetti,
-  vendite, print job, dispositivi.
+  vendite, print job, dispositivi. Coperto da `tests/test_idor.py`: se la
+  query non filtra il tenant del token, il test riceve il record altrui e
+  fallisce.
 
 **Criterio:** suite automatica che fallisce la build se un GET cross-tenant
-restituisce 200 con dati.
+restituisce 200 con dati. Verificato da `tests/test_idor.py`.
 
 ### 7.3 Onboarding
 

@@ -693,6 +693,18 @@ def lista_soggetti(user: dict = Depends(auth.get_current_user)):
     return soggetti_service.lista_soggetti(user["tenant_id"])
 
 
+@app.get("/api/v1/soggetti/{soggetto_id}", response_model=SoggettoOut)
+def dettaglio_soggetto(
+    soggetto_id: int,
+    user: dict = Depends(auth.get_current_user),
+):
+    """Restituisce un'anagrafica del tenant corrente."""
+    soggetto = soggetti_service.trova_soggetto(user["tenant_id"], soggetto_id)
+    if not soggetto:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Anagrafica non trovata")
+    return soggetto
+
+
 @app.post(
     "/api/v1/soggetti",
     response_model=SoggettoOut,
@@ -1603,6 +1615,18 @@ def cerca_articolo_ean(
 # ------------------------------------------------------------------------- #
 #  Coda di stampa (print_jobs) e dispositivi
 # ------------------------------------------------------------------------- #
+
+@app.get("/api/v1/dispositivi/{dispositivo_id}")
+def dettaglio_dispositivo(
+    dispositivo_id: int,
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Restituisce un dispositivo del tenant senza il token dell'agent."""
+    dispositivo = print_repo.trova_dispositivo(user["tenant_id"], dispositivo_id)
+    if dispositivo is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dispositivo non trovato")
+    return dispositivo
+
 
 @app.post("/api/v1/dispositivi", status_code=status.HTTP_201_CREATED)
 def registra_dispositivo(

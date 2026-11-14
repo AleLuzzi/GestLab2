@@ -501,7 +501,10 @@ class BootstrapMigrationsTests(unittest.TestCase):
 
     def test_audit_log_migration_is_ordered_and_recognized_when_complete(self):
         migration = "20261114_audit_log.sql"
-        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        self.assertEqual(
+            bootstrap.MIGRATION_ORDER[bootstrap.MIGRATION_ORDER.index(migration) + 1],
+            "20261114_tenant_not_null.sql",
+        )
         sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS `audit_log`", sql)
         self.assertIn("`utente_email` varchar(255)", sql)
@@ -556,6 +559,68 @@ class BootstrapMigrationsTests(unittest.TestCase):
                 AuditCursor(columns=required, schema=complete), migration
             )
         )
+
+    def test_tenant_not_null_migration_is_skipped_when_constraints_exist(self):
+        migration = "20261114_tenant_not_null.sql"
+        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        statements = bootstrap._parse_sql_statements(
+            Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        )
+        self.assertGreater(len(statements), 20)
+        self.assertTrue(
+            any("MODIFY COLUMN `tenant_id` bigint NOT NULL" in item for item in statements)
+        )
+        self.assertTrue(any("`fk_lotti_tenant`" in item for item in statements))
+        self.assertTrue(any("`fk_righe_vendita_tenant`" in item for item in statements))
+
+        class TenantCursor:
+            def __init__(self, nullable=(), missing=()):
+                self.nullable = set(nullable)
+                self.missing = set(missing)
+                self.executed = []
+                self.result = [(0,)]
+
+            def execute(self, query, params=None):
+                if "IS_NULLABLE" in query:
+                    self.result = [("YES" if params[0] in self.nullable else "NO",)]
+                elif "table_constraints" in query:
+                    self.result = [(0 if params[1] in self.missing else 1,)]
+                elif "tenant_id IS NULL" in query:
+                    self.result = [(2,)]
+                else:
+                    self.executed.append(query)
+                    self.result = [(0,)]
+
+            def fetchone(self):
+                return self.result[0]
+
+        completo = TenantCursor()
+        self.assertTrue(bootstrap._migrazione_gia_applicata(completo, migration))
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                TenantCursor(nullable={"reparti"}), migration
+            )
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                TenantCursor(missing={"fk_lotti_tenant"}), migration
+            )
+        )
+
+        incompleto = TenantCursor(missing={"fk_lotti_tenant"})
+        for statement in statements:
+            if bootstrap._effetto_vincolo_tenant_presente(incompleto, statement):
+                continue
+            if "fk_lotti_tenant" in statement:
+                incompleto.execute(statement)
+        self.assertEqual(len(incompleto.executed), 1)
+        self.assertIn("fk_lotti_tenant", incompleto.executed[0])
+
+        with self.assertRaisesRegex(RuntimeError, "reparti: 2 righe senza tenant_id"):
+            bootstrap._prepara_tenant_obbligatorio(
+                TenantCursor(),
+                "ALTER TABLE `reparti` MODIFY COLUMN `tenant_id` bigint NOT NULL",
+            )
 
 
 if __name__ == "__main__":

@@ -37,6 +37,11 @@ class ConsolidatedSchemaTests(unittest.TestCase):
                 continue
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"`tenant_id`\s+bigint NOT NULL")
+                compatta = re.sub(r"\s+", " ", definition)
+                self.assertIn(
+                    "FOREIGN KEY (`tenant_id`) REFERENCES `tenant` (`id`)",
+                    compatta,
+                )
 
         for table_name, constraint in (
             ("reparti", "fk_reparti_tenant"),

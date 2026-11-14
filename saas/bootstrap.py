@@ -52,6 +52,7 @@ MIGRATION_ORDER = (
     "20261114_password_reset.sql",
     "20261114_refresh_token.sql",
     "20261114_audit_log.sql",
+    "20261114_tenant_not_null.sql",
 )
 
 
@@ -307,6 +308,56 @@ def _colonne_tabella(cursor, tabella):
 def _indici_tabella(cursor, tabella):
     cursor.execute(f"SHOW INDEX FROM `{tabella}`")
     return {riga[2] for riga in cursor.fetchall()}
+
+
+_MODIFICA_TENANT_OBBLIGATORIO = re.compile(
+    r"ALTER TABLE `([^`]+)` MODIFY COLUMN `tenant_id` bigint NOT NULL\Z"
+)
+_AGGIUNGE_FK_TENANT = re.compile(
+    r"ALTER TABLE `([^`]+)` ADD CONSTRAINT `([^`]+)` "
+    r"FOREIGN KEY \(`tenant_id`\) REFERENCES `tenant` \(`id`\) "
+    r"ON DELETE (?:CASCADE|RESTRICT)\Z"
+)
+
+
+def _effetto_vincolo_tenant_presente(cursor, statement):
+    """True se la colonna è già obbligatoria o se la chiave esterna esiste."""
+    modifica = _MODIFICA_TENANT_OBBLIGATORIO.search(statement)
+    if modifica:
+        cursor.execute(
+            "SELECT IS_NULLABLE FROM information_schema.columns "
+            "WHERE table_schema = DATABASE() AND table_name = %s "
+            "AND column_name = 'tenant_id'",
+            (modifica.group(1),),
+        )
+        riga = cursor.fetchone()
+        return riga is not None and riga[0] == "NO"
+
+    vincolo = _AGGIUNGE_FK_TENANT.search(statement)
+    if vincolo:
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.table_constraints "
+            "WHERE table_schema = DATABASE() AND table_name = %s "
+            "AND constraint_name = %s AND constraint_type = 'FOREIGN KEY'",
+            (vincolo.group(1), vincolo.group(2)),
+        )
+        return cursor.fetchone()[0] > 0
+    return False
+
+
+def _prepara_tenant_obbligatorio(cursor, statement):
+    """Blocca la modifica se restano righe senza tenant."""
+    modifica = _MODIFICA_TENANT_OBBLIGATORIO.search(statement)
+    if not modifica:
+        return
+    tabella = modifica.group(1)
+    cursor.execute(f"SELECT COUNT(*) FROM `{tabella}` WHERE tenant_id IS NULL")
+    senza_tenant = cursor.fetchone()[0]
+    if senza_tenant:
+        raise RuntimeError(
+            f"{tabella}: {senza_tenant} righe senza tenant_id. "
+            "Assegnarle a un tenant prima di rendere la colonna obbligatoria."
+        )
 
 
 def _tabella_esiste(cursor, tabella):
@@ -568,6 +619,15 @@ def _migrazione_gia_applicata(cursor, migrazione):
         schema = cursor.fetchone()[1].upper()
         return "FK_AUDIT_LOG_TENANT" in schema and "CHK_AUDIT_LOG_AZIONE" in schema
 
+    if migrazione == "20261114_tenant_not_null.sql":
+        percorso = os.path.join(MIGRATIONS_DIR, migrazione)
+        with open(percorso, "r", encoding="utf-8") as file_migrazione:
+            statements = _parse_sql_statements(file_migrazione.read())
+        return bool(statements) and all(
+            _effetto_vincolo_tenant_presente(cursor, statement)
+            for statement in statements
+        )
+
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 
 
@@ -609,6 +669,9 @@ def _applica_migrazioni(cursor, commit, database_nuovo=False):
         if not statements:
             raise ValueError(f"Nessuno statement nella migrazione: {percorso}")
         for statement in statements:
+            if _effetto_vincolo_tenant_presente(cursor, statement):
+                continue
+            _prepara_tenant_obbligatorio(cursor, statement)
             cursor.execute(statement)
 
         _registra_migrazione(cursor, migrazione)

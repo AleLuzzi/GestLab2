@@ -26,6 +26,26 @@ def registra_dispositivo(tenant_id, nome, token, stampante_dymo=None,
         return c.lastrowid
 
 
+def trova_dispositivo(tenant_id, dispositivo_id):
+    """Legge un dispositivo del tenant senza esporre il token dell'agent."""
+    with connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            "SELECT id, nome, stampante_dymo, stampante_termica "
+            "FROM dispositivi_stampa WHERE tenant_id = %s AND id = %s",
+            (tenant_id, dispositivo_id),
+        )
+        row = c.fetchone()
+        if not row:
+            return None
+        return {
+            "id": row[0],
+            "nome": row[1],
+            "stampante_dymo": row[2],
+            "stampante_termica": row[3],
+        }
+
+
 def trova_dispositivo_by_token(token):
     """Recupera un dispositivo di stampa tramite token (per l'agent)."""
     with connection() as conn:

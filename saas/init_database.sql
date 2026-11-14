@@ -155,7 +155,9 @@ CREATE TABLE IF NOT EXISTS `soggetti_ruoli` (
   `ruolo` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
   PRIMARY KEY (`tenant_id`, `soggetto_id`, `ruolo`),
   CONSTRAINT `fk_soggetti_ruoli_soggetto` FOREIGN KEY (`tenant_id`, `soggetto_id`)
-    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE CASCADE
+    REFERENCES `soggetti` (`tenant_id`, `id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_soggetti_ruoli_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `reparti` (
@@ -274,6 +276,8 @@ CREATE TABLE IF NOT EXISTS `ricetta_allergeni` (
   PRIMARY KEY (`tenant_id`, `ricetta_id`, `codice`),
   CONSTRAINT `fk_ricetta_allergeni_ricetta` FOREIGN KEY (`tenant_id`, `ricetta_id`)
     REFERENCES `ricette` (`tenant_id`, `id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ricetta_allergeni_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `chk_ricetta_allergeni_codice` CHECK (`codice` IN (
     'glutine', 'crostacei', 'uova', 'pesce', 'arachidi', 'soia', 'latte',
     'frutta_a_guscio', 'sedano', 'senape', 'sesamo', 'solfiti', 'lupini',
@@ -296,6 +300,8 @@ CREATE TABLE IF NOT EXISTS `ricetta_ingredienti` (
     REFERENCES `ricette` (`tenant_id`, `id`) ON DELETE CASCADE,
   CONSTRAINT `fk_ricetta_ingredienti_articolo` FOREIGN KEY (`tenant_id`, `articolo_id`)
     REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_ricetta_ingredienti_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `chk_ricetta_ingredienti_quantita` CHECK (
     `valore` > 0 AND
     (`tipo_quantita` = 'quantita' OR
@@ -438,7 +444,9 @@ CREATE TABLE IF NOT EXISTS `lotti` (
   CONSTRAINT `fk_lotti_documento_ingresso` FOREIGN KEY (`tenant_id`, `documento_ingresso_id`)
     REFERENCES `documenti_ingresso` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_lotti_lavorazione` FOREIGN KEY (`tenant_id`, `lavorazione_id`)
-    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lotti_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `movimenti_lotto` (
@@ -462,7 +470,9 @@ CREATE TABLE IF NOT EXISTS `movimenti_lotto` (
   CONSTRAINT `fk_movimenti_lotto_documento` FOREIGN KEY (`tenant_id`, `documento_ingresso_id`)
     REFERENCES `documenti_ingresso` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_movimenti_lotto_lavorazione` FOREIGN KEY (`tenant_id`, `lavorazione_id`)
-    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_movimenti_lotto_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `vendite` (
@@ -509,7 +519,9 @@ CREATE TABLE IF NOT EXISTS `righe_vendita` (
   CONSTRAINT `fk_righe_vendita_lotto` FOREIGN KEY (`tenant_id`, `lotto_id`)
     REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_righe_vendita_articolo` FOREIGN KEY (`tenant_id`, `articolo_id`)
-    REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_righe_vendita_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lavorazione_scarto` (
@@ -523,7 +535,9 @@ CREATE TABLE IF NOT EXISTS `lavorazione_scarto` (
   KEY `idx_lavorazione_scarto` (`tenant_id`, `lavorazione_id`),
   CONSTRAINT `chk_lavorazione_scarto_quantita` CHECK (`quantita` > 0),
   CONSTRAINT `fk_lavorazione_scarto_lavorazione` FOREIGN KEY (`tenant_id`, `lavorazione_id`)
-    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lavorazione_scarto_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `righe_ingresso_tracciato` (
@@ -539,7 +553,9 @@ CREATE TABLE IF NOT EXISTS `righe_ingresso_tracciato` (
   CONSTRAINT `fk_righe_ingresso_documento` FOREIGN KEY (`tenant_id`, `documento_ingresso_id`)
     REFERENCES `documenti_ingresso` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_righe_ingresso_lotto` FOREIGN KEY (`tenant_id`, `lotto_id`)
-    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_righe_ingresso_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lavorazione_input` (
@@ -554,7 +570,9 @@ CREATE TABLE IF NOT EXISTS `lavorazione_input` (
   CONSTRAINT `fk_lavorazione_input_lavorazione` FOREIGN KEY (`tenant_id`, `lavorazione_id`)
     REFERENCES `lavorazioni` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_lavorazione_input_lotto` FOREIGN KEY (`tenant_id`, `lotto_id`)
-    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lavorazione_input_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS `lavorazione_output` (
@@ -572,7 +590,9 @@ CREATE TABLE IF NOT EXISTS `lavorazione_output` (
   CONSTRAINT `fk_lavorazione_output_articolo` FOREIGN KEY (`tenant_id`, `articolo_id`)
     REFERENCES `articoli` (`tenant_id`, `id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_lavorazione_output_lotto` FOREIGN KEY (`tenant_id`, `lotto_id`)
-    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT
+    REFERENCES `lotti` (`tenant_id`, `id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_lavorazione_output_tenant` FOREIGN KEY (`tenant_id`)
+    REFERENCES `tenant` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- ---------------------------------------------------------------------------
