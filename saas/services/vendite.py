@@ -13,6 +13,11 @@ def elenco_ddt_vendita(tenant_id):
     return tracciabilita_repo.elenco_ddt_vendita(tenant_id)
 
 
+def elenco_ricevute_vendita(tenant_id):
+    """Restituisce lo storico delle ricevute non fiscali del tenant."""
+    return tracciabilita_repo.elenco_ricevute_vendita(tenant_id)
+
+
 def dettaglio_ddt_vendita(tenant_id, vendita_id):
     """Carica la vendita persistita da usare come sorgente del DDT."""
     return tracciabilita_repo.dettaglio_ddt_vendita(tenant_id, vendita_id)

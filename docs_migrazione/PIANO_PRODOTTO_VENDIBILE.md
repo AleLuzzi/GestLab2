@@ -4,7 +4,7 @@ Documento di prodotto (non di implementazione codice). Descrive i miglioramenti
 necessari perché GestLab sia vendibile come SaaS a macellerie che sezionano e
 producono preparati da cuocere.
 
-**Data aggiornamento:** 2026-11-07
+**Data aggiornamento:** 2026-11-14
 
 **Canale:** SaaS multi-tenant (`saas/` + console `web/`)  
 **Perimetro v1 concordato:** laboratorio (ingresso, lotti, lavorazioni,
@@ -104,7 +104,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Inventario / rettifica giacenza | P | `movimenti_lotto.tipo = RETTIFICA` nello schema; nessuna UI né API dedicata. |
 | Vendita / scarico lotti | A | [`core/services/vendite.py`](../core/services/vendite.py) può chiudere un lotto azzerandone la giacenza, ma non esiste ancora un flusso di vendita con scarico parziale e movimento `VENDITA`. |
 | DDT persistente legato a lotti e cliente | A | `POST /api/v1/ddt` genera PDF da payload libero; campo `fornitore` fuorviante in vendita. |
-| Scontrino non fiscale da vendita | A | `POST /api/v1/scontrino` genera ESC/POS da payload libero, senza magazzino. |
+| Scontrino non fiscale da vendita | C | `POST /api/v1/vendite/{id}/ricevuta` compone la ricevuta dal documento persistito e la accoda al Local Print Agent. La dicitura non fiscale è in testata e a piè di pagina. `POST /api/v1/scontrino` resta solo per un payload libero. |
 | Menu / listino banco | P | `GET /api/v1/menu` legge gli articoli attivi; la configurazione Bizerba non è il catalogo. |
 | Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'etichetta PDF parte da lotto, usa prezzo commerciale dell'articolo e dati OSA del tenant; ingredienti, allergeni e conservazione sono disponibili ma la derivazione automatica dalla ricetta resta da completare. |
 | Lookup EAN | P | API + campo dashboard; EAN e prezzo sono dati dell'articolo. |
@@ -459,10 +459,12 @@ stesse righe; il PDF non è un blob orfano.
 
 ### 6.5 Scontrino / ricevuta non fiscale
 
-Stesso documento vendita → ESC/POS via print agent.
+Stesso documento vendita → ESC/POS via print agent. Implementato il 14
+novembre 2026: la ricevuta si genera dalle righe persistite e la ristampa non
+crea un nuovo documento.
 
-Obbligatorio in stampa (testata o pie’): **“Documento non fiscale — non
-sostituisce lo scontrino del registratore telematico”**.
+Obbligatorio in stampa (testata e piè di pagina): **“Documento non fiscale —
+non sostituisce lo scontrino del registratore telematico”**.
 
 **Criterio:** la ricevuta elenca righe e totale; un commercialista/cliente
 non può confonderla con un RT.

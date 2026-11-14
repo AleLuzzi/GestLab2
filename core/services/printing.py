@@ -12,6 +12,7 @@ Dipendenze opzionali:
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from decimal import Decimal, ROUND_HALF_UP
 import io
 from typing import List, Optional
 
@@ -595,8 +596,91 @@ def genera_etichetta_dymo_pdf(plu, prodotto, prezzo_kg="", ingredienti="",
 #  Scontrino termico (ESC/POS)
 # ------------------------------------------------------------------------- #
 
+AVVISO_RICEVUTA_NON_FISCALE = (
+    "Documento non fiscale —\n"
+    "non sostituisce lo scontrino\n"
+    "del registratore telematico"
+)
+
+
+def _formatta_euro(value) -> str:
+    """Formatta un importo in euro con virgola decimale."""
+    amount = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    sign = "-" if amount < 0 else ""
+    whole, cents = f"{abs(amount):.2f}".split(".")
+    return f"{sign}{whole},{cents} €"
+
+
+def _formatta_quantita_ricevuta(value, unita) -> str:
+    """Formatta una quantità a tre decimali con l'unità di misura."""
+    amount = Decimal(str(value)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+    whole, fraction = f"{amount:.3f}".split(".")
+    return f"{whole},{fraction} {unita}".strip()
+
+
+def _formatta_data_ricevuta(value) -> str:
+    """Normalizza la data del documento nel formato italiano."""
+    if hasattr(value, "strftime"):
+        return value.strftime("%d/%m/%Y")
+    text = str(value)[:10]
+    parts = text.split("-")
+    if len(parts) == 3 and all(part.isdigit() for part in parts):
+        return f"{parts[2]}/{parts[1]}/{parts[0]}"
+    return text
+
+
+def contenuto_ricevuta_non_fiscale(documento) -> dict:
+    """Compone testata, righe e totali della ricevuta dal documento persistito.
+
+    Il risultato è il payload JSON accodato al Local Print Agent. Prezzi,
+    quantità e IVA arrivano dalle righe salvate, non dal carrello del browser.
+    """
+    mittente = documento.get("mittente") or {}
+    destinatario = documento.get("destinatario") or {}
+    testata = []
+    if mittente.get("ragione_sociale"):
+        testata.append(str(mittente["ragione_sociale"]))
+    sede = mittente.get("indirizzo") or mittente.get("laboratorio") or ""
+    if sede:
+        testata.append(str(sede))
+    if mittente.get("partita_iva"):
+        testata.append(f"P.IVA {mittente['partita_iva']}")
+    testata.append(f"RICEVUTA NON FISCALE #{documento['numero']}")
+    testata.append(_formatta_data_ricevuta(documento.get("data_vendita")))
+    testata.append(destinatario.get("denominazione") or "Banco")
+    testata.append(AVVISO_RICEVUTA_NON_FISCALE)
+
+    righe = []
+    totale = Decimal("0.00")
+    iva_totale = Decimal("0.00")
+    for riga in documento.get("righe") or []:
+        quantita = Decimal(str(riga["quantita"]))
+        prezzo = Decimal(str(riga["prezzo_unitario"]))
+        importo = (quantita * prezzo).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        percentuale_iva = Decimal(str(riga.get("iva_percentuale") or "0"))
+        iva_riga = (importo * percentuale_iva / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        totale += importo
+        iva_totale += iva_riga
+        unita = riga.get("unita_misura") or ""
+        righe.append({
+            "descrizione": f"{riga['articolo']} · lotto {riga['lotto']}",
+            "qta": _formatta_quantita_ricevuta(quantita, unita),
+            "prezzo": f"{_formatta_euro(prezzo)} / {unita}".strip(),
+        })
+
+    return {
+        "testata": "\n".join(testata),
+        "righe": righe,
+        "totale": _formatta_euro(totale),
+        "iva": _formatta_euro(iva_totale),
+        "avviso": AVVISO_RICEVUTA_NON_FISCALE,
+    }
+
+
 def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
-                            iva="0.00") -> bytes:
+                            iva="0.00", avviso="") -> bytes:
     """Genera i bytes ESC/POS di uno scontrino termico.
 
     Produce testo semplice UTF-8 con comando di taglio, inviabile dall'Agent
@@ -607,6 +691,7 @@ def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
         righe: lista di dict ``{descrizione, prezzo, qta}``.
         totale: totale dello scontrino.
         iva: importo IVA.
+        avviso: dicitura ripetuta a piè di pagina, prima del taglio.
 
     Returns:
         I bytes in formato ESC/POS (o testo semplice se non e' installata la
@@ -626,6 +711,11 @@ def genera_scontrino_escpos(testata="", righe=None, totale="0.00",
     lines.append("=" * 32)
     lines.append("{:<26}{:>6}".format("TOTALE", totale))
     lines.append("{:<26}{:>6}".format("IVA", iva))
+    if avviso:
+        lines.append("")
+        lines.extend(
+            line.center(32) for line in str(avviso).splitlines() if line.strip()
+        )
     lines.append("")
     lines.append("GRAZIE")
     text = "\n".join(lines) + "\n\x1d\x56\x41"

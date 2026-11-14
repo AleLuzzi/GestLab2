@@ -334,7 +334,7 @@
           <div id="sales-checkout-error" class="error" role="alert" aria-live="assertive"></div>
           <div id="sales-checkout-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
           <div class="sales-checkout-actions">
-            <span class="sales-help">La ricevuta non fiscale viene inviata alla coda; il DDT si scarica in PDF e si ristampa dallo storico.</span>
+            <span class="sales-help">Documento non fiscale — non sostituisce lo scontrino del registratore telematico. La ricevuta è generata dal documento registrato e inviata al Local Print Agent; si ristampa dallo storico senza creare una nuova vendita. Il DDT si scarica in PDF.</span>
             <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra vendita</button>
           </div>
         </div>
@@ -354,6 +354,24 @@
             </table>
           </div>
           <div id="sales-history-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="sales-cart">
+          <div class="panel-head">
+            <h3>Storico ricevute non fiscali</h3>
+          </div>
+          <p class="sales-help">Documento non fiscale — non sostituisce lo scontrino del registratore telematico.</p>
+          <div class="sales-cart-table-wrap">
+            <table class="table">
+              <thead>
+                <tr><th>Documento</th><th>Data</th><th>Cliente</th><th>Righe</th><th></th></tr>
+              </thead>
+              <tbody id="sales-receipt-history-body">
+                <tr><td colspan="5" class="empty">Caricamento storico...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="sales-receipt-history-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
         </div>
       </section>
 
@@ -975,6 +993,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261108-2"></script>
+<script type="module" src="/static/js/app.js?v=20261114-1"></script>
 </body>
 </html>

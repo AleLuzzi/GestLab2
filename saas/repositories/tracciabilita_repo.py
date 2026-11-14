@@ -722,6 +722,34 @@ def lotti_disponibili_vendita(tenant_id):
         ]
 
 
+def elenco_ricevute_vendita(tenant_id):
+    """Elenca le ricevute del tenant per la ristampa dallo storico."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT v.id, v.numero, v.data_vendita, "
+            "COALESCE(s.denominazione, ''), "
+            "(SELECT COUNT(*) FROM righe_vendita rv "
+            "WHERE rv.tenant_id = v.tenant_id AND rv.vendita_id = v.id) "
+            "FROM vendite v "
+            "LEFT JOIN soggetti s ON s.tenant_id = v.tenant_id "
+            "AND s.id = v.cliente_id "
+            "WHERE v.tenant_id = %s AND v.tipo_documento = 'RICEVUTA' "
+            "ORDER BY v.data_vendita DESC, v.numero DESC LIMIT 100",
+            (tenant_id,),
+        )
+        return [
+            {
+                "id": row[0],
+                "numero": row[1],
+                "data_vendita": row[2],
+                "cliente": row[3],
+                "numero_righe": row[4],
+            }
+            for row in cursor.fetchall()
+        ]
+
+
 def elenco_ddt_vendita(tenant_id):
     """Elenca i DDT del tenant per la ristampa dallo storico."""
     with connection() as conn:
@@ -772,7 +800,8 @@ def dettaglio_ddt_vendita(tenant_id, vendita_id):
             return None
 
         cursor.execute(
-            "SELECT a.nome, l.codice_lotto, rv.quantita, rv.unita_misura "
+            "SELECT a.nome, l.codice_lotto, rv.quantita, rv.unita_misura, "
+            "rv.prezzo_unitario, rv.iva_percentuale "
             "FROM righe_vendita rv "
             "JOIN articoli a ON a.tenant_id = rv.tenant_id "
             "AND a.id = rv.articolo_id "
@@ -788,6 +817,8 @@ def dettaglio_ddt_vendita(tenant_id, vendita_id):
                 "lotto": riga[1],
                 "quantita": str(riga[2]),
                 "unita_misura": riga[3],
+                "prezzo_unitario": str(riga[4]),
+                "iva_percentuale": str(riga[5]),
             }
             for riga in cursor.fetchall()
         ]

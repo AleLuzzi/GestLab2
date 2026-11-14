@@ -1065,6 +1065,59 @@ def genera_ddt_vendita(
     )
 
 
+@app.get("/api/v1/vendite/ricevute")
+def elenco_ricevute_vendita(user: dict = Depends(auth.get_current_user)):
+    """Elenca le ricevute non fiscali del tenant per la ristampa."""
+    return vendite_service.elenco_ricevute_vendita(user["tenant_id"])
+
+
+@app.post(
+    "/api/v1/vendite/{vendita_id}/ricevuta",
+    response_model=PrintJobOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def accoda_ricevuta_vendita(
+    vendita_id: int,
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Accoda al Local Print Agent la ricevuta letta dal documento persistito.
+
+    Una nuova richiesta ristampa lo stesso numero e le stesse righe e non
+    crea un altro documento di vendita.
+    """
+    documento = vendite_service.dettaglio_ddt_vendita(
+        user["tenant_id"], vendita_id
+    )
+    if documento is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Il documento di vendita non esiste nel tenant corrente",
+        )
+    if documento["tipo_documento"] != "RICEVUTA":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Il documento selezionato non è una ricevuta",
+        )
+    if not documento["righe"]:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "La ricevuta non contiene righe di vendita",
+        )
+
+    contenuto = printing_service.contenuto_ricevuta_non_fiscale(documento)
+    serialized = json.dumps(contenuto, ensure_ascii=False)
+    job_id = print_repo.accoda_job(
+        user["tenant_id"], None, "scontrino", serialized
+    )
+    return PrintJobOut(
+        id=job_id,
+        tenant_id=user["tenant_id"],
+        tipo="scontrino",
+        stato="pending",
+        payload=serialized,
+    )
+
+
 @app.post(
     "/api/v1/vendite",
     status_code=status.HTTP_201_CREATED,

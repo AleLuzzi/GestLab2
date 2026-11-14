@@ -144,6 +144,7 @@ class PrintAgent:
                     righe=data.get("righe", []),
                     totale=data.get("totale", "0.00"),
                     iva=data.get("iva", "0.00"),
+                    avviso=data.get("avviso", ""),
                 )
                 return self._stampa_escpos(escpos)
 

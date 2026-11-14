@@ -272,7 +272,6 @@ async function registraVendita() {
     prezzo_unitario: (riga.prezzoCentesimi / 100).toFixed(2),
     iva_percentuale: "0.00",
   }));
-  const totale = righeVendita.reduce((sum, riga) => sum + riga.importoCentesimi, 0);
   let vendita;
 
   try {
@@ -295,11 +294,6 @@ async function registraVendita() {
     return;
   }
 
-  const righeScontrino = righeVendita.map((riga) => ({
-    descrizione: `${riga.articolo} · lotto ${riga.codiceLotto}`,
-    prezzo: `${formattaImporto(riga.prezzoCentesimi)} / ${riga.unita}`,
-    qta: formattaQuantitaMilli(riga.quantitaMilli, riga.unita),
-  }));
   righeVendita = [];
   renderCarrello();
 
@@ -315,23 +309,12 @@ async function registraVendita() {
       }
     } else {
       try {
-        await api("/api/v1/print-jobs", {
-          method: "POST",
-          body: JSON.stringify({
-            tipo: "scontrino",
-            payload: JSON.stringify({
-              testata: `GestLab · RICEVUTA NON FISCALE #${vendita.numero}\nDocumento non fiscale — non sostituisce lo scontrino del registratore telematico`,
-              righe: righeScontrino,
-              totale: formattaImporto(totale),
-              iva: "0,00 €",
-            }),
-          }),
-        });
+        await accodaRicevuta(vendita.id);
         $("sales-checkout-status").className = "error success";
-        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata. Ricevuta inviata alla coda di stampa.`;
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata. Ricevuta non fiscale inviata al Local Print Agent.`;
       } catch (error) {
         $("sales-checkout-status").className = "error";
-        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata, ma la stampa non è stata accodata: ${error.message}. Puoi controllare la Coda stampa.`;
+        $("sales-checkout-status").textContent = `Vendita #${vendita.numero} registrata, ma la ricevuta non è stata accodata: ${error.message}. Puoi ristamparla dallo storico.`;
       }
     }
   } finally {
@@ -339,6 +322,15 @@ async function registraVendita() {
     aggiornaTotale();
     aggiornaPulsanteAggiungi();
     await loadVendite();
+  }
+}
+
+async function accodaRicevuta(venditaId, button = null) {
+  if (button) button.disabled = true;
+  try {
+    return await api(`/api/v1/vendite/${venditaId}/ricevuta`, { method: "POST" });
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -405,8 +397,57 @@ async function loadDdtHistory() {
   }
 }
 
+async function loadRicevuteHistory() {
+  const tbody = $("sales-receipt-history-body");
+  const status = $("sales-receipt-history-status");
+  tbody.replaceChildren();
+  status.textContent = "";
+  try {
+    const documenti = await api("/api/v1/vendite/ricevute");
+    if (!Array.isArray(documenti)) {
+      throw new Error("La risposta dello storico ricevute non è valida.");
+    }
+    if (!documenti.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 5;
+      cell.className = "empty";
+      cell.textContent = "Nessuna ricevuta registrata";
+      row.appendChild(cell);
+      tbody.appendChild(row);
+      return;
+    }
+    documenti.forEach((documento) => {
+      const row = document.createElement("tr");
+      [
+        `Ricevuta ${documento.numero}`,
+        formattaData(documento.data_vendita),
+        documento.cliente || "Banco",
+        String(documento.numero_righe),
+      ].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+      const actionCell = document.createElement("td");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "btn ghost sales-receipt-print";
+      button.dataset.receiptId = String(documento.id);
+      button.dataset.receiptNumber = String(documento.numero);
+      button.textContent = "Ristampa";
+      actionCell.appendChild(button);
+      row.appendChild(actionCell);
+      tbody.appendChild(row);
+    });
+  } catch (error) {
+    status.textContent = `Impossibile caricare lo storico ricevute: ${error.message}`;
+  }
+}
+
 export async function loadVendite() {
   loadDdtHistory();
+  loadRicevuteHistory();
   const articoloSelezionato = $("sales-article").value;
   const lottoSelezionatoId = $("sales-lot").value;
   $("sales-selection-error").textContent = "";
@@ -455,6 +496,17 @@ export function initVendite() {
     if (!button) return;
     righeVendita.splice(Number(button.dataset.index), 1);
     renderCarrello();
+  });
+  $("sales-receipt-history-body").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-receipt-id]");
+    if (!button) return;
+    $("sales-receipt-history-status").textContent = "";
+    try {
+      await accodaRicevuta(button.dataset.receiptId, button);
+      $("sales-receipt-history-status").textContent = `Ricevuta #${button.dataset.receiptNumber} inviata di nuovo al Local Print Agent.`;
+    } catch (error) {
+      $("sales-receipt-history-status").textContent = `Impossibile accodare la ricevuta: ${error.message}`;
+    }
   });
   $("sales-history-body").addEventListener("click", async (event) => {
     const button = event.target.closest("[data-ddt-id]");

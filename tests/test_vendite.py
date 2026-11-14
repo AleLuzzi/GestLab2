@@ -1,5 +1,6 @@
 """Test per la chiusura operativa dei lotti."""
 
+import json
 import unittest
 from contextlib import contextmanager
 from datetime import date
@@ -11,10 +12,12 @@ from fastapi import HTTPException
 from core.services import printing as printing_service
 from core.services import vendite
 from saas.main import (
+    accoda_ricevuta_vendita,
     aggiungi_righe_vendita,
     crea_vendita,
     crea_vendita_completa,
     elenco_ddt_vendita,
+    elenco_ricevute_vendita,
     genera_ddt_vendita,
     lotti_disponibili_vendita,
 )
@@ -221,7 +224,7 @@ class StoricoDdtVenditaTests(unittest.TestCase):
             "Macelleria Test", "Via Roma 1", "Laboratorio", "IT123",
             "Cliente Test", "Via Verdi", "2", "00100", "Roma", "RM", "Italia", "IT456",
         )
-        rows = [("Salsiccia fresca", "V-25", Decimal("1.250"), "kg")]
+        rows = [("Salsiccia fresca", "V-25", Decimal("1.250"), "kg", Decimal("12.5000"), Decimal("10.00"))]
 
         class FakeCursor:
             def __init__(self):
@@ -265,6 +268,8 @@ class StoricoDdtVenditaTests(unittest.TestCase):
                 "lotto": "V-25",
                 "quantita": "1.250",
                 "unita_misura": "kg",
+                "prezzo_unitario": "12.5000",
+                "iva_percentuale": "10.00",
             }],
         )
 
@@ -1162,6 +1167,148 @@ class VenditeServiceTests(unittest.TestCase):
         )
         self.assertIs(lines, expected_lines)
         add_lines.assert_called_once_with(tenant_id=42, vendita_id=81, righe=[])
+
+
+class RicevutaNonFiscaleTests(unittest.TestCase):
+    def documento(self, tipo="RICEVUTA", righe=None):
+        if righe is None:
+            righe = [{
+                "articolo": "Salsiccia fresca",
+                "lotto": "V-10",
+                "quantita": "1.250",
+                "unita_misura": "kg",
+                "prezzo_unitario": "12.5000",
+                "iva_percentuale": "10.00",
+            }]
+        return {
+            "id": 81,
+            "numero": 12,
+            "data_vendita": date(2026, 11, 14),
+            "tipo_documento": tipo,
+            "mittente": {
+                "ragione_sociale": "Macelleria Test",
+                "indirizzo": "Via Roma 1",
+                "laboratorio": "",
+                "partita_iva": "IT123",
+            },
+            "destinatario": {"denominazione": "Cliente Test"},
+            "righe": righe,
+        }
+
+    def test_repository_lists_only_tenant_receipts(self):
+        rows = [(81, 12, date(2026, 11, 14), "", 1)]
+
+        class FakeCursor:
+            def execute(self, query, params=None):
+                self.query = query
+                self.params = params
+
+            def fetchall(self):
+                return rows
+
+        class FakeConnection:
+            def __init__(self):
+                self._cursor = FakeCursor()
+
+            def cursor(self):
+                return self._cursor
+
+        conn = FakeConnection()
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            history = tracciabilita_repo.elenco_ricevute_vendita(42)
+
+        self.assertEqual(conn._cursor.params, (42,))
+        self.assertIn("v.tipo_documento = 'RICEVUTA'", conn._cursor.query)
+        self.assertEqual(history[0]["numero"], 12)
+        self.assertEqual(history[0]["cliente"], "")
+
+    def test_endpoint_queues_receipt_from_persisted_sale(self):
+        document = self.documento()
+
+        with (
+            patch.object(
+                vendite_service, "dettaglio_ddt_vendita", return_value=document
+            ) as get_document,
+            patch("saas.main.print_repo.accoda_job", return_value=44) as queue_job,
+            patch.object(vendite_service, "crea_vendita") as create_sale,
+        ):
+            response = accoda_ricevuta_vendita(
+                81, {"tenant_id": 42, "ruolo": "operatore"}
+            )
+
+        get_document.assert_called_once_with(42, 81)
+        create_sale.assert_not_called()
+        payload = json.loads(queue_job.call_args.args[3])
+        queue_job.assert_called_once_with(42, None, "scontrino", queue_job.call_args.args[3])
+        self.assertEqual(payload["totale"], "15,63 €")
+        self.assertEqual(payload["iva"], "1,56 €")
+        self.assertEqual(payload["righe"][0]["descrizione"], "Salsiccia fresca · lotto V-10")
+        self.assertIn("Cliente Test", payload["testata"])
+        self.assertIn("non sostituisce lo scontrino", payload["testata"])
+        self.assertIn("non sostituisce lo scontrino", payload["avviso"])
+        self.assertEqual(response.tipo, "scontrino")
+        self.assertEqual(response.stato, "pending")
+        self.assertEqual(response.id, 44)
+
+    def test_reprint_reuses_the_same_sale_without_creating_another_document(self):
+        document = self.documento()
+
+        with (
+            patch.object(
+                vendite_service, "dettaglio_ddt_vendita", return_value=document
+            ),
+            patch("saas.main.print_repo.accoda_job", side_effect=[44, 45]) as queue_job,
+            patch.object(vendite_service, "crea_vendita") as create_sale,
+            patch.object(vendite_service, "crea_vendita_completa") as create_complete,
+        ):
+            first = accoda_ricevuta_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+            again = accoda_ricevuta_vendita(81, {"tenant_id": 42, "ruolo": "operatore"})
+
+        create_sale.assert_not_called()
+        create_complete.assert_not_called()
+        self.assertEqual(queue_job.call_args_list[0].args[3], queue_job.call_args_list[1].args[3])
+        self.assertEqual(first.payload, again.payload)
+        self.assertEqual(first.id, 44)
+        self.assertEqual(again.id, 45)
+
+    def test_endpoint_rejects_ddt_missing_sale_and_empty_receipt(self):
+        user = {"tenant_id": 42, "ruolo": "operatore"}
+        with patch.object(
+            vendite_service, "dettaglio_ddt_vendita", return_value=self.documento("DDT")
+        ):
+            with self.assertRaises(HTTPException) as error:
+                accoda_ricevuta_vendita(81, user)
+        self.assertEqual(error.exception.status_code, 409)
+
+        with patch.object(vendite_service, "dettaglio_ddt_vendita", return_value=None):
+            with self.assertRaises(HTTPException) as error:
+                accoda_ricevuta_vendita(81, user)
+        self.assertEqual(error.exception.status_code, 404)
+
+        with patch.object(
+            vendite_service,
+            "dettaglio_ddt_vendita",
+            return_value=self.documento(righe=[]),
+        ):
+            with self.assertRaises(HTTPException) as error:
+                accoda_ricevuta_vendita(81, user)
+        self.assertEqual(error.exception.status_code, 409)
+
+    def test_history_endpoint_uses_tenant_from_authenticated_user(self):
+        expected = [{"id": 81, "numero": 12}]
+
+        with patch.object(
+            vendite_service, "elenco_ricevute_vendita", return_value=expected
+        ) as list_receipts:
+            result = elenco_ricevute_vendita({"tenant_id": 42})
+
+        self.assertEqual(result, expected)
+        list_receipts.assert_called_once_with(42)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,20 @@
+# Cursor Rules for FastAPI, MySQL, and Vanilla JS/CSS
+
+## Stack Specifications
+- **Backend:** Python 3.11+ using FastAPI.
+- **Database:** Native MySQL via `mysql-connector-python`.
+- **Frontend:** Vanilla JavaScript (ES6+) and modern CSS3 (Flexbox/Grid, responsive layout).
+
+## Database & SQL Integrity Context
+- IMPORTANT: Every time you write a MySQL query in Python, you **MUST** read and strictly follow the table and column structures defined in the `@init_database.sql` file. Do not invent table or column names under any circumstance.
+
+## Backend Development Rules (FastAPI)
+- **Data Validation:** Always use Pydantic models to validate incoming request bodies and to format outgoing response data via `response_model`.
+- **Database Connections:** Implement the "Dependency Injection" pattern (`Depends`) for managing MySQL connections. Ensure every single HTTP request opens and correctly closes both the cursor and the connection in a `finally` block to prevent memory leaks.
+- **Security:** NEVER concatenate strings to build SQL queries. You must exclusively use prepared queries with `%s` placeholders to guarantee full protection against SQL Injection.
+- **Error Handling:** Wrap all database operations inside `try-except-finally` blocks. Catch `mysql.connector.Error` and raise clean, production-ready `HTTPException(status_code=500, detail=...)` instances so the frontend receives readable errors.
+
+## Frontend Development Rules (JS & CSS)
+- **Asynchronous Fetch:** Execute API requests exclusively via `fetch()` utilizing `async/await` syntax.
+- **UI State Management:** Implement robust error and loading state handling. Dynamically modify the DOM using JavaScript to provide clear visual feedback to the user during API calls.
+- **Styling:** Keep CSS clean, modular, and use CSS variables for global colors.
