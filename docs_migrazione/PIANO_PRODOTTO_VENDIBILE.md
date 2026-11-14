@@ -551,19 +551,23 @@ restituisce 200 con dati. Verificato da `tests/test_idor.py`.
 
 ### 7.3 Onboarding
 
-Oggi: script [`saas/crea_tenant.py`](../saas/crea_tenant.py) e bootstrap
-(`saas/bootstrap.py`).
+Comando interno `python -m saas.onboarding`. In una sola transazione crea il
+tenant, i dati OSA (ragione sociale, sede, laboratorio e partita IVA di 11
+cifre), il primo admin e il catalogo. La password segue la policy già in uso.
+Un errore, inclusa un'email già presente, non lascia un tenant parziale.
 
-Obiettivo operativo (anche solo interno, non self-service pubblico):
+Catalogo `vuoto`: nessun articolo. Catalogo `macelleria`: anagrafica di
+materie prime (bovino, suino, sale) e preparati (salsicce fresche, hamburger,
+arrosto), senza prezzi, EAN, lotti o giacenze. Il laboratorio li completa con
+ingresso e listino. `saas/crea_tenant.py` non inserisce più l'esempio fisso.
 
-- wizard/CLI: tenant, dati OSA (ragione sociale, sede, laboratorio), primo
-  admin, catalogo vuoto o template macelleria;
-- documento interno già in `CREAZIONE_NUOVO_TENANT.md` allineato al wizard.
-
-Self-service pubblico: dopo billing.
+`CREAZIONE_NUOVO_TENANT.md` descrive questo comando e il primo ingresso dalla
+console. Self-service pubblico: dopo billing.
 
 **Criterio:** un nuovo laboratorio è operativo (login + ingresso) in meno di
-30 minuti di lavoro interno, senza SQL a mano.
+30 minuti di lavoro interno, senza SQL a mano. Verificato il 14 novembre 2026
+sul database locale: tenant 4 con catalogo macelleria, login admin e ingresso
+del lotto 1A in 0,64 secondi.
 
 ### 7.4 Produzione
 

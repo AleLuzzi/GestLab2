@@ -96,6 +96,32 @@ class TenantCreate(ModelloAPI):
     piano: str = "basic"
 
 
+class OnboardingRichiesta(ModelloAPI):
+    """Dati per l'onboarding interno di un laboratorio."""
+
+    nome: str = Field(..., min_length=1, max_length=255)
+    piano: str = Field(default="basic", pattern="^(basic|pro|enterprise)$")
+    ragione_sociale: str = Field(..., min_length=1, max_length=255)
+    indirizzo: str = Field(..., min_length=1, max_length=255)
+    laboratorio: str = Field(..., min_length=1, max_length=255)
+    partita_iva: str = Field(..., min_length=11, max_length=11)
+    email: EmailStr
+    password: str
+    catalogo: str = Field(default="vuoto", pattern="^(vuoto|macelleria)$")
+
+    @field_validator("nome", "ragione_sociale", "indirizzo", "laboratorio", "partita_iva")
+    @classmethod
+    def normalizza_testo(cls, value):
+        return value.strip()
+
+    @field_validator("partita_iva")
+    @classmethod
+    def valida_partita_iva(cls, value):
+        if not value.isdigit() or len(value) != 11:
+            raise ValueError("La partita IVA deve essere di 11 cifre.")
+        return value
+
+
 class TenantOsaUpdate(ModelloAPI):
     ragione_sociale: str = Field(default="", max_length=255)
     indirizzo: str = Field(default="", max_length=255)

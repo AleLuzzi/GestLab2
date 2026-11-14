@@ -122,8 +122,8 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### Onboarding, produzione e privacy
 
-- [ ] Predisporre onboarding interno ripetibile: tenant, dati OSA, primo admin e catalogo vuoto o template macelleria.
-- [ ] Allineare il processo a `CREAZIONE_NUOVO_TENANT.md`; verificare che un nuovo laboratorio sia pronto per login e ingresso senza SQL manuale e in meno di 30 minuti.
+- [x] Predisporre onboarding interno ripetibile: tenant, dati OSA, primo admin e catalogo vuoto o template macelleria. `python -m saas.onboarding` crea in una transazione il tenant, ragione sociale, sede, laboratorio e partita IVA, il primo admin e il catalogo `vuoto` oppure `macelleria` (anagrafica senza prezzi, EAN, lotti o giacenze). Un errore annulla anche il tenant. Coperto da `tests/test_onboarding.py`. Decisione in `PIANO_PRODOTTO_VENDIBILE.md` § 7.3.
+- [x] Allineare il processo a `CREAZIONE_NUOVO_TENANT.md`; verificare che un nuovo laboratorio sia pronto per login e ingresso senza SQL manuale e in meno di 30 minuti. La guida usa `python -m saas.onboarding` e, dopo il login, la creazione del fornitore abilitato e l'ingresso merce dalla console. Verificato il 14 novembre 2026 sul database locale: tenant 4 «Verifica onboarding 20261114», catalogo macelleria con 9 articoli; il login dell'admin ha aperto la sessione con ruolo admin sullo stesso tenant; l'ingresso DDT `ONBOARDING-20261114` ha creato il lotto 1A (Pancia di suino, 1,000 kg, documento 12). La sequenza è durata 0,64 secondi, senza SQL manuale.
 - [ ] Configurare HTTPS, database gestito con backup automatici e point-in-time recovery, Secret Manager e ambiente staging separato dalla produzione.
 - [ ] Monitorare `/health` e aggiungere error tracking e logging operativo.
 - [ ] Eseguire e documentare una prova di ripristino del backup.

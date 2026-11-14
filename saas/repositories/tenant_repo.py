@@ -22,6 +22,73 @@ def crea_tenant(nome, piano="basic"):
         return c.lastrowid
 
 
+def esegui_onboarding(
+    nome,
+    piano,
+    ragione_sociale,
+    indirizzo,
+    laboratorio,
+    partita_iva,
+    email,
+    password_hash,
+    articoli,
+):
+    """Crea tenant, dati OSA, admin e catalogo nella stessa transazione.
+
+    ``articoli`` è una sequenza di tuple
+    (codice, nome, categoria, unita_misura, utilizzabile_come_input).
+    Non crea lotti né giacenze. In caso di errore non resta un tenant parziale.
+    """
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO tenant (nome, piano, osa_ragione_sociale, "
+                "osa_indirizzo, osa_laboratorio, osa_partita_iva) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (
+                    nome,
+                    piano,
+                    ragione_sociale,
+                    indirizzo,
+                    laboratorio,
+                    partita_iva,
+                ),
+            )
+            tenant_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO utenti "
+                "(tenant_id, email, password_hash, ruolo, attivo) "
+                "VALUES (%s, %s, %s, 'admin', 1)",
+                (tenant_id, email, password_hash),
+            )
+            utente_id = cursor.lastrowid
+            for codice, nome_articolo, categoria, unita, come_input in articoli:
+                cursor.execute(
+                    "INSERT INTO articoli "
+                    "(tenant_id, codice, nome, categoria, unita_misura, "
+                    "utilizzabile_come_input) "
+                    "VALUES (%s, %s, %s, %s, %s, %s)",
+                    (
+                        tenant_id,
+                        codice,
+                        nome_articolo,
+                        categoria,
+                        unita,
+                        int(come_input),
+                    ),
+                )
+            conn.commit()
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+    return {
+        "tenant_id": tenant_id,
+        "utente_id": utente_id,
+        "articoli": len(articoli),
+    }
+
+
 def trova_tenant(tenant_id):
     """Recupera un tenant per id."""
     with connection() as conn:
