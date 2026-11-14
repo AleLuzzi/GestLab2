@@ -167,6 +167,18 @@ class ArticoloOut(BaseModel):
     utilizzabile_come_input: bool
 
 
+class ListinoArticoloOut(BaseModel):
+    id: int
+    codice: str | None = None
+    nome: str
+    categoria: str | None = None
+    unita_misura: str
+    prezzo_unitario: Decimal | None = None
+    quantita_disponibile: Decimal
+    lotti_disponibili: int
+    disponibile: bool
+
+
 class RicettaIngredienteCreate(BaseModel):
     articolo_id: int = Field(..., gt=0)
     tipo_quantita: str = Field(..., pattern="^(quantita|percentuale)$")

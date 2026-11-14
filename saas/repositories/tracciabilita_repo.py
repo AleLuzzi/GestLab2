@@ -682,6 +682,62 @@ def riepilogo_inventario(tenant_id):
         ]
 
 
+_LOTTO_VENDIBILE = (
+    "l.attivo = 1 AND l.quantita_disponibile > 0 "
+    "AND (l.data_scadenza IS NULL OR l.data_scadenza >= CURRENT_DATE)"
+)
+
+
+def listino_operativo(tenant_id, solo_disponibili=True):
+    """Articoli attivi del tenant, con la giacenza dei lotti vendibili.
+
+    Un lotto è vendibile con gli stessi criteri di ``lotti_disponibili_vendita``:
+    attivo, con giacenza e non scaduto. Il TMC trascorso resta vendibile.
+    Con ``solo_disponibili`` restano solo gli articoli che hanno almeno un lotto
+    vendibile; gli articoli inattivi sono sempre esclusi.
+    """
+    having = ""
+    if solo_disponibili:
+        having = f"HAVING COUNT(CASE WHEN {_LOTTO_VENDIBILE} THEN 1 END) > 0 "
+    with connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT a.id, a.codice, a.nome, a.categoria, a.unita_misura, "
+            "a.prezzo_unitario, "
+            f"COALESCE(SUM(CASE WHEN {_LOTTO_VENDIBILE} "
+            "THEN l.quantita_disponibile ELSE 0 END), 0), "
+            f"COUNT(CASE WHEN {_LOTTO_VENDIBILE} THEN 1 END) "
+            "FROM articoli a LEFT JOIN lotti l "
+            "ON l.tenant_id = a.tenant_id AND l.articolo_id = a.id "
+            "WHERE a.tenant_id = %s AND a.attivo = 1 "
+            "GROUP BY a.id, a.codice, a.nome, a.categoria, a.unita_misura, "
+            "a.prezzo_unitario "
+            f"{having}"
+            "ORDER BY COALESCE(a.categoria, ''), a.nome, a.id",
+            (tenant_id,),
+        )
+        rows = []
+        for row in cursor.fetchall():
+            categoria = row[3].strip() if isinstance(row[3], str) else None
+            lotti_disponibili = int(row[7] or 0)
+            rows.append(
+                {
+                    "id": row[0],
+                    "codice": row[1],
+                    "nome": row[2],
+                    "categoria": categoria or None,
+                    "unita_misura": row[4],
+                    "prezzo_unitario": (
+                        str(row[5]) if row[5] is not None else None
+                    ),
+                    "quantita_disponibile": str(row[6]),
+                    "lotti_disponibili": lotti_disponibili,
+                    "disponibile": lotti_disponibili > 0,
+                }
+            )
+        return rows
+
+
 def lotti_disponibili_vendita(tenant_id):
     """Restituisce i lotti vendibili ordinati per FEFO."""
     with connection() as conn:

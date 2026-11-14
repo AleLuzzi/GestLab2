@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261110-1" />
+  <link rel="stylesheet" href="/static/app.css?v=20261114-2" />
 </head>
 <body>
   <!-- Login view -->
@@ -40,6 +40,7 @@
       <button class="nav-item" data-view="home">Home</button>
       <button class="nav-item" data-view="dashboard">Dashboard</button>
       <button class="nav-item" data-view="vendite">Vendite</button>
+      <button class="nav-item" data-view="menu">Listino</button>
       <button class="nav-item" data-view="tracciabilita">Tracciabilità</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
       <button class="nav-item" data-view="printjobs">Coda stampa</button>
@@ -280,6 +281,10 @@
           <div class="sales-selection-fields">
             <label for="sales-search">Cerca articolo
               <input id="sales-search" type="search" autocomplete="off" placeholder="Digita il nome dell'articolo" />
+            </label>
+            <label class="sales-availability-filter" for="sales-only-available">
+              <input id="sales-only-available" type="checkbox" checked />
+              Solo articoli con lotto disponibile
             </label>
             <label for="sales-article">Articolo
               <select id="sales-article" disabled>
@@ -856,9 +861,16 @@
         </div>
       </section>
 
-      <!-- Menu -->
+      <!-- Listino operativo -->
       <section id="view-menu" class="panel">
-        <h2>Menu</h2>
+        <div class="panel-head">
+          <h2>Listino</h2>
+        </div>
+        <p class="sales-help">Articoli attivi del banco. Il filtro mostra solo quelli con almeno un lotto vendibile: attivo, con giacenza e non scaduto.</p>
+        <label class="sales-availability-filter" for="menu-only-available">
+          <input id="menu-only-available" type="checkbox" checked />
+          Solo articoli con almeno un lotto disponibile
+        </label>
         <div id="menu-content"></div>
       </section>
 
@@ -993,6 +1005,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261114-1"></script>
+<script type="module" src="/static/js/app.js?v=20261114-3"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@ from decimal import Decimal
 from unittest.mock import patch
 
 from core.repositories import prodotti as prodotti_repo
+from saas.main import menu
 from saas.repositories import tracciabilita_repo
 from saas.schemas import ArticoloCreate, ArticoloUpdate
 
@@ -138,6 +139,66 @@ class CatalogoArticoliTests(unittest.TestCase):
         self.assertEqual(article["ean"], "8001234567897")
         self.assertEqual(article["prezzo_unitario"], "12.50")
         self.assertEqual(conn.commits, 1)
+
+
+class ListinoOperativoTests(unittest.TestCase):
+    def _listino(self, rows, solo_disponibili):
+        cursor = FakeCursor(rows=rows)
+
+        @contextmanager
+        def fake_connection():
+            yield FakeConnection(cursor)
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            articoli = tracciabilita_repo.listino_operativo(
+                7, solo_disponibili=solo_disponibili
+            )
+        return articoli, cursor
+
+    def test_default_query_keeps_active_articles_with_a_sellable_lot(self):
+        articoli, cursor = self._listino(
+            [(3, "SAL", "Salsiccia", "Preparati", "kg", Decimal("10.90"), Decimal("0.250"), 1)],
+            True,
+        )
+
+        self.assertIn("FROM articoli a LEFT JOIN lotti l", cursor.query)
+        self.assertNotIn("articoli_bilancia", cursor.query)
+        self.assertIn("a.attivo = 1", cursor.query)
+        self.assertIn("l.attivo = 1", cursor.query)
+        self.assertIn("l.quantita_disponibile > 0", cursor.query)
+        self.assertIn("l.data_scadenza >= CURRENT_DATE", cursor.query)
+        self.assertIn("HAVING COUNT", cursor.query)
+        self.assertNotIn("data_tmc", cursor.query)
+        self.assertEqual(cursor.params, (7,))
+        self.assertEqual(articoli[0]["nome"], "Salsiccia")
+        self.assertEqual(articoli[0]["prezzo_unitario"], "10.90")
+        self.assertEqual(articoli[0]["quantita_disponibile"], "0.250")
+        self.assertTrue(articoli[0]["disponibile"])
+        self.assertEqual(articoli[0]["lotti_disponibili"], 1)
+
+    def test_disabled_filter_includes_active_articles_without_stock(self):
+        articoli, cursor = self._listino(
+            [(4, None, "Pancetta", "  ", "kg", None, Decimal("0.000"), 0)],
+            False,
+        )
+
+        self.assertNotIn("HAVING", cursor.query)
+        self.assertIn("a.attivo = 1", cursor.query)
+        self.assertIsNone(articoli[0]["categoria"])
+        self.assertIsNone(articoli[0]["prezzo_unitario"])
+        self.assertFalse(articoli[0]["disponibile"])
+        self.assertEqual(articoli[0]["lotti_disponibili"], 0)
+
+    def test_endpoint_uses_tenant_from_jwt_and_availability_filter(self):
+        expected = [{"id": 3, "nome": "Salsiccia", "disponibile": True}]
+
+        with patch.object(
+            tracciabilita_repo, "listino_operativo", return_value=expected
+        ) as listino:
+            result = menu(solo_disponibili=False, user={"tenant_id": 7})
+
+        self.assertEqual(result, expected)
+        listino.assert_called_once_with(7, solo_disponibili=False)
 
 
 if __name__ == "__main__":

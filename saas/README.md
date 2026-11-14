@@ -89,7 +89,7 @@ saas/
 | POST | `/api/v1/tracciabilita/lotti/{id}/rettifiche` | admin/operatore | Rettifica atomica della giacenza con delta e motivo |
 | GET | `/api/v1/tracciabilita/lotti/{id}/scheda.pdf` | autenticato | Scheda PDF del lotto con genealogia e DDT d'ingresso, non certificativa |
 | GET | `/api/v1/vendite/lotti-disponibili` | autenticato | Lotti attivi con giacenza e non scaduti, ordinati FEFO; la UI vendita non è ancora collegata |
-| GET | `/api/v1/menu` | autenticato | Articoli attivi del menu |
+| GET | `/api/v1/menu` | autenticato | Listino operativo degli articoli attivi. `solo_disponibili=true` (default) tiene solo quelli con almeno un lotto vendibile; `false` include anche gli articoli attivi senza giacenza |
 | GET | `/health` | pubblico | Health check |
 | POST | `/api/v1/dispositivi` | admin | Registra un Local Print Agent (genera token) |
 | POST | `/api/v1/print-jobs` | admin/operatore | Accoda un job di stampa |

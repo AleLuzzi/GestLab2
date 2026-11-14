@@ -84,6 +84,23 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .sales-selection-fields select,
 .sales-selection-fields input { min-height: 52px; font-size: 17px; }
 .sales-selection-fields input[readonly] { color: var(--text-dim); }
+.sales-selection-fields .sales-availability-filter { grid-column: 1 / -1; }
+.sales-availability-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 12px;
+  color: var(--text);
+}
+.sales-availability-filter input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.listino-group { margin-top: 8px; }
+.listino-group h3 { margin: 18px 0 8px; color: var(--accent); }
+.listino-unavailable { color: var(--text-dim); }
 .sales-lot-summary {
   min-height: 24px;
   color: var(--text);

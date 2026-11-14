@@ -105,7 +105,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Vendita / scarico lotti | A | [`core/services/vendite.py`](../core/services/vendite.py) può chiudere un lotto azzerandone la giacenza, ma non esiste ancora un flusso di vendita con scarico parziale e movimento `VENDITA`. |
 | DDT persistente legato a lotti e cliente | A | `POST /api/v1/ddt` genera PDF da payload libero; campo `fornitore` fuorviante in vendita. |
 | Scontrino non fiscale da vendita | C | `POST /api/v1/vendite/{id}/ricevuta` compone la ricevuta dal documento persistito e la accoda al Local Print Agent. La dicitura non fiscale è in testata e a piè di pagina. `POST /api/v1/scontrino` resta solo per un payload libero. |
-| Menu / listino banco | P | `GET /api/v1/menu` legge gli articoli attivi; la configurazione Bizerba non è il catalogo. |
+| Menu / listino banco | C | `GET /api/v1/menu` elenca gli articoli attivi e, per default, solo quelli con almeno un lotto vendibile. Il filtro si disattiva con `solo_disponibili=false`. La configurazione Bizerba non è il catalogo. |
 | Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'etichetta PDF parte da lotto, usa prezzo commerciale dell'articolo e dati OSA del tenant; ingredienti, allergeni e conservazione sono disponibili ma la derivazione automatica dalla ricetta resta da completare. |
 | Lookup EAN | P | API + campo dashboard; EAN e prezzo sono dati dell'articolo. |
 | Dashboard operativa | P | Conteggio anagrafiche/lotti/job in [`web/js/features/dashboard.js`](../web/js/features/dashboard.js). Niente scadenze, giacenze critiche, vendite. |
@@ -471,13 +471,21 @@ non può confonderla con un RT.
 
 ### 6.6 Menu
 
-Da sola lettura `GET /api/v1/menu` a listino operativo degli articoli
-vendibili (preparati del giorno = subset articoli attivi con giacenza). La
-“composizione menu” legacy (primi/secondi/contorni da ristorazione) non è il
-cuore macelleria; si riusa solo se i preparati si raggruppano per merceologia.
+`GET /api/v1/menu` è il listino operativo degli articoli attivi. Per default
+(`solo_disponibili=true`) restituisce solo gli articoli con almeno un lotto
+vendibile: lotto attivo, giacenza positiva e scadenza non trascorsa. Il TMC
+trascorso resta vendibile, come nello scarico di vendita. Con
+`solo_disponibili=false` compaiono anche gli articoli attivi senza giacenza.
+Gli articoli inattivi restano esclusi. Il listino è raggruppato in UI per
+categoria e non legge `articoli_bilancia`.
+
+La composizione menu legacy (primi/secondi/contorni) resta nel repository
+storico e non alimenta più l'endpoint SaaS.
 
 **Criterio:** il banco mostra solo articoli attivi con almeno un lotto
-disponibile (filtro disattivabile).
+disponibile (filtro disattivabile). Verificato il 14 novembre 2026: listino e
+schermata Vendite applicano il filtro e permettono di disattivarlo. Coperto
+da `tests/test_catalogo_articoli.py`.
 
 ---
 

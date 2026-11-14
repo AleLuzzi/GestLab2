@@ -2,6 +2,7 @@ import { api, apiGetBlob } from "../api/client.js";
 import { $ } from "../core/dom.js";
 
 let lottiVendita = [];
+let listinoVendita = [];
 let clientiVendita = [];
 let righeVendita = [];
 let registrazioneInCorso = false;
@@ -68,6 +69,15 @@ function aggiornaPulsanteAggiungi() {
 
 function aggiornaRiepilogo() {
   const lotto = lottoSelezionato();
+  if (!lotto) {
+    $("sales-lot-summary").textContent = $("sales-article").value
+      ? "Nessun lotto disponibile per questo articolo"
+      : "";
+    $("sales-price").value = "—";
+    $("sales-quantity").max = "";
+    aggiornaPulsanteAggiungi();
+    return;
+  }
   const dataLotto = lotto?.data_scadenza || lotto?.data_tmc;
   const tipoData = lotto?.data_scadenza ? "Scadenza" : lotto?.data_tmc ? "TMC" : "Data";
   const tmcSuperato = lotto?.data_tmc
@@ -108,14 +118,14 @@ function aggiornaLotti(articoloId, lottoPreferito = "") {
 }
 
 function articoliDisponibili() {
+  const soloDisponibili = $("sales-only-available").checked;
   const articoli = new Map();
-  lottiVendita.forEach((lotto) => {
-    if (!articoli.has(String(lotto.articolo_id))) {
-      articoli.set(String(lotto.articolo_id), {
-        nome: lotto.articolo,
-        categoria: lotto.categoria?.trim() || "",
-      });
-    }
+  listinoVendita.forEach((articolo) => {
+    if (soloDisponibili && !articolo.disponibile) return;
+    articoli.set(String(articolo.id), {
+      nome: articolo.nome,
+      categoria: articolo.categoria?.trim() || "",
+    });
   });
   return articoli;
 }
@@ -455,19 +465,24 @@ export async function loadVendite() {
   $("sales-lot").disabled = true;
 
   try {
-    const lotti = await api("/api/v1/vendite/lotti-disponibili");
-    if (!Array.isArray(lotti)) {
-      throw new Error("La risposta dei lotti disponibili non è valida.");
+    const [lotti, articoli] = await Promise.all([
+      api("/api/v1/vendite/lotti-disponibili"),
+      api("/api/v1/menu?solo_disponibili=false"),
+    ]);
+    if (!Array.isArray(lotti) || !Array.isArray(articoli)) {
+      throw new Error("La risposta del listino o dei lotti disponibili non è valida.");
     }
     lottiVendita = lotti;
+    listinoVendita = articoli;
     aggiornaArticoli(articoloSelezionato);
     if (articoloSelezionato === $("sales-article").value) {
       aggiornaLotti(articoloSelezionato, lottoSelezionatoId);
     }
   } catch (error) {
     lottiVendita = [];
+    listinoVendita = [];
     aggiornaArticoli();
-    $("sales-selection-error").textContent = `Impossibile caricare i lotti disponibili: ${error.message}`;
+    $("sales-selection-error").textContent = `Impossibile caricare il listino: ${error.message}`;
     return;
   }
 
@@ -484,6 +499,7 @@ export async function loadVendite() {
 
 export function initVendite() {
   $("sales-search").addEventListener("input", () => aggiornaArticoli());
+  $("sales-only-available").addEventListener("change", () => aggiornaArticoli());
   $("sales-article").addEventListener("change", (event) => {
     aggiornaLotti(event.target.value);
   });

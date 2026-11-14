@@ -15,7 +15,7 @@ import uuid
 from datetime import date
 from logging.handlers import RotatingFileHandler
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -51,6 +51,7 @@ from saas.schemas import (
     ArticoloCreate,
     ArticoloOut,
     ArticoloUpdate,
+    ListinoArticoloOut,
     IngressoTracciatoCreate,
     LavorazioneCreate,
     RefreshRequest,
@@ -73,7 +74,6 @@ from core.services import merceologie as merceologie_service
 from core.services import reparti as reparti_service
 from core.services import fornitori as fornitori_service
 from core.services import lotti as lotti_service
-from core.services import menu as menu_service
 from core.services import printing as printing_service
 from core.services import barcode as barcode_service
 from core.services import progressivi as progressivi_service
@@ -1282,10 +1282,19 @@ def lotti_aperti(user: dict = Depends(auth.get_current_user)):
     return lotti_service.lotti_aperti(user["tenant_id"])
 
 
-@app.get("/api/v1/menu")
-def menu(user: dict = Depends(auth.get_current_user)):
-    """Prodotti del menu del tenant corrente, raggruppati per merceologia."""
-    return menu_service.prodotti_menu(user["tenant_id"])
+@app.get("/api/v1/menu", response_model=list[ListinoArticoloOut])
+def menu(
+    solo_disponibili: bool = Query(default=True),
+    user: dict = Depends(auth.get_current_user),
+):
+    """Listino operativo: articoli attivi, di default solo con un lotto vendibile.
+
+    ``solo_disponibili=false`` include anche gli articoli attivi senza giacenza.
+    Il tenant arriva dal JWT. Gli articoli inattivi non compaiono.
+    """
+    return tracciabilita_repo.listino_operativo(
+        user["tenant_id"], solo_disponibili=solo_disponibili
+    )
 
 
 # ------------------------------------------------------------------------- #
