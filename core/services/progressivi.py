@@ -28,6 +28,6 @@ def aggiorna_progressivi(record, prog_acq=None, prog_ven=None, tenant_id=None):
     return repo.save(record, tenant_id)
 
 
-def elimina_progressivi(record, tenant_id=None):
+def elimina_progressivi(record, tenant_id=None, utente_email=None):
     """Elimina il record progressivi."""
-    repo.delete(record, tenant_id)
+    repo.delete(record, tenant_id, utente_email=utente_email)

@@ -51,6 +51,7 @@ MIGRATION_ORDER = (
     "20261108_vendite.sql",
     "20261114_password_reset.sql",
     "20261114_refresh_token.sql",
+    "20261114_audit_log.sql",
 )
 
 
@@ -550,6 +551,22 @@ def _migrazione_gia_applicata(cursor, migrazione):
             "FK_REFRESH_TOKEN_UTENTE" in schema
             and "UQ_REFRESH_TOKEN_HASH" in schema
         )
+
+    if migrazione == "20261114_audit_log.sql":
+        if not _tabella_esiste(cursor, "audit_log"):
+            return False
+        if not {
+            "tenant_id",
+            "utente_email",
+            "azione",
+            "entita",
+            "entita_id",
+            "dettaglio",
+        }.issubset(_colonne_tabella(cursor, "audit_log")):
+            return False
+        cursor.execute("SHOW CREATE TABLE `audit_log`")
+        schema = cursor.fetchone()[1].upper()
+        return "FK_AUDIT_LOG_TENANT" in schema and "CHK_AUDIT_LOG_AZIONE" in schema
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")
 

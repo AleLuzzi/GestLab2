@@ -4,6 +4,7 @@ Operazioni CRUD sul modello ``Merceologia`` usando il context manager di
 ``core.db`` (elimina l'uso diretto di ``db.c``/``db.conn`` nei widget).
 """
 
+from ..audit import registra
 from ..db import connection
 from ..core_models import Merceologia
 
@@ -89,15 +90,28 @@ def save(value, tenant_id=None):
         return value
 
 
-def delete(value, tenant_id=None):
+def delete(value, tenant_id=None, utente_email=None):
     """Elimina una ``Merceologia`` dal database."""
     with connection() as conn:
         c = conn.cursor()
         if tenant_id is not None and _has_tenant_id_column():
-            c.execute(
-                "DELETE FROM merceologie WHERE id = %s AND tenant_id = %s",
-                (value.id, tenant_id),
-            )
-            conn.commit()
+            try:
+                c.execute(
+                    "DELETE FROM merceologie WHERE id = %s AND tenant_id = %s",
+                    (value.id, tenant_id),
+                )
+                if c.rowcount and utente_email:
+                    registra(
+                        c,
+                        tenant_id,
+                        utente_email,
+                        "CANCELLAZIONE",
+                        "merceologie",
+                        value.id,
+                    )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
             return
         value.delete(c, conn)

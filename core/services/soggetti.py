@@ -19,5 +19,5 @@ def aggiorna_soggetto(tenant_id, soggetto_id, payload):
     return repo.aggiorna(tenant_id, soggetto_id, payload)
 
 
-def disattiva_soggetto(tenant_id, soggetto_id):
-    return repo.disattiva(tenant_id, soggetto_id)
+def disattiva_soggetto(tenant_id, soggetto_id, utente_email=None):
+    return repo.disattiva(tenant_id, soggetto_id, utente_email=utente_email)

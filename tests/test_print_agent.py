@@ -97,6 +97,7 @@ class PrintAgentTests(unittest.TestCase):
                 "saas.main.print_repo.trova_dispositivo_by_token",
                 return_value={
                     "id": 5,
+                    "tenant_id": 42,
                     "stampante_dymo": "DYMO LabelWriter 450 Turbo",
                 },
             ),
@@ -108,7 +109,7 @@ class PrintAgentTests(unittest.TestCase):
         ):
             result = agent_next_job("device-token")
 
-        prendi_job.assert_called_once_with(5)
+        prendi_job.assert_called_once_with(5, 42)
         self.assertEqual(
             result["job"]["stampante_dymo"], "DYMO LabelWriter 450 Turbo"
         )

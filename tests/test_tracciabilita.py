@@ -132,7 +132,7 @@ class TracciabilitaTests(unittest.TestCase):
             result = rettifica_lotto_tracciato(
                 7,
                 RettificaLottoCreate(delta="-0.250", motivo="calo"),
-                {"tenant_id": 42, "ruolo": "operatore"},
+                {"tenant_id": 42, "ruolo": "operatore", "sub": "op@example.com"},
             )
 
         self.assertEqual(result["quantita_disponibile"], "1.000")
@@ -148,6 +148,20 @@ class TracciabilitaTests(unittest.TestCase):
         )
         self.assertIn("'RETTIFICA'", movement[0])
         self.assertEqual(movement[1], (42, 7, Decimal("-0.250"), "calo"))
+        audit = next(
+            (query, params)
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO audit_log")
+        )
+        self.assertEqual(audit[1][0], 42)
+        self.assertEqual(audit[1][1], "op@example.com")
+        self.assertEqual(audit[1][2], "RETTIFICA")
+        self.assertEqual(audit[1][3], "lotti")
+        self.assertIn('"motivo": "calo"', audit[1][5])
+        self.assertLess(
+            cursor.statements.index(movement),
+            cursor.statements.index(audit),
+        )
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
 
@@ -168,7 +182,7 @@ class TracciabilitaTests(unittest.TestCase):
                 rettifica_lotto_tracciato(
                     7,
                     RettificaLottoCreate(delta="-0.500", motivo="errore"),
-                    {"tenant_id": 42, "ruolo": "operatore"},
+                    {"tenant_id": 42, "ruolo": "operatore", "sub": "op@example.com"},
                 )
 
         self.assertEqual(raised.exception.status_code, 409)
@@ -176,6 +190,7 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.rollbacks, 1)
         self.assertFalse(any("UPDATE lotti" in query for query, _ in cursor.statements))
         self.assertFalse(any("INSERT INTO movimenti_lotto" in query for query, _ in cursor.statements))
+        self.assertFalse(any("INSERT INTO audit_log" in query for query, _ in cursor.statements))
 
     def test_rectification_rolls_back_when_movement_insert_fails(self):
         def handle(query, params):

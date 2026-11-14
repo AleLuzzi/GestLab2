@@ -159,6 +159,7 @@ running it. The canonical migration order is:
 16. `20261108_vendite.sql`
 17. `20261114_password_reset.sql`
 18. `20261114_refresh_token.sql`
+19. `20261114_audit_log.sql`
 
 The order is explicit in `saas.bootstrap`; a test fails if a migration file is
 added without being included. The bootstrap first runs `init_database.sql` to

@@ -45,6 +45,6 @@ def aggiorna_fornitore(
     return repo.save(fornitore, tenant_id)
 
 
-def elimina_fornitore(fornitore, tenant_id=None):
+def elimina_fornitore(fornitore, tenant_id=None, utente_email=None):
     """Elimina un fornitore dal database."""
-    repo.delete(fornitore, tenant_id)
+    repo.delete(fornitore, tenant_id, utente_email=utente_email)

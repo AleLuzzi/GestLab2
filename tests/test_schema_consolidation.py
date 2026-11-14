@@ -26,7 +26,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
 
     def test_every_table_has_a_primary_key_and_utf8mb4_charset(self):
         self.assertTrue(self.tables)
-        self.assertEqual(len(self.tables), 28)
+        self.assertEqual(len(self.tables), 29)
         for table_name, definition in self.tables.items():
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"(?m)^\s*PRIMARY KEY\s*\(")
@@ -160,6 +160,17 @@ class ConsolidatedSchemaTests(unittest.TestCase):
             "FOREIGN KEY (`utente_id`) REFERENCES `utenti` (`id`)", definition
         )
         self.assertNotIn("token` varchar", definition)
+
+    def test_audit_log_records_actor_action_and_tenant(self):
+        definition = self.tables["audit_log"]
+        self.assertRegex(definition, r"`tenant_id`\s+bigint NOT NULL")
+        self.assertRegex(definition, r"`utente_email`\s+varchar\(255\)")
+        self.assertRegex(definition, r"`azione`\s+varchar\(20\)")
+        self.assertRegex(definition, r"`dettaglio`\s+varchar\(1000\)")
+        self.assertIn("fk_audit_log_tenant", definition)
+        self.assertIn("chk_audit_log_azione", definition)
+        self.assertIn("'CANCELLAZIONE'", definition)
+        self.assertIn("'RETTIFICA'", definition)
 
     def test_department_and_operator_relations_are_tenant_scoped(self):
         self.assertIn(

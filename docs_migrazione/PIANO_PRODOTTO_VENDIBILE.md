@@ -89,7 +89,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 
 | Funzione | Stato | Dove / nota |
 |---|---|---|
-| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Reset email, policy password, rate limit sul login e rotazione/revoca dei refresh token sono attivi. Resta l'audit log su cancellazioni e rettifiche. |
+| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default, coperto da `tests/test_env.py`. Reset email, policy password, rate limit sul login e rotazione/revoca dei refresh token sono attivi. Le cancellazioni e le rettifiche sono registrate in `audit_log` nella stessa transazione, coperte da `tests/test_audit.py`. |
 | Tenant e utenti | P | [`saas/crea_tenant.py`](../saas/crea_tenant.py), `POST /api/v1/tenant`, `POST /api/v1/utenti`. Onboarding manuale. |
 | Anagrafica clienti/fornitori (`soggetti`) | C | CRUD web e API. Soft-delete. Campi utili a FE futuri già presenti. |
 | Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
@@ -518,9 +518,12 @@ ripetibile.
   revoca la famiglia; la reimpostazione della password revoca i refresh aperti
   dell'utente nella stessa transazione. L'access token resta valido fino alla
   scadenza;
-- rifiuto JWT secret di default in produzione;
-- ruoli restano `admin` e `operatore` in v1; audit log almeno su delete e
-  rettifiche (oggi il commento in `DELETE /api/v1/dipendenti` ammette l’assenza).
+- rifiuto JWT secret di default in produzione, coperto da `tests/test_env.py`;
+- ruoli restano `admin` e `operatore` in v1;
+- audit log su cancellazioni e rettifiche: `audit_log` salva tenant, email
+  del JWT, azione, entità e dettaglio nella stessa transazione. Se la scrittura
+  dell'audit fallisce, la modifica viene annullata. L'admin legge gli eventi
+  con `GET /api/v1/audit`. Coperto da `tests/test_audit.py`.
 
 2FA: post-pilota.
 
@@ -531,7 +534,9 @@ invalida il refresh precedente e il riuso revoca la famiglia.
 
 ### 7.2 Isolamento tenant
 
-- `tenant_id` sempre dal JWT, mai dal body;
+- `tenant_id` sempre dal JWT, mai dal body. I modelli di richiesta rifiutano
+  il campo e l'agent di stampa filtra per il tenant del dispositivo.
+  Coperto da `tests/test_tenant_authority.py`;
 - `tenant_id NOT NULL` ovunque;
 - test IDOR: utente tenant A su ID di tenant B → 404 su lotti, soggetti,
   vendite, print job, dispositivi.

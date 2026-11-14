@@ -21,10 +21,11 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from saas import auth
-from saas.repositories import print_repo, tenant_repo, tracciabilita_repo
+from saas.repositories import audit_repo, print_repo, tenant_repo, tracciabilita_repo
 from saas.services import login_guard, password_reset, sessioni
 from saas.services import vendite as vendite_service
 from saas.schemas import (
+    AuditLogOut,
     DdtCreate,
     DipendenteCreate,
     DipendenteOut,
@@ -191,6 +192,23 @@ def refresh_token(payload: RefreshRequest):
         ruolo=info["ruolo"],
         tenant_id=info["tenant_id"],
     )
+
+
+def _email_audit(user: dict) -> str:
+    """Identità da registrare nell'audit; il client non può indicarla."""
+    email = str(user.get("sub") or "").strip()
+    if not email:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Utente non identificato")
+    return email
+
+
+@app.get("/api/v1/audit", response_model=list[AuditLogOut])
+def lista_audit(
+    limite: int = Query(100, ge=1, le=200),
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Elenca le cancellazioni e le rettifiche del tenant corrente."""
+    return audit_repo.lista(user["tenant_id"], limite)
 
 
 @app.post("/auth/logout", response_model=MessaggioResponse)
@@ -361,11 +379,13 @@ def elimina_dipendente(
     dipendente_id: int,
     user: dict = Depends(auth.require_roles("admin")),
 ):
-    """Elimina un dipendente (solo admin). Audit log da aggiungere."""
+    """Elimina un dipendente e registra l'operazione nell'audit del tenant."""
     dipendente = dipendenti_service.trova_dipendente(dipendente_id, user["tenant_id"])
     if not dipendente:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Dipendente non trovato")
-    dipendenti_service.elimina_dipendente(dipendente, user["tenant_id"])
+    dipendenti_service.elimina_dipendente(
+        dipendente, user["tenant_id"], utente_email=_email_audit(user)
+    )
 
 
 # ------------------------------------------------------------------------- #
@@ -443,7 +463,9 @@ def elimina_merceologia(
     merceologia = merceologie_service.trova_merceologia(merceologia_id, user["tenant_id"])
     if not merceologia:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Merceologia non trovata")
-    merceologie_service.elimina_merceologia(merceologia, user["tenant_id"])
+    merceologie_service.elimina_merceologia(
+        merceologia, user["tenant_id"], utente_email=_email_audit(user)
+    )
 
 
 # ------------------------------------------------------------------------- #
@@ -510,7 +532,9 @@ def disattiva_articolo(
     user: dict = Depends(auth.require_roles("admin")),
 ):
     """Disattiva un articolo preservando i riferimenti dei lotti storici."""
-    if not tracciabilita_repo.disattiva_articolo(user["tenant_id"], articolo_id):
+    if not tracciabilita_repo.disattiva_articolo(
+        user["tenant_id"], articolo_id, utente_email=_email_audit(user)
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Articolo non trovato")
 
 
@@ -589,7 +613,9 @@ def disattiva_ricetta(
     user: dict = Depends(auth.require_roles("admin")),
 ):
     """Disattiva una ricetta senza cancellarne la configurazione."""
-    if not tracciabilita_repo.disattiva_ricetta(user["tenant_id"], ricetta_id):
+    if not tracciabilita_repo.disattiva_ricetta(
+        user["tenant_id"], ricetta_id, utente_email=_email_audit(user)
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ricetta non trovata")
 
 
@@ -652,7 +678,9 @@ def elimina_reparto(
     reparto = reparti_service.trova_reparto(reparto_id, user["tenant_id"])
     if not reparto:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reparto non trovato")
-    reparti_service.elimina_reparto(reparto, user["tenant_id"])
+    reparti_service.elimina_reparto(
+        reparto, user["tenant_id"], utente_email=_email_audit(user)
+    )
 
 
 # ------------------------------------------------------------------------- #
@@ -741,7 +769,9 @@ def disattiva_soggetto(
     user: dict = Depends(auth.require_roles("admin")),
 ):
     """Disattiva l'anagrafica senza cancellare lo storico documentale."""
-    if not soggetti_service.disattiva_soggetto(user["tenant_id"], soggetto_id):
+    if not soggetti_service.disattiva_soggetto(
+        user["tenant_id"], soggetto_id, utente_email=_email_audit(user)
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Anagrafica non trovata")
 
 
@@ -818,7 +848,9 @@ def elimina_fornitore(
     fornitore = fornitori_service.trova_fornitore(fornitore_id, user["tenant_id"])
     if not fornitore:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Fornitore non trovato")
-    fornitori_service.elimina_fornitore(fornitore, user["tenant_id"])
+    fornitori_service.elimina_fornitore(
+        fornitore, user["tenant_id"], utente_email=_email_audit(user)
+    )
 
 
 # ------------------------------------------------------------------------- #
@@ -890,7 +922,9 @@ def elimina_progressivi(user: dict = Depends(auth.require_roles("admin"))):
     records = _progressivi_tenant(user["tenant_id"])
     if not records:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Progressivi non trovati")
-    progressivi_service.elimina_progressivi(records[0], user["tenant_id"])
+    progressivi_service.elimina_progressivi(
+        records[0], user["tenant_id"], utente_email=_email_audit(user)
+    )
 
 
 # ------------------------------------------------------------------------- #
@@ -1007,6 +1041,7 @@ def rettifica_lotto_tracciato(
             lotto_id,
             payload.delta,
             payload.motivo,
+            utente_email=_email_audit(user),
         )
     except tracciabilita_repo.LottoNonTrovato as error:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lotto non trovato") from error
@@ -1657,8 +1692,8 @@ def agent_next_job(token: str):
     if not dispositivo:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token dispositivo non valido")
 
-    print_repo.aggiorna_heartbeat(dispositivo["id"])
-    job = print_repo.prendi_prossimo_job(dispositivo["id"])
+    print_repo.aggiorna_heartbeat(dispositivo["id"], dispositivo["tenant_id"])
+    job = print_repo.prendi_prossimo_job(dispositivo["id"], dispositivo["tenant_id"])
     if not job:
         return {"job": None}
     job["stampante_dymo"] = dispositivo["stampante_dymo"]
@@ -1675,7 +1710,8 @@ def agent_job_done(
     if not dispositivo:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token dispositivo non valido")
 
-    print_repo.aggiorna_stato_job(job_id, "done")
+    if not print_repo.aggiorna_stato_job(job_id, "done", dispositivo["tenant_id"]):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job non trovato")
     return {"ok": True}
 
 
@@ -1690,7 +1726,8 @@ def agent_job_error(
     if not dispositivo:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token dispositivo non valido")
 
-    print_repo.aggiorna_stato_job(job_id, "error")
+    if not print_repo.aggiorna_stato_job(job_id, "error", dispositivo["tenant_id"]):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job non trovato")
     return {"ok": True, "detail": detail}
 
 

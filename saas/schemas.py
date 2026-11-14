@@ -4,7 +4,7 @@ Definisce i modelli di richiesta/risposta. ``tenant_id`` NON viene mai
 accettato dal client: viene estratto dal JWT lato server (frontend "sottile").
 """
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
@@ -32,12 +32,43 @@ ALLERGENI_RICETTA = (
 #  Auth
 # ------------------------------------------------------------------------- #
 
-class LoginRequest(BaseModel):
+class ModelloAPI(BaseModel):
+    """Base dei modelli API.
+
+    Un ``tenant_id`` nel body è rifiutato, salvo i modelli di risposta che
+    lo espongono perché lo ha calcolato il server. L'autorità resta il JWT.
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def rifiuta_tenant_indicato_dal_client(cls, data):
+        if (
+            isinstance(data, dict)
+            and "tenant_id" in data
+            and "tenant_id" not in cls.model_fields
+        ):
+            raise ValueError(
+                "Il tenant non si indica nella richiesta: arriva dal token di accesso."
+            )
+        return data
+
+
+class LoginRequest(ModelloAPI):
     email: EmailStr
     password: str
 
 
-class TokenResponse(BaseModel):
+class AuditLogOut(ModelloAPI):
+    id: int
+    utente_email: str
+    azione: str
+    entita: str
+    entita_id: str | None = None
+    dettaglio: str | None = None
+    creato_il: datetime | None = None
+
+
+class TokenResponse(ModelloAPI):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -48,11 +79,11 @@ class TokenResponse(BaseModel):
     tenant_id: int
 
 
-class RefreshRequest(BaseModel):
+class RefreshRequest(ModelloAPI):
     refresh_token: str
 
 
-class LogoutRequest(BaseModel):
+class LogoutRequest(ModelloAPI):
     refresh_token: str
 
 
@@ -60,12 +91,12 @@ class LogoutRequest(BaseModel):
 #  Tenant / Utenti (solo admin)
 # ------------------------------------------------------------------------- #
 
-class TenantCreate(BaseModel):
+class TenantCreate(ModelloAPI):
     nome: str = Field(..., min_length=1, max_length=255)
     piano: str = "basic"
 
 
-class TenantOsaUpdate(BaseModel):
+class TenantOsaUpdate(ModelloAPI):
     ragione_sociale: str = Field(default="", max_length=255)
     indirizzo: str = Field(default="", max_length=255)
     laboratorio: str = Field(default="", max_length=255)
@@ -77,22 +108,22 @@ class TenantOsaUpdate(BaseModel):
         return value.strip()
 
 
-class UtenteCreate(BaseModel):
+class UtenteCreate(ModelloAPI):
     email: EmailStr
     password: str
     ruolo: str = Field(default="operatore", pattern="^(admin|operatore|viewer)$")
 
 
-class PasswordDimenticataRequest(BaseModel):
+class PasswordDimenticataRequest(ModelloAPI):
     email: EmailStr
 
 
-class PasswordReimpostaRequest(BaseModel):
+class PasswordReimpostaRequest(ModelloAPI):
     token: str = Field(..., min_length=20, max_length=200)
     password: str
 
 
-class MessaggioResponse(BaseModel):
+class MessaggioResponse(ModelloAPI):
     messaggio: str
 
 
@@ -100,21 +131,21 @@ class MessaggioResponse(BaseModel):
 #  Dipendenti
 # ------------------------------------------------------------------------- #
 
-class DipendenteCreate(BaseModel):
+class DipendenteCreate(ModelloAPI):
     nome: str = Field(..., min_length=1)
     cognome: str = ""
     email: str = ""
     reparto: int | None = None
 
 
-class DipendenteUpdate(BaseModel):
+class DipendenteUpdate(ModelloAPI):
     nome: str | None = None
     cognome: str | None = None
     email: str | None = None
     reparto: int | None = None
 
 
-class DipendenteOut(BaseModel):
+class DipendenteOut(ModelloAPI):
     id: int | None = None
     nome: str
     cognome: str = ""
@@ -127,17 +158,17 @@ class DipendenteOut(BaseModel):
 #  Merceologie
 # ------------------------------------------------------------------------- #
 
-class MerceologiaCreate(BaseModel):
+class MerceologiaCreate(ModelloAPI):
     merceologia: str = Field(..., min_length=1, max_length=255)
     reparto: int | None = None
 
 
-class MerceologiaUpdate(BaseModel):
+class MerceologiaUpdate(ModelloAPI):
     merceologia: str | None = None
     reparto: int | None = None
 
 
-class MerceologiaOut(BaseModel):
+class MerceologiaOut(ModelloAPI):
     id: int | None = None
     merceologia: str
     reparto: int | None = None
@@ -151,7 +182,7 @@ class MerceologiaOut(BaseModel):
 #  Articoli e ingressi tracciati
 # ------------------------------------------------------------------------- #
 
-class ArticoloCreate(BaseModel):
+class ArticoloCreate(ModelloAPI):
     nome: str = Field(..., min_length=1, max_length=120)
     codice: str | None = Field(default=None, max_length=60)
     categoria: str | None = Field(default=None, max_length=80)
@@ -161,7 +192,7 @@ class ArticoloCreate(BaseModel):
     utilizzabile_come_input: bool = True
 
 
-class ArticoloUpdate(BaseModel):
+class ArticoloUpdate(ModelloAPI):
     nome: str = Field(..., min_length=1, max_length=120)
     codice: str | None = Field(default=None, max_length=60)
     categoria: str | None = Field(default=None, max_length=80)
@@ -172,7 +203,7 @@ class ArticoloUpdate(BaseModel):
     utilizzabile_come_input: bool | None = None
 
 
-class ArticoloOut(BaseModel):
+class ArticoloOut(ModelloAPI):
     id: int
     codice: str | None = None
     nome: str
@@ -184,7 +215,7 @@ class ArticoloOut(BaseModel):
     utilizzabile_come_input: bool
 
 
-class ListinoArticoloOut(BaseModel):
+class ListinoArticoloOut(ModelloAPI):
     id: int
     codice: str | None = None
     nome: str
@@ -196,7 +227,7 @@ class ListinoArticoloOut(BaseModel):
     disponibile: bool
 
 
-class RicettaIngredienteCreate(BaseModel):
+class RicettaIngredienteCreate(ModelloAPI):
     articolo_id: int = Field(..., gt=0)
     tipo_quantita: str = Field(..., pattern="^(quantita|percentuale)$")
     valore: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
@@ -209,7 +240,7 @@ class RicettaIngredienteCreate(BaseModel):
         return self
 
 
-class RicettaIngredienteOut(BaseModel):
+class RicettaIngredienteOut(ModelloAPI):
     articolo_id: int
     articolo_nome: str
     unita_misura: str
@@ -218,7 +249,7 @@ class RicettaIngredienteOut(BaseModel):
     obbligatorio: bool
 
 
-class RicettaCreate(BaseModel):
+class RicettaCreate(ModelloAPI):
     nome: str = Field(..., min_length=1, max_length=120)
     articolo_id: int = Field(..., gt=0)
     resa_attesa: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
@@ -268,7 +299,7 @@ class RicettaUpdate(RicettaCreate):
     attiva: bool = True
 
 
-class RicettaOut(BaseModel):
+class RicettaOut(ModelloAPI):
     id: int
     nome: str
     articolo_id: int
@@ -284,7 +315,7 @@ class RicettaOut(BaseModel):
     istruzioni_cottura: str | None = None
 
 
-class IngressoTracciatoRigaCreate(BaseModel):
+class IngressoTracciatoRigaCreate(ModelloAPI):
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     lotto_fornitore: str | None = Field(default=None, max_length=64)
@@ -301,20 +332,20 @@ class IngressoTracciatoRigaCreate(BaseModel):
         return self
 
 
-class IngressoTracciatoCreate(BaseModel):
+class IngressoTracciatoCreate(ModelloAPI):
     data: date
     numero_ddt: str = Field(default="", max_length=40)
     fornitore_id: int = Field(..., gt=0)
     righe: list[IngressoTracciatoRigaCreate] = Field(..., min_length=1)
 
 
-class LavorazioneInputCreate(BaseModel):
+class LavorazioneInputCreate(ModelloAPI):
     lotto_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     conferma_tmc_scaduto: bool = False
 
 
-class LavorazioneOutputCreate(BaseModel):
+class LavorazioneOutputCreate(ModelloAPI):
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     origine: str | None = Field(default=None, max_length=255)
@@ -328,13 +359,13 @@ class LavorazioneOutputCreate(BaseModel):
         return self
 
 
-class LavorazioneScartoCreate(BaseModel):
+class LavorazioneScartoCreate(ModelloAPI):
     descrizione: str = Field(..., min_length=1, max_length=120)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
     unita_misura: str = Field(..., min_length=1, max_length=8)
 
 
-class LavorazioneCreate(BaseModel):
+class LavorazioneCreate(ModelloAPI):
     data: date
     descrizione: str = Field(default="", max_length=255)
     operatore_id: int = Field(..., gt=0)
@@ -344,7 +375,7 @@ class LavorazioneCreate(BaseModel):
     scarti: list[LavorazioneScartoCreate] = Field(default_factory=list)
 
 
-class RettificaLottoCreate(BaseModel):
+class RettificaLottoCreate(ModelloAPI):
     delta: Decimal = Field(..., max_digits=12, decimal_places=3)
     motivo: str = Field(..., pattern="^(inventario|calo|reso|errore)$")
 
@@ -356,7 +387,7 @@ class RettificaLottoCreate(BaseModel):
         return value
 
 
-class VenditaCreate(BaseModel):
+class VenditaCreate(ModelloAPI):
     data: date
     cliente_id: int | None = Field(default=None, gt=0)
     tipo_documento: str = Field(..., pattern="^(DDT|RICEVUTA)$")
@@ -368,7 +399,7 @@ class VenditaCreate(BaseModel):
         return self
 
 
-class VenditaRigaCreate(BaseModel):
+class VenditaRigaCreate(ModelloAPI):
     lotto_id: int = Field(..., gt=0)
     articolo_id: int = Field(..., gt=0)
     quantita: Decimal = Field(..., gt=0, max_digits=12, decimal_places=3)
@@ -379,7 +410,7 @@ class VenditaRigaCreate(BaseModel):
     )
 
 
-class VenditaRigheCreate(BaseModel):
+class VenditaRigheCreate(ModelloAPI):
     righe: list[VenditaRigaCreate] = Field(..., min_length=1)
 
 
@@ -391,19 +422,19 @@ class VenditaCompletaCreate(VenditaCreate):
 #  Reparti
 # ------------------------------------------------------------------------- #
 
-class RepartoCreate(BaseModel):
+class RepartoCreate(ModelloAPI):
     reparto: str = Field(..., min_length=1, max_length=255)
     flag1_dip: int = 0
     flag2_prod: int = 0
 
 
-class RepartoUpdate(BaseModel):
+class RepartoUpdate(ModelloAPI):
     reparto: str | None = None
     flag1_dip: int | None = None
     flag2_prod: int | None = None
 
 
-class RepartoOut(BaseModel):
+class RepartoOut(ModelloAPI):
     id: int | None = None
     reparto: str
     flag1_dip: int = 0
@@ -414,19 +445,19 @@ class RepartoOut(BaseModel):
 #  Fornitori
 # ------------------------------------------------------------------------- #
 
-class FornitoreCreate(BaseModel):
+class FornitoreCreate(ModelloAPI):
     azienda: str = Field(..., min_length=1, max_length=50)
     flag1_ing_merce: int = 0
     flag2_inventario: int = 0
 
 
-class FornitoreUpdate(BaseModel):
+class FornitoreUpdate(ModelloAPI):
     azienda: str | None = None
     flag1_ing_merce: int | None = None
     flag2_inventario: int | None = None
 
 
-class FornitoreOut(BaseModel):
+class FornitoreOut(ModelloAPI):
     id: int | None = None
     soggetto_id: int | None = None
     azienda: str
@@ -434,7 +465,7 @@ class FornitoreOut(BaseModel):
     flag2_inventario: int = 0
 
 
-class SoggettoCreate(BaseModel):
+class SoggettoCreate(ModelloAPI):
     denominazione: str = Field(..., min_length=1, max_length=255)
     tipo_soggetto: str = Field(default="azienda", max_length=20)
     nome: str | None = Field(default=None, max_length=100)
@@ -473,7 +504,7 @@ class SoggettoCreate(BaseModel):
         return value
 
 
-class SoggettoUpdate(BaseModel):
+class SoggettoUpdate(ModelloAPI):
     denominazione: str | None = Field(default=None, min_length=1, max_length=255)
     tipo_soggetto: str | None = Field(default=None, max_length=20)
     nome: str | None = Field(default=None, max_length=100)
@@ -537,12 +568,12 @@ class SoggettoOut(SoggettoCreate):
 #  Progressivi
 # ------------------------------------------------------------------------- #
 
-class ProgressiviWrite(BaseModel):
+class ProgressiviWrite(ModelloAPI):
     prog_acq: int = Field(..., ge=0, le=2147483647)
     prog_ven: int = Field(..., ge=0, le=2147483647)
 
 
-class ProgressiviOut(BaseModel):
+class ProgressiviOut(ModelloAPI):
     prog_acq: int | None = None
     prog_ven: int | None = None
 
@@ -551,7 +582,7 @@ class ProgressiviOut(BaseModel):
 #  Ingresso merce
 # ------------------------------------------------------------------------- #
 
-class IngressoMerceRigaCreate(BaseModel):
+class IngressoMerceRigaCreate(ModelloAPI):
     taglio: str = Field(..., min_length=1, max_length=30)
     peso: Decimal = Field(..., gt=0, max_digits=6, decimal_places=2)
     id_merc: int = Field(..., gt=0)
@@ -564,7 +595,7 @@ class IngressoMerceRigaCreate(BaseModel):
         return value
 
 
-class IngressoMerceCreate(BaseModel):
+class IngressoMerceCreate(ModelloAPI):
     prog_acq: str = Field(..., min_length=1, max_length=5)
     data: date
     num_ddt: str = Field(default="", max_length=8)
@@ -576,34 +607,34 @@ class IngressoMerceCreate(BaseModel):
 #  Stampa (DDT, scontrini, etichette) e barcode
 # ------------------------------------------------------------------------- #
 
-class DdtRiga(BaseModel):
+class DdtRiga(ModelloAPI):
     prodotto: str = ""
     taglio: str = ""
     quantita: str = ""
     peso: str = ""
 
 
-class DdtCreate(BaseModel):
+class DdtCreate(ModelloAPI):
     numero: str
     data: str | None = None
     fornitore: str = ""
     righe: list[DdtRiga] = []
 
 
-class ScontrinoRiga(BaseModel):
+class ScontrinoRiga(ModelloAPI):
     descrizione: str = ""
     prezzo: str = ""
     qta: str = ""
 
 
-class ScontrinoCreate(BaseModel):
+class ScontrinoCreate(ModelloAPI):
     testata: str = ""
     righe: list[ScontrinoRiga] = []
     totale: str = "0.00"
     iva: str = "0.00"
 
 
-class EtichettaCreate(BaseModel):
+class EtichettaCreate(ModelloAPI):
     plu: str = ""
     prodotto: str = ""
     prezzo_kg: str = ""
@@ -633,18 +664,18 @@ class EtichettaCreate(BaseModel):
 #  Coda di stampa (print_jobs) e dispositivi
 # ------------------------------------------------------------------------- #
 
-class DispositivoCreate(BaseModel):
+class DispositivoCreate(ModelloAPI):
     nome: str = Field(..., min_length=1, max_length=255)
     stampante_dymo: str = ""
     stampante_termica: str = ""
 
 
-class PrintJobCreate(BaseModel):
+class PrintJobCreate(ModelloAPI):
     tipo: str = Field(..., pattern="^(ddt|scontrino|etichetta)$")
     payload: str = Field(..., min_length=1)
 
 
-class PrintJobOut(BaseModel):
+class PrintJobOut(ModelloAPI):
     id: int
     tenant_id: int
     dispositivo_id: int | None = None

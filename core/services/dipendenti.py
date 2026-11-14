@@ -54,6 +54,6 @@ def aggiorna_dipendente(
     return repo.save(dipendente, tenant_id)
 
 
-def elimina_dipendente(dipendente, tenant_id=None):
+def elimina_dipendente(dipendente, tenant_id=None, utente_email=None):
     """Elimina un dipendente dal database."""
-    repo.delete(dipendente, tenant_id)
+    repo.delete(dipendente, tenant_id, utente_email=utente_email)

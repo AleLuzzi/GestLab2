@@ -62,6 +62,6 @@ def aggiorna_merceologia(merceologia, merceologia_nome=None, id_reparto=None,
     return repo.save(merceologia, tenant_id)
 
 
-def elimina_merceologia(merceologia, tenant_id=None):
+def elimina_merceologia(merceologia, tenant_id=None, utente_email=None):
     """Elimina una merceologia dal database."""
-    repo.delete(merceologia, tenant_id)
+    repo.delete(merceologia, tenant_id, utente_email=utente_email)

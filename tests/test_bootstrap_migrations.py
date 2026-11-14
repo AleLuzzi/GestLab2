@@ -440,7 +440,10 @@ class BootstrapMigrationsTests(unittest.TestCase):
 
     def test_refresh_token_migration_is_ordered_and_recognized_when_complete(self):
         migration = "20261114_refresh_token.sql"
-        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        self.assertEqual(
+            bootstrap.MIGRATION_ORDER[bootstrap.MIGRATION_ORDER.index(migration) + 1],
+            "20261114_audit_log.sql",
+        )
         sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS `refresh_token`", sql)
         self.assertIn("`token_hash` char(64)", sql)
@@ -493,6 +496,64 @@ class BootstrapMigrationsTests(unittest.TestCase):
         self.assertTrue(
             bootstrap._migrazione_gia_applicata(
                 RefreshCursor(columns=required, schema=complete), migration
+            )
+        )
+
+    def test_audit_log_migration_is_ordered_and_recognized_when_complete(self):
+        migration = "20261114_audit_log.sql"
+        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS `audit_log`", sql)
+        self.assertIn("`utente_email` varchar(255)", sql)
+        self.assertIn("'CANCELLAZIONE'", sql)
+        self.assertIn("'RETTIFICA'", sql)
+
+        class AuditCursor:
+            def __init__(self, exists=True, columns=None, schema=""):
+                self.exists = exists
+                self.columns = columns or set()
+                self.schema = schema
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query.startswith("SELECT COUNT(*) FROM information_schema.tables"):
+                    self.result = [(1 if self.exists else 0,)]
+                elif query == "SHOW COLUMNS FROM `audit_log`":
+                    self.result = [(column,) for column in self.columns]
+                elif query == "SHOW CREATE TABLE `audit_log`":
+                    self.result = [("audit_log", self.schema)]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+            def fetchall(self):
+                return self.result
+
+        required = {
+            "tenant_id",
+            "utente_email",
+            "azione",
+            "entita",
+            "entita_id",
+            "dettaglio",
+        }
+        complete = (
+            "CONSTRAINT `fk_audit_log_tenant` CONSTRAINT `chk_audit_log_azione`"
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(AuditCursor(exists=False), migration)
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                AuditCursor(columns=required - {"dettaglio"}, schema=complete),
+                migration,
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                AuditCursor(columns=required, schema=complete), migration
             )
         )
 

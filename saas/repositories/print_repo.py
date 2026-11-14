@@ -48,14 +48,14 @@ def trova_dispositivo_by_token(token):
         }
 
 
-def aggiorna_heartbeat(dispositivo_id):
-    """Aggiorna l'heartbeat del dispositivo (ultimo segnale di vita)."""
+def aggiorna_heartbeat(dispositivo_id, tenant_id):
+    """Aggiorna l'heartbeat del dispositivo autenticato."""
     with connection() as conn:
         c = conn.cursor()
         c.execute(
             "UPDATE dispositivi_stampa SET ultimo_heartbeat = NOW() "
-            "WHERE id = %s",
-            (dispositivo_id,),
+            "WHERE id = %s AND tenant_id = %s",
+            (dispositivo_id, tenant_id),
         )
         conn.commit()
 
@@ -110,33 +110,30 @@ def elenca_job(tenant_id, stato=None, limite=100):
         ]
 
 
-def prendi_prossimo_job(dispositivo_id=None):
-    """Preleva il prossimo job 'pending' per l'agent (FIFO).
+def prendi_prossimo_job(dispositivo_id, tenant_id):
+    """Preleva il prossimo job 'pending' del tenant del dispositivo (FIFO).
 
-    Imposta lo stato a 'printing' in modo atomico (best-effort) per evitare
-    che due agent prelevino lo stesso job.
+    Imposta lo stato a 'printing' nella stessa transazione. I job di un
+    altro tenant non sono visibili, anche se non hanno un dispositivo assegnato.
     """
     with connection() as conn:
         c = conn.cursor()
-        if dispositivo_id:
-            c.execute(
-                "SELECT id, tenant_id, dispositivo_id, tipo, payload "
-                "FROM print_jobs WHERE stato = 'pending' "
-                "AND (dispositivo_id IS NULL OR dispositivo_id = %s) "
-                "ORDER BY id ASC LIMIT 1 FOR UPDATE",
-                (dispositivo_id,),
-            )
-        else:
-            c.execute(
-                "SELECT id, tenant_id, dispositivo_id, tipo, payload "
-                "FROM print_jobs WHERE stato = 'pending' "
-                "ORDER BY id ASC LIMIT 1 FOR UPDATE"
-            )
+        c.execute(
+            "SELECT id, tenant_id, dispositivo_id, tipo, payload "
+            "FROM print_jobs WHERE stato = 'pending' AND tenant_id = %s "
+            "AND (dispositivo_id IS NULL OR dispositivo_id = %s) "
+            "ORDER BY id ASC LIMIT 1 FOR UPDATE",
+            (tenant_id, dispositivo_id),
+        )
         row = c.fetchone()
         if not row:
             return None
         job_id = row[0]
-        c.execute("UPDATE print_jobs SET stato = 'printing' WHERE id = %s", (job_id,))
+        c.execute(
+            "UPDATE print_jobs SET stato = 'printing' "
+            "WHERE id = %s AND tenant_id = %s",
+            (job_id, tenant_id),
+        )
         conn.commit()
         return {
             "id": row[0],
@@ -147,19 +144,21 @@ def prendi_prossimo_job(dispositivo_id=None):
         }
 
 
-def aggiorna_stato_job(job_id, stato, error=None):
-    """Aggiorna lo stato di un job (done/error) e il timestamp di stampa."""
+def aggiorna_stato_job(job_id, stato, tenant_id):
+    """Aggiorna lo stato di un job del tenant e il timestamp di stampa."""
     with connection() as conn:
         c = conn.cursor()
         if stato == "done":
             c.execute(
                 "UPDATE print_jobs SET stato = %s, stampato_il = NOW() "
-                "WHERE id = %s",
-                (stato, job_id),
+                "WHERE id = %s AND tenant_id = %s",
+                (stato, job_id, tenant_id),
             )
         else:
             c.execute(
-                "UPDATE print_jobs SET stato = %s WHERE id = %s",
-                (stato, job_id),
+                "UPDATE print_jobs SET stato = %s WHERE id = %s AND tenant_id = %s",
+                (stato, job_id, tenant_id),
             )
+        aggiornato = c.rowcount > 0
         conn.commit()
+        return aggiornato

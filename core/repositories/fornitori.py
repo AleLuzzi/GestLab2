@@ -4,6 +4,7 @@ Operazioni CRUD sul modello ``Fornitore`` usando il context manager di
 ``core.db`` (niente connessione globale).
 """
 
+from ..audit import registra
 from ..db import connection
 from ..core_models import Fornitore
 
@@ -148,7 +149,7 @@ def save(value, tenant_id=None):
         return value
 
 
-def delete(value, tenant_id=None):
+def delete(value, tenant_id=None, utente_email=None):
     """Elimina un ``Fornitore`` dal database."""
     with connection() as conn:
         c = conn.cursor()
@@ -162,6 +163,16 @@ def delete(value, tenant_id=None):
                     "WHERE f.ID = %s AND f.tenant_id = %s",
                     (value.id, tenant_id),
                 )
+                if c.rowcount and utente_email:
+                    registra(
+                        c,
+                        tenant_id,
+                        utente_email,
+                        "CANCELLAZIONE",
+                        "fornitori",
+                        value.id,
+                        {"modalita": "disattivazione"},
+                    )
                 conn.commit()
             except Exception:
                 conn.rollback()

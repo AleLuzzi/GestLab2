@@ -35,6 +35,6 @@ def aggiorna_reparto(reparto, nome=None, flag1_dip=None, flag2_prod=None, tenant
     return repo.save(reparto, tenant_id)
 
 
-def elimina_reparto(reparto, tenant_id=None):
+def elimina_reparto(reparto, tenant_id=None, utente_email=None):
     """Elimina un reparto dal database."""
-    repo.delete(reparto, tenant_id)
+    repo.delete(reparto, tenant_id, utente_email=utente_email)

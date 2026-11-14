@@ -169,16 +169,16 @@ def test_print_job_flow(tenant_id):
     check(job_id > 0, f"job accodato (id={job_id})")
 
     # L'agent preleva il prossimo job pending.
-    job = print_repo.prendi_prossimo_job(did)
+    job = print_repo.prendi_prossimo_job(did, tenant_id)
     check(job is not None and job["id"] == job_id, "agent preleva il job pending (stato->printing)")
 
     # L'agent segnala stampa completata.
-    print_repo.aggiorna_stato_job(job_id, "done")
+    print_repo.aggiorna_stato_job(job_id, "done", tenant_id)
     jobs = print_repo.elenca_job(tenant_id, stato="done")
     check(any(j["id"] == job_id and j["stato"] == "done" for j in jobs), "job in stato 'done'")
 
     # Nessun altro job pending.
-    check(print_repo.prendi_prossimo_job(did) is None, "coda vuota dopo il completamento")
+    check(print_repo.prendi_prossimo_job(did, tenant_id) is None, "coda vuota dopo il completamento")
 
 
 def test_reparti_service(tenant_id):

@@ -1,5 +1,6 @@
 """Accesso ai soggetti condivisi da clienti e fornitori."""
 
+from ..audit import registra
 from ..db import connection
 
 
@@ -270,12 +271,27 @@ def aggiorna(tenant_id, soggetto_id, payload):
         return result
 
 
-def disattiva(tenant_id, soggetto_id):
+def disattiva(tenant_id, soggetto_id, utente_email=None):
     with connection() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE soggetti SET attivo = 0 WHERE tenant_id = %s AND id = %s",
-            (tenant_id, soggetto_id),
-        )
-        conn.commit()
-        return cursor.rowcount > 0
+        try:
+            cursor.execute(
+                "UPDATE soggetti SET attivo = 0 WHERE tenant_id = %s AND id = %s",
+                (tenant_id, soggetto_id),
+            )
+            disattivato = cursor.rowcount > 0
+            if disattivato and utente_email:
+                registra(
+                    cursor,
+                    tenant_id,
+                    utente_email,
+                    "CANCELLAZIONE",
+                    "soggetti",
+                    soggetto_id,
+                    {"modalita": "disattivazione"},
+                )
+            conn.commit()
+            return disattivato
+        except Exception:
+            conn.rollback()
+            raise

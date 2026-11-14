@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import date
 from decimal import Decimal
 
+from core.audit import registra
 from core.db import connection
 from core.repositories import soggetti as soggetti_repo
 from core.repositories.soggetti import FornitoreNonValido
@@ -207,23 +208,37 @@ def aggiorna_articolo(
     }
 
 
-def disattiva_articolo(tenant_id, articolo_id):
+def disattiva_articolo(tenant_id, articolo_id, utente_email=None):
     with connection() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE articoli SET attivo = 0 WHERE tenant_id = %s AND id = %s",
-            (tenant_id, articolo_id),
-        )
-        cursor.execute(
-            "SELECT id FROM articoli WHERE tenant_id = %s AND id = %s",
-            (tenant_id, articolo_id),
-        )
-        esistente = cursor.fetchone() is not None
-        if esistente:
-            conn.commit()
-        else:
+        try:
+            cursor.execute(
+                "UPDATE articoli SET attivo = 0 WHERE tenant_id = %s AND id = %s",
+                (tenant_id, articolo_id),
+            )
+            cursor.execute(
+                "SELECT id FROM articoli WHERE tenant_id = %s AND id = %s",
+                (tenant_id, articolo_id),
+            )
+            esistente = cursor.fetchone() is not None
+            if esistente and utente_email:
+                registra(
+                    cursor,
+                    tenant_id,
+                    utente_email,
+                    "CANCELLAZIONE",
+                    "articoli",
+                    articolo_id,
+                    {"modalita": "disattivazione"},
+                )
+            if esistente:
+                conn.commit()
+            else:
+                conn.rollback()
+            return esistente
+        except Exception:
             conn.rollback()
-        return esistente
+            raise
 
 
 def _ricetta_da_riga(row):
@@ -543,23 +558,37 @@ def aggiorna_ricetta(
             raise
 
 
-def disattiva_ricetta(tenant_id, ricetta_id):
+def disattiva_ricetta(tenant_id, ricetta_id, utente_email=None):
     with connection() as conn:
         cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE ricette SET attiva = 0 WHERE tenant_id = %s AND id = %s",
-            (tenant_id, ricetta_id),
-        )
-        cursor.execute(
-            "SELECT id FROM ricette WHERE tenant_id = %s AND id = %s",
-            (tenant_id, ricetta_id),
-        )
-        esistente = cursor.fetchone() is not None
-        if esistente:
-            conn.commit()
-        else:
+        try:
+            cursor.execute(
+                "UPDATE ricette SET attiva = 0 WHERE tenant_id = %s AND id = %s",
+                (tenant_id, ricetta_id),
+            )
+            cursor.execute(
+                "SELECT id FROM ricette WHERE tenant_id = %s AND id = %s",
+                (tenant_id, ricetta_id),
+            )
+            esistente = cursor.fetchone() is not None
+            if esistente and utente_email:
+                registra(
+                    cursor,
+                    tenant_id,
+                    utente_email,
+                    "CANCELLAZIONE",
+                    "ricette",
+                    ricetta_id,
+                    {"modalita": "disattivazione"},
+                )
+            if esistente:
+                conn.commit()
+            else:
+                conn.rollback()
+            return esistente
+        except Exception:
             conn.rollback()
-        return esistente
+            raise
 
 
 def lista_lotti(tenant_id, solo_disponibili=False, data_dal=None, data_al=None):
@@ -1357,7 +1386,7 @@ def _prossimo_progressivo(cursor, tenant_id, tipo_lotto):
     return numero
 
 
-def rettifica_lotto(tenant_id, lotto_id, delta, motivo):
+def rettifica_lotto(tenant_id, lotto_id, delta, motivo, utente_email=None):
     """Applica una rettifica tracciata e aggiorna la giacenza atomicamente."""
     with connection() as conn:
         cursor = conn.cursor()
@@ -1388,6 +1417,20 @@ def rettifica_lotto(tenant_id, lotto_id, delta, motivo):
                 "VALUES (%s, %s, 'RETTIFICA', %s, %s)",
                 (tenant_id, lotto_id, delta, motivo),
             )
+            if utente_email:
+                registra(
+                    cursor,
+                    tenant_id,
+                    utente_email,
+                    "RETTIFICA",
+                    "lotti",
+                    lotto_id,
+                    {
+                        "delta": str(delta),
+                        "motivo": motivo,
+                        "giacenza": str(nuova_giacenza),
+                    },
+                )
             conn.commit()
             return {
                 "lotto_id": lotto_id,

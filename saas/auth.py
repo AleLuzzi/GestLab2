@@ -14,7 +14,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from core.env import get_secret
+from core.env import get_secret, is_production_environment
 
 # In produzione: valori da variabili d'ambiente / Secret Manager / .env.
 _DEFAULT_JWT_SECRETS = {
@@ -22,11 +22,12 @@ _DEFAULT_JWT_SECRETS = {
     "change_me_in_production_please",
     "gestlab-dev-secret",
 }
+_DEV_JWT_SECRET = "cambia-questa-secret-key"
 
 
 def _validate_jwt_secret(secret: str) -> str:
-    """Blocca l'avvio in produzione con chiavi di default di sviluppo."""
-    if os.environ.get("GESTLAB_ENV", "").lower() == "production" and secret in _DEFAULT_JWT_SECRETS:
+    """Blocca l'avvio in produzione con chiavi di default o vuote."""
+    if is_production_environment() and secret.strip() in _DEFAULT_JWT_SECRETS | {""}:
         raise RuntimeError(
             "JWT_SECRET di default non consentito in produzione. "
             "Impostare una chiave TLS-safe via variabile d'ambiente o Secret Manager."
@@ -34,12 +35,18 @@ def _validate_jwt_secret(secret: str) -> str:
     return secret
 
 
-SECRET_KEY = _validate_jwt_secret(
-    get_secret(
-        "JWT_SECRET",
-        os.environ.get("GESTLAB_JWT_SECRET", "cambia-questa-secret-key"),
+def resolve_jwt_secret() -> str:
+    """Risolve il secret JWT e rifiuta i valori di sviluppo in produzione.
+
+    ``JWT_SECRET`` ha priorità. ``GESTLAB_JWT_SECRET`` resta il nome storico.
+    In produzione ``get_secret`` non legge ``config.ini``.
+    """
+    return _validate_jwt_secret(
+        get_secret("JWT_SECRET", os.environ.get("GESTLAB_JWT_SECRET", _DEV_JWT_SECRET))
     )
-)
+
+
+SECRET_KEY = resolve_jwt_secret()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("GESTLAB_ACCESS_MIN", get_secret("JWT_ACCESS_MIN", "60")))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.environ.get("GESTLAB_REFRESH_DAYS", get_secret("JWT_REFRESH_DAYS", "7")))
