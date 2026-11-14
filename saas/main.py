@@ -11,16 +11,22 @@ schema condiviso). Il client non deve mai inviare il ``tenant_id``.
 import json
 import logging
 import os
+import time
 import uuid
 from datetime import date
 from logging.handlers import RotatingFileHandler
 
 import mysql.connector
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
-from fastapi.responses import FileResponse, Response
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from saas import auth
+from core.env import valida_hosting_gestito
+from saas import auth, osservabilita
+
+valida_hosting_gestito()
+osservabilita.avvia_error_tracking()
 from saas.repositories import audit_repo, print_repo, tenant_repo, tracciabilita_repo
 from saas.services import login_guard, password_reset, sessioni
 from saas.services import vendite as vendite_service
@@ -118,6 +124,34 @@ app = FastAPI(
 # raggiungibili sotto /static e la radice restituisce index.html.
 _WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 app.mount("/static", StaticFiles(directory=_WEB_DIR), name="static")
+
+
+@app.middleware("http")
+async def registra_accesso(request: Request, call_next):
+    """Log operativo di metodo, percorso, stato e durata. Senza query string."""
+    inizio = time.perf_counter()
+    response = await call_next(request)
+    osservabilita.riga_accesso(
+        request.method,
+        request.url.path,
+        response.status_code,
+        time.perf_counter() - inizio,
+    )
+    return response
+
+
+@app.exception_handler(Exception)
+async def errori_non_gestiti(request: Request, exc: Exception):
+    """Le HTTPException restano le risposte applicative. Il resto è tracciato."""
+    if isinstance(exc, HTTPException):
+        return await http_exception_handler(request, exc)
+    riferimento = osservabilita.registra_errore(request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": f"Errore interno. Riferimento assistenza: {riferimento}",
+        },
+    )
 
 
 @app.get("/", include_in_schema=False)
@@ -1757,5 +1791,8 @@ def agent_job_error(
 
 @app.get("/health")
 def health():
-    """Health check per il load balancer / orchestrazione."""
-    return {"status": "ok"}
+    """Health check per monitoraggio e load balancer. Verifica il database."""
+    codice, corpo = osservabilita.esito_salute()
+    if codice == status.HTTP_200_OK:
+        return corpo
+    return JSONResponse(status_code=codice, content=corpo)

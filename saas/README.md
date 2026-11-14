@@ -18,12 +18,16 @@ python -m uvicorn saas.main:app --reload
 - **Console web (UI SaaS)**: <http://localhost:8000/>
 - **Documentazione interattiva (OpenAPI)**: <http://localhost:8000/docs>
 
-Gli errori imprevisti durante la conferma di un ingresso tracciato vengono
-registrati in `logs/gestlab-saas.log`, con rotazione automatica (5 MB, fino a
-5 file storici). Per scegliere un'altra cartella, impostare `GESTLAB_LOG_DIR`
-prima di avviare il server. In caso di errore, comunicare all'assistenza il
-riferimento mostrato nell'interfaccia: consente di trovare il traceback senza
-registrare token o dati del documento.
+`GET /health` risponde 200 solo se il database esegue una lettura; se il
+database non risponde, lo stato è 503 e `status` vale `degraded`. Il log
+operativo in `logs/gestlab-saas.log` registra metodo, percorso, stato HTTP e
+durata, con rotazione automatica (5 MB, fino a 5 file storici). Il health check
+riuscito non viene scritto, per non riempire il file. Per scegliere un'altra
+cartella, impostare `GESTLAB_LOG_DIR` prima di avviare il server. Un errore non
+gestito riceve un riferimento assistenza, visibile nella risposta e nel log.
+Con `SENTRY_DSN` e il pacchetto `sentry-sdk` lo stesso errore è inviato a
+Sentry senza dati personali di default. Il riferimento consente di trovare il
+traceback senza registrare token o dati del documento.
 
 Il bootstrap consolida eventuali record `progressivi` duplicati per tenant,
 conservando il valore massimo di ciascun contatore, e crea l'indice univoco

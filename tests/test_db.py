@@ -58,6 +58,20 @@ class DatabaseConnectionTests(unittest.TestCase):
 
         create_pool.assert_not_called()
 
+    def test_remote_staging_connection_requires_ca_file(self):
+        with patch.object(
+            db, "get_secret", side_effect=lambda name, default="": {
+                "DB_HOST": "staging.db.example.com",
+                "DB_SSL_CA": "",
+            }.get(name, default)
+        ), patch.dict(os.environ, {"GESTLAB_ENV": "staging"}, clear=True), patch.object(
+            db.mysql.connector.pooling, "MySQLConnectionPool"
+        ) as create_pool:
+            with self.assertRaisesRegex(RuntimeError, "DB_SSL_CA è obbligatorio"):
+                db.get_connection()
+
+        create_pool.assert_not_called()
+
     def test_remote_connection_verifies_ca_and_server_identity(self):
         settings = {
             "DB_HOST": "db.example.com",

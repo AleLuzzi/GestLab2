@@ -14,6 +14,7 @@ pydantic[email]
 python-multipart
 PyJWT
 bcrypt
+sentry-sdk
 
 # Stampa e barcode (core.services.printing / core.services.barcode)
 reportlab

@@ -225,5 +225,31 @@ curl -fsS http://127.0.0.1:8000/health
 echo
 curl -fsSI http://127.0.0.1:8000/ | head -n 5
 
+echo "==> Monitoraggio periodico di /health"
+cat > /etc/systemd/system/gestlab-health.service <<'UNIT'
+[Unit]
+Description=Controllo salute GestLab
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/curl -fsS --max-time 10 http://127.0.0.1:8000/health
+UNIT
+
+cat > /etc/systemd/system/gestlab-health.timer <<'UNIT'
+[Unit]
+Description=Controllo periodico di /health
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable --now gestlab-health.timer
+
 echo "==> Deploy completato"
 systemctl --no-pager --full status gestlab || true

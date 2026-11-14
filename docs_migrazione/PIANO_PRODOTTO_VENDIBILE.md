@@ -121,7 +121,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Pool DB / TLS | A | [`core/db.py`](../core/db.py) apre una connessione per richiesta. |
 | Migrazioni | P | [`saas/init_database.sql`](../saas/init_database.sql) per installazioni nuove; [`saas/migrations/`](../saas/migrations/) da applicare a mano sui DB esistenti. Bootstrap non esegue tutte le migrazioni. |
 | Test | P | Unit: soggetti, tracciabilità, ingresso, dipendenti, bootstrap. E2E [`tests/test_saas_e2e.py`](../tests/test_saas_e2e.py) **distruttivo**. |
-| Produzione | P | Guida Lightsail di test. Niente RDS+PITR, staging, Sentry, secret manager obbligatorio. |
+| Produzione | P | Il profilo `GESTLAB_HOSTING=managed` separa produzione e staging: HTTPS, database remoti distinti, Secret Manager e point-in-time recovery sono obbligatori all'avvio. Le istanze AWS non sono ancora create: l'account locale non ha credenziali. |
 | GDPR / legale | A | Accennato in `SAAS_MIGRATION_PLAN.md`. Nessuna informativa, DPA, export tenant. |
 | Manuale utente | P | `ISTRUZIONI_USO.md` è per sviluppatori (venv, uvicorn, agent). |
 
@@ -571,15 +571,28 @@ del lotto 1A in 0,64 secondi.
 
 ### 7.4 Produzione
 
-Oltre Lightsail di test ([PUBBLICAZIONE_AWS_TEST.md](PUBBLICAZIONE_AWS_TEST.md)):
+Oltre Lightsail di test ([PUBBLICAZIONE_AWS_TEST.md](PUBBLICAZIONE_AWS_TEST.md)),
+il profilo vendibile si attiva con `GESTLAB_HOSTING=managed`. Produzione e
+staging hanno modelli distinti in `deploy/gestlab.production.env.example` e
+`deploy/gestlab.staging.env.example`. L'avvio rifiuta un URL non HTTPS, un
+database locale, un nome database diverso da `gestlab_production` o
+`gestlab_staging`, segreti che non arrivano da Secret Manager, l'assenza di
+backup con point-in-time recovery e lo stesso server database per i due
+ambienti. Coperto da `tests/test_env.py` e `tests/test_db.py`.
+
+Le risorse AWS (certificato, due database gestiti, segreti) non sono state
+create: la CLI non ha credenziali su questo account. Il Lightsail di test non
+imposta `GESTLAB_HOSTING` e continua a usare il database locale.
 
 - HTTPS (dominio + Certbot o load balancer);
 - DB gestito con backup automatici e point-in-time recovery;
 - secret manager;
 - ambiente staging;
-- `/health` già presente: usarlo in monitoring;
-- error tracking (es. Sentry) e log già parziali (`logs/gestlab-saas.log` per
-  ingressi tracciati);
+- `/health` verifica il database e risponde 503 se non è raggiungibile. Il
+  setup installa il timer `gestlab-health`, che lo richiede ogni minuto;
+- log operativo su `logs/gestlab-saas.log` (metodo, percorso, stato, durata) e
+  error tracking: riferimento assistenza nel log e invio a Sentry se
+  `SENTRY_DSN` è configurato. Coperto da `tests/test_osservabilita.py`;
 - Local Print Agent come servizio Windows documentato (installazione, token,
   restart).
 

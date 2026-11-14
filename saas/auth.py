@@ -14,7 +14,7 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from core.env import get_secret, is_production_environment
+from core.env import get_secret, is_deployed_environment
 
 # In produzione: valori da variabili d'ambiente / Secret Manager / .env.
 _DEFAULT_JWT_SECRETS = {
@@ -26,10 +26,10 @@ _DEV_JWT_SECRET = "cambia-questa-secret-key"
 
 
 def _validate_jwt_secret(secret: str) -> str:
-    """Blocca l'avvio in produzione con chiavi di default o vuote."""
-    if is_production_environment() and secret.strip() in _DEFAULT_JWT_SECRETS | {""}:
+    """Blocca l'avvio in produzione o staging con chiavi di default o vuote."""
+    if is_deployed_environment() and secret.strip() in _DEFAULT_JWT_SECRETS | {""}:
         raise RuntimeError(
-            "JWT_SECRET di default non consentito in produzione. "
+            "JWT_SECRET di default non consentito in produzione o staging. "
             "Impostare una chiave TLS-safe via variabile d'ambiente o Secret Manager."
         )
     return secret

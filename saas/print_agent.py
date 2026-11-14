@@ -36,9 +36,9 @@ DEFAULT_BASE_URL = os.environ.get("GESTLAB_API_URL", "http://localhost:8000")
 
 def _leggi_token_config():
     """Legge il token dispositivo dalla sezione [Stampante] di config.ini."""
-    from core.env import is_production_environment
+    from core.env import is_deployed_environment
 
-    if is_production_environment():
+    if is_deployed_environment():
         return os.environ.get("GESTLAB_AGENT_TOKEN", "")
 
     try:

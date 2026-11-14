@@ -11,12 +11,11 @@ vanno fornite via Secret Manager o env del container.
 
 from contextlib import contextmanager
 import ipaddress
-import os
 import threading
 
 import mysql.connector
 
-from .env import get_secret
+from .env import get_secret, is_deployed_environment, valida_hosting_gestito
 
 
 _MAX_POOL_SIZE = 32
@@ -40,12 +39,9 @@ def _database_tls_options(host):
     except ValueError:
         pass
 
-    if (
-        os.environ.get("GESTLAB_ENV", "").lower() == "production"
-        and not is_loopback
-    ):
+    if is_deployed_environment() and not is_loopback:
         raise RuntimeError(
-            "DB_SSL_CA è obbligatorio per connessioni MySQL remote in produzione"
+            "DB_SSL_CA è obbligatorio per connessioni MySQL remote in produzione o staging"
         )
     return {}
 
@@ -56,6 +52,7 @@ def _get_connection_pool():
     if _connection_pool is None:
         with _connection_pool_lock:
             if _connection_pool is None:
+                valida_hosting_gestito()
                 host = get_secret("DB_HOST", "localhost")
                 pool_size = int(get_secret("DB_POOL_SIZE", "10"))
                 if not 1 <= pool_size <= _MAX_POOL_SIZE:
