@@ -13,6 +13,19 @@ export function clearTokens() {
   refreshToken = null;
 }
 
+export async function endSession() {
+  const token = refreshToken;
+  clearTokens();
+  if (!token) return;
+  try {
+    await fetch(API + "/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: token }),
+    });
+  } catch (_) {}
+}
+
 async function tryRefresh() {
   if (!refreshToken) return false;
 

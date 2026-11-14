@@ -1,4 +1,4 @@
-import { api, clearTokens, setTokens } from "../api/client.js";
+import { api, endSession, setTokens } from "../api/client.js";
 import { $ } from "./dom.js";
 
 export async function doLogin(email, password) {
@@ -17,7 +17,7 @@ export async function doLogin(email, password) {
 }
 
 export function logout() {
-  clearTokens();
+  return endSession();
 }
 
 function showLogin() {

@@ -50,6 +50,7 @@ MIGRATION_ORDER = (
     "20261108_motivo_rettifica_lotto.sql",
     "20261108_vendite.sql",
     "20261114_password_reset.sql",
+    "20261114_refresh_token.sql",
 )
 
 
@@ -530,6 +531,24 @@ def _migrazione_gia_applicata(cursor, migrazione):
         return (
             "FK_PASSWORD_RESET_UTENTE" in schema
             and "UQ_PASSWORD_RESET_TOKEN" in schema
+        )
+
+    if migrazione == "20261114_refresh_token.sql":
+        if not _tabella_esiste(cursor, "refresh_token"):
+            return False
+        if not {
+            "utente_id",
+            "token_hash",
+            "famiglia",
+            "scade_il",
+            "revocato_il",
+        }.issubset(_colonne_tabella(cursor, "refresh_token")):
+            return False
+        cursor.execute("SHOW CREATE TABLE `refresh_token`")
+        schema = cursor.fetchone()[1].upper()
+        return (
+            "FK_REFRESH_TOKEN_UTENTE" in schema
+            and "UQ_REFRESH_TOKEN_HASH" in schema
         )
 
     raise ValueError(f"Migrazione non registrata: {migrazione}")

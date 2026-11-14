@@ -26,7 +26,7 @@ class ConsolidatedSchemaTests(unittest.TestCase):
 
     def test_every_table_has_a_primary_key_and_utf8mb4_charset(self):
         self.assertTrue(self.tables)
-        self.assertEqual(len(self.tables), 27)
+        self.assertEqual(len(self.tables), 28)
         for table_name, definition in self.tables.items():
             with self.subTest(table=table_name):
                 self.assertRegex(definition, r"(?m)^\s*PRIMARY KEY\s*\(")
@@ -148,6 +148,18 @@ class ConsolidatedSchemaTests(unittest.TestCase):
             "FOREIGN KEY (`utente_id`) REFERENCES `utenti` (`id`)", definition
         )
         self.assertIn("fk_password_reset_utente", definition)
+
+    def test_refresh_tokens_store_only_the_hash_and_the_session_family(self):
+        definition = self.tables["refresh_token"]
+        self.assertRegex(definition, r"`token_hash`\s+char\(64\)")
+        self.assertRegex(definition, r"`famiglia`\s+char\(36\)")
+        self.assertRegex(definition, r"`scade_il`\s+datetime NOT NULL")
+        self.assertRegex(definition, r"`revocato_il`\s+datetime DEFAULT NULL")
+        self.assertIn("UNIQUE KEY `uq_refresh_token_hash` (`token_hash`)", definition)
+        self.assertIn(
+            "FOREIGN KEY (`utente_id`) REFERENCES `utenti` (`id`)", definition
+        )
+        self.assertNotIn("token` varchar", definition)
 
     def test_department_and_operator_relations_are_tenant_scoped(self):
         self.assertIn(

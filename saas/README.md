@@ -73,8 +73,9 @@ saas/
 
 | Metodo | Endpoint | Ruoli | Descrizione |
 |---|---|---|---|
-| POST | `/auth/login` | pubblico | Login, restituisce access+refresh |
-| POST | `/auth/refresh` | pubblico | Rinnova i token |
+| POST | `/auth/login` | pubblico | Login, restituisce access+refresh. Dopo 10 errori sullo stesso indirizzo, o 50 dallo stesso IP in 15 minuti, risponde 429 |
+| POST | `/auth/refresh` | pubblico | Ruota il refresh token e revoca quello presentato |
+| POST | `/auth/logout` | pubblico | Revoca la famiglia del refresh token |
 | POST | `/auth/password-dimenticata` | pubblico | Invia il collegamento di reset se l'email è di un utente attivo |
 | POST | `/auth/password-reimposta` | pubblico | Imposta una nuova password con un token monouso |
 | POST | `/api/v1/tenant` | admin | Crea tenant |

@@ -16,13 +16,13 @@ from datetime import date
 from logging.handlers import RotatingFileHandler
 
 import mysql.connector
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from saas import auth
 from saas.repositories import print_repo, tenant_repo, tracciabilita_repo
-from saas.services import password_reset
+from saas.services import login_guard, password_reset, sessioni
 from saas.services import vendite as vendite_service
 from saas.schemas import (
     DdtCreate,
@@ -32,6 +32,7 @@ from saas.schemas import (
     DispositivoCreate,
     EtichettaCreate,
     LoginRequest,
+    LogoutRequest,
     MessaggioResponse,
     PasswordDimenticataRequest,
     PasswordReimpostaRequest,
@@ -128,21 +129,40 @@ def index():
 # ------------------------------------------------------------------------- #
 
 @app.post("/auth/login", response_model=TokenResponse)
-def login(payload: LoginRequest):
+def login(payload: LoginRequest, request: Request):
     """Autentica un utente e restituisce access + refresh token."""
+    email = payload.email.strip().lower()
+    ip = request.client.host if request.client else "sconosciuto"
+    try:
+        login_guard.guard.controlla(f"email:{email}", login_guard.MAX_FALLIMENTI_EMAIL)
+        login_guard.guard.controlla(f"ip:{ip}", login_guard.MAX_FALLIMENTI_IP)
+    except login_guard.LimiteAccessoSuperato as exc:
+        logger.warning("Login limitato per %s da %s", email, ip)
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Troppi tentativi di accesso. Riprova tra qualche minuto.",
+            headers={"Retry-After": str(exc.secondi)},
+        )
+
     utente = tenant_repo.trova_utente_by_email(payload.email)
-    if not utente or not utente["attivo"]:
+    if (
+        not utente
+        or not utente["attivo"]
+        or not auth.verify_password(payload.password, utente["password_hash"])
+    ):
+        login_guard.guard.registra_fallimento(f"email:{email}")
+        login_guard.guard.registra_fallimento(f"ip:{ip}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenziali non valide")
 
-    if not auth.verify_password(payload.password, utente["password_hash"]):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenziali non valide")
-
-    access = auth.create_token(
-        utente["email"], utente["tenant_id"], utente["ruolo"], "access"
-    )
-    refresh = auth.create_token(
-        utente["email"], utente["tenant_id"], utente["ruolo"], "refresh"
-    )
+    login_guard.guard.azzera(f"email:{email}")
+    try:
+        access, refresh = sessioni.apri_sessione(utente)
+    except mysql.connector.Error:
+        logger.exception("Sessione di accesso non registrata")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile aprire la sessione.",
+        )
     return TokenResponse(
         access_token=access,
         refresh_token=refresh,
@@ -154,17 +174,16 @@ def login(payload: LoginRequest):
 
 @app.post("/auth/refresh", response_model=TokenResponse)
 def refresh_token(payload: RefreshRequest):
-    """Rigenera access (e refresh) token da un refresh token valido."""
-    info = auth.decode_token(payload.refresh_token)
-    if info.get("type") != "refresh":
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token non di refresh")
-
-    access = auth.create_token(
-        info["sub"], info["tenant_id"], info["ruolo"], "access"
-    )
-    refresh = auth.create_token(
-        info["sub"], info["tenant_id"], info["ruolo"], "refresh"
-    )
+    """Ruota il refresh token e restituisce una nuova coppia."""
+    try:
+        access, refresh = sessioni.rinnova_sessione(payload.refresh_token)
+    except mysql.connector.Error:
+        logger.exception("Rinnovo della sessione non completato")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile rinnovare la sessione.",
+        )
+    info = auth.decode_token(access)
     return TokenResponse(
         access_token=access,
         refresh_token=refresh,
@@ -172,6 +191,20 @@ def refresh_token(payload: RefreshRequest):
         ruolo=info["ruolo"],
         tenant_id=info["tenant_id"],
     )
+
+
+@app.post("/auth/logout", response_model=MessaggioResponse)
+def logout(payload: LogoutRequest):
+    """Revoca la famiglia del refresh token e chiude la sessione."""
+    try:
+        sessioni.chiudi_sessione(payload.refresh_token)
+    except mysql.connector.Error:
+        logger.exception("Revoca della sessione non completata")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile chiudere la sessione.",
+        )
+    return MessaggioResponse(messaggio="Sessione chiusa.")
 
 
 @app.post("/auth/password-dimenticata", response_model=MessaggioResponse)

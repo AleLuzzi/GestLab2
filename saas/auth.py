@@ -78,9 +78,14 @@ def valida_password(password: str) -> None:
         raise ValueError("La password deve contenere almeno un numero.")
 
 
+def hash_token(token: str) -> str:
+    """Restituisce l'hash SHA-256 di un token, mai il valore in chiaro."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def hash_reset_token(token: str) -> str:
     """Restituisce l'hash SHA-256 del token di reset, mai il token in chiaro."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return hash_token(token)
 
 
 # ------------------------------------------------------------------------- #
@@ -89,8 +94,13 @@ def hash_reset_token(token: str) -> str:
 
 def create_token(subject: str, tenant_id: int, ruolo: str,
                  token_type: str = "access",
-                 expires_delta: timedelta | None = None) -> str:
-    """Crea un JWT (access o refresh)."""
+                 expires_delta: timedelta | None = None,
+                 jti: str | None = None) -> str:
+    """Crea un JWT (access o refresh).
+
+    ``jti`` identifica il refresh token persistito. L'access token resta
+    stateless e non lo include.
+    """
     if expires_delta is None:
         expires_delta = (
             timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -107,6 +117,8 @@ def create_token(subject: str, tenant_id: int, ruolo: str,
         "iat": now,
         "exp": now + expires_delta,
     }
+    if jti:
+        payload["jti"] = jti
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 

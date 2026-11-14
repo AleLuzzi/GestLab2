@@ -158,11 +158,13 @@ class PasswordResetRepositoryTests(unittest.TestCase):
         self.assertTrue(updated)
         self.assertEqual(connection.commits, 1)
         self.assertEqual(connection.rollbacks, 0)
-        select, update_user, update_token = cursor.statements
+        select, update_user, update_token, revoke_sessions = cursor.statements
         self.assertIn("FOR UPDATE", select[0])
         self.assertIn("%s", select[0])
         self.assertEqual(update_user[1], ("hash-bcrypt", 9))
         self.assertEqual(update_token[1], (3,))
+        self.assertIn("refresh_token", revoke_sessions[0])
+        self.assertEqual(revoke_sessions[1], (9,))
 
     def test_missing_token_rolls_back_without_changing_the_password(self):
         cursor = _ResetCursor(row=None)

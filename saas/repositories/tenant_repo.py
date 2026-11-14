@@ -182,8 +182,131 @@ def consuma_token_reset(token_hash, password_hash):
                 "UPDATE password_reset SET usato_il = UTC_TIMESTAMP() WHERE id = %s",
                 (row[0],),
             )
+            cursor.execute(
+                "UPDATE refresh_token SET revocato_il = UTC_TIMESTAMP() "
+                "WHERE utente_id = %s AND revocato_il IS NULL",
+                (row[1],),
+            )
             conn.commit()
             return True
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+
+
+def salva_refresh_token(utente_id, token_hash, famiglia, scade_il):
+    """Registra l'hash di un refresh token. Il valore in chiaro non viene salvato."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT INTO refresh_token "
+                "(utente_id, token_hash, famiglia, scade_il) "
+                "VALUES (%s, %s, %s, %s)",
+                (utente_id, token_hash, famiglia, scade_il),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+
+
+def ruota_refresh_token(token_hash, nuovo_hash, scade_il):
+    """Sostituisce un refresh attivo con uno nuovo della stessa famiglia.
+
+    Ritorna ``ruotato`` con l'utente corrente, ``riuso`` se il token era già
+    stato ruotato o revocato (e in quel caso chiude la famiglia), oppure
+    ``non_valido`` se è assente o scaduto.
+    """
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT id, utente_id, famiglia, "
+                "revocato_il IS NOT NULL, scade_il <= UTC_TIMESTAMP() "
+                "FROM refresh_token WHERE token_hash = %s FOR UPDATE",
+                (token_hash,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                conn.rollback()
+                return {"stato": "non_valido"}
+
+            token_id, utente_id, famiglia, revocato, scaduto = row
+            if revocato:
+                cursor.execute(
+                    "UPDATE refresh_token SET revocato_il = UTC_TIMESTAMP() "
+                    "WHERE famiglia = %s AND revocato_il IS NULL",
+                    (famiglia,),
+                )
+                conn.commit()
+                return {"stato": "riuso"}
+            if scaduto:
+                conn.rollback()
+                return {"stato": "non_valido"}
+
+            cursor.execute(
+                "SELECT id, tenant_id, email, ruolo, attivo FROM utenti "
+                "WHERE id = %s FOR UPDATE",
+                (utente_id,),
+            )
+            utente = cursor.fetchone()
+            if utente is None or not utente[4]:
+                cursor.execute(
+                    "UPDATE refresh_token SET revocato_il = UTC_TIMESTAMP() "
+                    "WHERE famiglia = %s AND revocato_il IS NULL",
+                    (famiglia,),
+                )
+                conn.commit()
+                return {"stato": "non_valido"}
+
+            cursor.execute(
+                "INSERT INTO refresh_token "
+                "(utente_id, token_hash, famiglia, scade_il) "
+                "VALUES (%s, %s, %s, %s)",
+                (utente_id, nuovo_hash, famiglia, scade_il),
+            )
+            cursor.execute(
+                "UPDATE refresh_token SET revocato_il = UTC_TIMESTAMP() "
+                "WHERE id = %s",
+                (token_id,),
+            )
+            conn.commit()
+            return {
+                "stato": "ruotato",
+                "utente": {
+                    "id": utente[0],
+                    "tenant_id": utente[1],
+                    "email": utente[2],
+                    "ruolo": utente[3],
+                },
+            }
+        except mysql.connector.Error:
+            conn.rollback()
+            raise
+
+
+def revoca_refresh_token(token_hash):
+    """Revoca tutti i refresh ancora aperti della famiglia indicata dal token."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT famiglia FROM refresh_token WHERE token_hash = %s "
+                "FOR UPDATE",
+                (token_hash,),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                conn.rollback()
+                return
+            cursor.execute(
+                "UPDATE refresh_token SET revocato_il = UTC_TIMESTAMP() "
+                "WHERE famiglia = %s AND revocato_il IS NULL",
+                (row[0],),
+            )
+            conn.commit()
         except mysql.connector.Error:
             conn.rollback()
             raise

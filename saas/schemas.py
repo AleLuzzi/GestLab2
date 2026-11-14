@@ -52,6 +52,10 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
+class LogoutRequest(BaseModel):
+    refresh_token: str
+
+
 # ------------------------------------------------------------------------- #
 #  Tenant / Utenti (solo admin)
 # ------------------------------------------------------------------------- #

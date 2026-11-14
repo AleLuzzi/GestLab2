@@ -380,7 +380,10 @@ class BootstrapMigrationsTests(unittest.TestCase):
 
     def test_password_reset_migration_is_ordered_and_recognized_when_complete(self):
         migration = "20261114_password_reset.sql"
-        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        self.assertEqual(
+            bootstrap.MIGRATION_ORDER[bootstrap.MIGRATION_ORDER.index(migration) + 1],
+            "20261114_refresh_token.sql",
+        )
         sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
         self.assertIn("CREATE TABLE IF NOT EXISTS `password_reset`", sql)
         self.assertIn("`token_hash` char(64)", sql)
@@ -432,6 +435,64 @@ class BootstrapMigrationsTests(unittest.TestCase):
         self.assertTrue(
             bootstrap._migrazione_gia_applicata(
                 ResetCursor(columns=required, schema=complete), migration
+            )
+        )
+
+    def test_refresh_token_migration_is_ordered_and_recognized_when_complete(self):
+        migration = "20261114_refresh_token.sql"
+        self.assertEqual(bootstrap.MIGRATION_ORDER[-1], migration)
+        sql = Path(bootstrap.MIGRATIONS_DIR, migration).read_text(encoding="utf-8")
+        self.assertIn("CREATE TABLE IF NOT EXISTS `refresh_token`", sql)
+        self.assertIn("`token_hash` char(64)", sql)
+        self.assertIn("`famiglia` char(36)", sql)
+        self.assertNotIn("`token` varchar", sql)
+
+        class RefreshCursor:
+            def __init__(self, exists=True, columns=None, schema=""):
+                self.exists = exists
+                self.columns = columns or set()
+                self.schema = schema
+                self.result = []
+
+            def execute(self, query, params=None):
+                if query.startswith("SELECT COUNT(*) FROM information_schema.tables"):
+                    self.result = [(1 if self.exists else 0,)]
+                elif query == "SHOW COLUMNS FROM `refresh_token`":
+                    self.result = [(column,) for column in self.columns]
+                elif query == "SHOW CREATE TABLE `refresh_token`":
+                    self.result = [("refresh_token", self.schema)]
+                else:
+                    raise AssertionError(f"Query inattesa: {query}")
+
+            def fetchone(self):
+                return self.result[0] if self.result else None
+
+            def fetchall(self):
+                return self.result
+
+        required = {
+            "utente_id",
+            "token_hash",
+            "famiglia",
+            "scade_il",
+            "revocato_il",
+        }
+        complete = (
+            "CONSTRAINT `fk_refresh_token_utente` "
+            "UNIQUE KEY `uq_refresh_token_hash`"
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(RefreshCursor(exists=False), migration)
+        )
+        self.assertFalse(
+            bootstrap._migrazione_gia_applicata(
+                RefreshCursor(columns=required - {"revocato_il"}, schema=complete),
+                migration,
+            )
+        )
+        self.assertTrue(
+            bootstrap._migrazione_gia_applicata(
+                RefreshCursor(columns=required, schema=complete), migration
             )
         )
 

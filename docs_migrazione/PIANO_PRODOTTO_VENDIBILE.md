@@ -89,7 +89,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 
 | Funzione | Stato | Dove / nota |
 |---|---|---|
-| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Reset email e policy password sono attivi. Mancano rate limit e revoca. |
+| Login JWT, ruoli admin/operatore, tenant dal token | P | [`saas/auth.py`](../saas/auth.py): bcrypt + access/refresh; in produzione rifiuta il secret di default. Reset email, policy password, rate limit sul login e rotazione/revoca dei refresh token sono attivi. Resta l'audit log su cancellazioni e rettifiche. |
 | Tenant e utenti | P | [`saas/crea_tenant.py`](../saas/crea_tenant.py), `POST /api/v1/tenant`, `POST /api/v1/utenti`. Onboarding manuale. |
 | Anagrafica clienti/fornitori (`soggetti`) | C | CRUD web e API. Soft-delete. Campi utili a FE futuri già presenti. |
 | Dipendenti, reparti, merceologie | P | CRUD presente; schema legacy (`utf8mb3`, `tenant_id` nullable). |
@@ -504,8 +504,20 @@ ripetibile.
   fallisce il token viene annullato;
 - policy password: almeno 10 caratteri, una lettera e un numero. Vale per la
   creazione utente, la reimpostazione e la password iniziale del bootstrap;
-- rate limit su `/auth/login`;
-- rotazione refresh token e logout/revoca;
+- rate limit su `/auth/login`: 10 tentativi falliti per indirizzo email e 50 per IP
+  nella finestra di 15 minuti (`GESTLAB_LOGIN_MAX_FALLIMENTI`,
+  `GESTLAB_LOGIN_MAX_FALLIMENTI_IP`, `GESTLAB_LOGIN_FINESTRA_SECONDI`).
+  L'undicesimo tentativo risponde HTTP 429, senza verificare di nuovo la
+  password. Un accesso riuscito azzera solo il contatore di quell'indirizzo.
+  Il contatore è in memoria di processo e si azzera al riavvio;
+- rotazione refresh token e logout/revoca: il refresh è persistito solo come
+  hash SHA-256 in `refresh_token`, insieme a una famiglia di sessione. Ogni
+  rinnovo revoca il token presentato ed emette il successivo della stessa
+  famiglia. Ripresentare un token già ruotato o revocato chiude l'intera
+  famiglia, così una copia rubata non resta utilizzabile. `POST /auth/logout`
+  revoca la famiglia; la reimpostazione della password revoca i refresh aperti
+  dell'utente nella stessa transazione. L'access token resta valido fino alla
+  scadenza;
 - rifiuto JWT secret di default in produzione;
 - ruoli restano `admin` e `operatore` in v1; audit log almeno su delete e
   rettifiche (oggi il commento in `DELETE /api/v1/dipendenti` ammette l’assenza).
@@ -513,7 +525,9 @@ ripetibile.
 2FA: post-pilota.
 
 **Criterio:** password dimenticata senza accesso al DB; 10 login falliti non
-restano illimitati; un refresh rubato si ruota.
+restano illimitati; un refresh rubato si ruota. Verificato da
+`tests/test_sessioni.py`: l'undicesimo errore riceve HTTP 429, il rinnovo
+invalida il refresh precedente e il riuso revoca la famiglia.
 
 ### 7.2 Isolamento tenant
 
