@@ -389,6 +389,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .dashboard-table-wrap { overflow-x: auto; }
 .dashboard-table-wrap .table { min-width: 520px; }
 .dashboard-empty { color: var(--text-dim); margin-top: 12px; }
+.ean-result { margin-top: 12px; }
+.ean-result[hidden] { display: none; }
+.ean-name { font-size: 20px; font-weight: 700; }
+.ean-meta { color: var(--text-dim); margin-top: 6px; font-size: 14px; }
 
 .panel-box { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
 .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }

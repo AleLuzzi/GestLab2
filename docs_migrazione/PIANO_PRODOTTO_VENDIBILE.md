@@ -107,7 +107,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Scontrino non fiscale da vendita | C | `POST /api/v1/vendite/{id}/ricevuta` compone la ricevuta dal documento persistito e la accoda al Local Print Agent. La dicitura non fiscale è in testata e a piè di pagina. `POST /api/v1/scontrino` resta solo per un payload libero. |
 | Menu / listino banco | C | `GET /api/v1/menu` elenca gli articoli attivi e, per default, solo quelli con almeno un lotto vendibile. Il filtro si disattiva con `solo_disponibili=false`. La configurazione Bizerba non è il catalogo. |
 | Stampa locale (agent) | P | Coda `print_jobs` + [`saas/print_agent.py`](../saas/print_agent.py). Collaudo periferiche e installer Windows da fare. L'etichetta PDF parte da lotto, usa prezzo commerciale dell'articolo e dati OSA del tenant; ingredienti, allergeni e conservazione sono disponibili ma la derivazione automatica dalla ricetta resta da completare. |
-| Lookup EAN | P | API + campo dashboard; EAN e prezzo sono dati dell'articolo. |
+| Lookup EAN | C | `GET /api/v1/articoli/ean/{codice}` legge EAN e prezzo dall'articolo. La dashboard mostra il nome, con codice, EAN e prezzo, senza serializzare il JSON. |
 | Dashboard operativa | P | Conteggio anagrafiche/lotti/job in [`web/js/features/dashboard.js`](../web/js/features/dashboard.js). Niente scadenze, giacenze critiche, vendite. |
 | HACCP / temperature | A | — |
 | Fatturazione elettronica | A | Fuori v1. |
@@ -644,8 +644,8 @@ eseguibile da admin. Le bozze del 21 novembre 2026 non sostituiscono la firma.
 
 ### 7.7 UX e collaudo
 
-- lookup EAN: nome articolo, non `JSON.stringify`;
-- errori API in italiano (già in parte);
+- lookup EAN: la dashboard mostra il nome dell'articolo, con codice, EAN e prezzo, senza `JSON.stringify`;
+- errori API in italiano: le risposte applicative sono frasi; la validazione di schema diventa una frase italiana (`saas/errori_operatore.py`) e la console non mostra JSON né status HTTP inglesi;
 - flussi banco/laboratorio su tablet (viewport, tastiera virtuale, scanner HID);
 - niente schermate da sviluppatore in produzione (`/docs` chiuso o protetto).
 

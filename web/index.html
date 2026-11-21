@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261114-4" />
+  <link rel="stylesheet" href="/static/app.css?v=20261121-2" />
 </head>
 <body>
   <!-- Login view -->
@@ -286,7 +286,7 @@
             <input type="text" id="ean-input" placeholder="Scansiona o digita un EAN-13" />
             <button id="btn-ean" class="btn primary">Cerca</button>
           </div>
-          <pre id="ean-result" class="code-box"></pre>
+          <div id="ean-result" class="ean-result" role="status" aria-live="polite" hidden></div>
         </div>
       </section>
 

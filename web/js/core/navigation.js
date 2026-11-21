@@ -2,7 +2,7 @@ import { $ } from "./dom.js";
 import {
   loadArticoli, loadDipendenti, loadFornitori, loadMerceologie, loadReparti,
 } from "../features/anagrafiche.js";
-import { loadDashboard } from "../features/dashboard.js";
+import { loadDashboard } from "../features/dashboard.js?v=20261121-2";
 import { openIngressoMerce } from "../features/ingresso-merce.js";
 import { loadMenu } from "../features/menu.js?v=20261114-3";
 import { loadLabelLots, loadPrintJobs } from "../features/printing.js";

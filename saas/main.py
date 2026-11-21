@@ -19,11 +19,12 @@ from logging.handlers import RotatingFileHandler
 import mysql.connector
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from core.env import valida_hosting_gestito
-from saas import auth, osservabilita
+from saas import auth, errori_operatore, osservabilita
 
 valida_hosting_gestito()
 osservabilita.avvia_error_tracking()
@@ -138,6 +139,15 @@ async def registra_accesso(request: Request, call_next):
         time.perf_counter() - inizio,
     )
     return response
+
+
+@app.exception_handler(RequestValidationError)
+async def errori_validazione(request: Request, exc: RequestValidationError):
+    """I dati rifiutati dallo schema diventano una frase italiana, non JSON."""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": errori_operatore.messaggio_validazione(exc.errors())},
+    )
 
 
 @app.exception_handler(Exception)

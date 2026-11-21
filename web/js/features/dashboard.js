@@ -177,16 +177,83 @@ export async function loadDashboard() {
   }
 }
 
+function testoVisibile(value) {
+  const testo = String(value ?? "").trim();
+  return testo;
+}
+
+export function riepilogoEan(product) {
+  if (!product || typeof product !== "object" || Array.isArray(product)) return null;
+  const nome = testoVisibile(product.nome || product.prodotto);
+  if (!nome) return null;
+
+  const dettagli = [];
+  const codice = testoVisibile(product.codice);
+  const ean = testoVisibile(product.ean);
+  if (codice) dettagli.push(`Codice ${codice}`);
+  if (ean) dettagli.push(`EAN ${ean}`);
+
+  const prezzoGrezzo = testoVisibile(product.prezzo_unitario);
+  const prezzo = Number(prezzoGrezzo);
+  if (prezzoGrezzo && Number.isFinite(prezzo)) {
+    const importo = new Intl.NumberFormat("it-IT", {
+      style: "currency",
+      currency: "EUR",
+    }).format(prezzo);
+    const unita = testoVisibile(product.unita_misura);
+    dettagli.push(unita ? `${importo} / ${unita}` : importo);
+  }
+
+  return { nome, dettagli: dettagli.join(" · ") };
+}
+
+function messaggioLookup(error) {
+  const testo = testoVisibile(error?.message);
+  if (!testo || testo.startsWith("{") || testo.startsWith("[")) return "Articolo non trovato.";
+  if (testo === "Not Found" || testo === "Elemento non trovato.") return "Articolo non trovato.";
+  return testo;
+}
+
+function mostraLookup(contenuto) {
+  const box = $("ean-result");
+  box.replaceChildren();
+  if (!contenuto) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  if (contenuto.errore) {
+    const errore = document.createElement("p");
+    errore.className = "error";
+    errore.textContent = contenuto.errore;
+    box.appendChild(errore);
+    return;
+  }
+  const nome = document.createElement("p");
+  nome.className = "ean-name";
+  nome.textContent = contenuto.nome;
+  box.appendChild(nome);
+  if (contenuto.dettagli) {
+    const meta = document.createElement("p");
+    meta.className = "ean-meta";
+    meta.textContent = contenuto.dettagli;
+    box.appendChild(meta);
+  }
+}
+
 async function doEanLookup() {
   const code = $("ean-input").value.trim();
-  $("ean-result").textContent = "";
-  if (!code) return;
+  if (!code) {
+    mostraLookup(null);
+    return;
+  }
 
   try {
     const product = await api("/api/v1/articoli/ean/" + encodeURIComponent(code));
-    $("ean-result").textContent = JSON.stringify(product, null, 2);
+    const riepilogo = riepilogoEan(product);
+    mostraLookup(riepilogo || { errore: "Articolo non trovato." });
   } catch (error) {
-    $("ean-result").textContent = "Errore: " + error.message;
+    mostraLookup({ errore: messaggioLookup(error) });
   }
 }
 

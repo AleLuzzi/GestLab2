@@ -18,6 +18,7 @@ import sys
 
 from pydantic import ValidationError
 
+from saas.errori_operatore import messaggio_validazione
 from saas.schemas import OnboardingRichiesta
 from saas.services.onboarding import OnboardingError, crea_laboratorio
 
@@ -75,7 +76,7 @@ def main(argv=None):
         )
         esito = crea_laboratorio(richiesta)
     except ValidationError as exc:
-        print(_messaggio_validazione(exc), file=sys.stderr)
+        print(messaggio_validazione(exc.errors()), file=sys.stderr)
         return 1
     except OnboardingError as exc:
         print(str(exc), file=sys.stderr)
@@ -85,14 +86,6 @@ def main(argv=None):
     print(f"Email: {esito['email']}")
     print(f"Catalogo: {esito['catalogo']} ({esito['articoli']} articoli)")
     return 0
-
-
-def _messaggio_validazione(exc: ValidationError) -> str:
-    primo = exc.errors()[0]
-    testo = primo.get("msg", "Dati non validi.")
-    if testo.startswith("Value error, "):
-        testo = testo[len("Value error, "):]
-    return testo
 
 
 if __name__ == "__main__":

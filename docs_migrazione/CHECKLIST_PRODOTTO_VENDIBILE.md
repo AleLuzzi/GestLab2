@@ -135,8 +135,8 @@ Checklist operativa basata su [PIANO_PRODOTTO_VENDIBILE.md](PIANO_PRODOTTO_VENDI
 
 ### UX, documentazione e collaudo
 
-- [ ] Correggere il lookup EAN affinché mostri il nome dell'articolo e non JSON grezzo.
-- [ ] Verificare che gli errori API mostrati all'operatore siano comprensibili e in italiano.
+- [x] Correggere il lookup EAN affinché mostri il nome dell'articolo e non JSON grezzo. La dashboard mostra il nome in evidenza, con codice, EAN e prezzo unitario; non serializza la risposta. Un codice sconosciuto mostra «Articolo non trovato.» o il messaggio italiano dell'API. Coperto da `tests/test_lookup_ean_ui.py`. Verificato il 21 novembre 2026 in console: EAN `8001234567897` mostra «Salsiccia fresca» e «12,50 € / kg».
+- [x] Verificare che gli errori API mostrati all'operatore siano comprensibili e in italiano. Le risposte applicative restano frasi italiane. Gli errori di schema (`422`) passano da `saas/errori_operatore.py` e non espongono più il JSON inglese di Pydantic; la console traduce gli status HTTP inglesi e non serializza `detail`. Coperto da `tests/test_errori_operatore.py`.
 - [ ] Collaudare su tablet reale viewport, tastiera virtuale e scanner HID per i flussi di laboratorio e banco.
 - [ ] Chiudere o proteggere `/docs` in produzione.
 - [ ] Scrivere un manuale utente per ingresso → lavorazione → etichetta → vendita, distinto dalle istruzioni per sviluppatori.
