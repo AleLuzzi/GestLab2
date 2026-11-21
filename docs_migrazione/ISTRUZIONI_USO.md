@@ -1,5 +1,9 @@
 # Istruzioni d'uso — GestLab SaaS
 
+Queste istruzioni sono per chi installa e sviluppa GestLab. Il percorso
+operativo ingresso, lavorazione, etichetta e vendita è nel
+[manuale utente](MANUALE_UTENTE.md).
+
 La console web SaaS è l'unica interfaccia applicativa supportata per lo
 sviluppo e l'uso di GestLab. Si accede da browser, inclusi i browser dei
 tablet supportati; non è richiesta l'installazione di Kivy o di un'app

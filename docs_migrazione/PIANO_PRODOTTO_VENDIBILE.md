@@ -18,6 +18,7 @@ Documenti correlati:
 - [SAAS_MIGRATION_PLAN.md](SAAS_MIGRATION_PLAN.md)
 - [SAAS_PRINTING_BARCODE_PLAN.md](SAAS_PRINTING_BARCODE_PLAN.md)
 - [ISTRUZIONI_USO.md](ISTRUZIONI_USO.md)
+- [MANUALE_UTENTE.md](MANUALE_UTENTE.md)
 - [PUBBLICAZIONE_AWS_TEST.md](PUBBLICAZIONE_AWS_TEST.md)
 - [CREAZIONE_NUOVO_TENANT.md](CREAZIONE_NUOVO_TENANT.md)
 
@@ -123,7 +124,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Test | P | Unit: soggetti, tracciabilità, ingresso, dipendenti, bootstrap. E2E [`tests/test_saas_e2e.py`](../tests/test_saas_e2e.py) **distruttivo**. |
 | Produzione | P | Il profilo `GESTLAB_HOSTING=managed` separa produzione e staging: HTTPS, database remoti distinti, Secret Manager e point-in-time recovery sono obbligatori all'avvio. Le istanze AWS non sono ancora create: l'account locale non ha credenziali. |
 | GDPR / legale | P | Bozze in `docs_migrazione/legale/`: informativa, DPA con il laboratorio, sub-responsabili cloud e checklist da firmare prima del primo canone. Export tenant ancora assente. |
-| Manuale utente | P | `ISTRUZIONI_USO.md` è per sviluppatori (venv, uvicorn, agent). |
+| Manuale utente | C | [MANUALE_UTENTE.md](MANUALE_UTENTE.md) guida l'operatore da ingresso a lavorazione, etichetta e vendita. `ISTRUZIONI_USO.md` resta per sviluppatori. |
 
 ---
 
@@ -654,9 +655,10 @@ etichetta, vendita DDT.
 
 ### 7.8 Documentazione e test
 
-- manuale utente (ingresso → lavorazione → etichetta → vendita), distinto da
-  `ISTRUZIONI_USO.md`;
-- video o sequenza screenshot per il pilota;
+- manuale utente (ingresso → lavorazione → etichetta → vendita): scritto in
+  `MANUALE_UTENTE.md`, distinto da `ISTRUZIONI_USO.md`;
+- video o sequenza screenshot per il pilota: sequenza in
+  `docs_migrazione/sequenza_pilota/README.md`;
 - test vendita, scadenze, isolamento tenant;
 - e2e **non** eseguito su database con dati da conservare; oggi
   `test_saas_e2e.py` ricrea tabelle.
