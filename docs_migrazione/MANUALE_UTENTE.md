@@ -5,7 +5,9 @@ lavorazione, etichetta e vendita. Non spiega come installare il server, il
 database o il programma di stampa. Quelle istruzioni restano in
 [ISTRUZIONI_USO.md](ISTRUZIONI_USO.md) e in
 [PRINT_AGENT_WINDOWS.md](PRINT_AGENT_WINDOWS.md). Le schermate dello
-stesso percorso sono in [sequenza_pilota/README.md](sequenza_pilota/README.md).
+stesso percorso sono in [sequenza_pilota/README.md](sequenza_pilota/README.md). Per il collaudo
+formale con un operatore nuovo usa
+[COLLAUDO_FLUSSO_MANUALE.md](COLLAUDO_FLUSSO_MANUALE.md).
 
 GestLab registra la merce che entra, i preparati che escono dalla lavorazione
 e le vendite interne del laboratorio. Non è una cassa fiscale, non invia

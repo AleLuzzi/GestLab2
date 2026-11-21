@@ -1,7 +1,7 @@
 """Repository SaaS per articoli, lotti d'ingresso e lavorazioni."""
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from core.audit import registra
@@ -60,7 +60,7 @@ class PrezzoVenditaNonValido(Exception):
 
 
 class LottoScaduto(Exception):
-    """Un lotto con data di scadenza superata non può essere lavorato."""
+    """Un lotto con data di scadenza superata non può essere lavorato né venduto."""
 
 
 class ConfermaTmcScadutoRichiesta(Exception):
@@ -68,6 +68,8 @@ class ConfermaTmcScadutoRichiesta(Exception):
 
 
 def _data_valore(value):
+    if isinstance(value, datetime):
+        return value.date()
     if isinstance(value, date):
         return value
     if isinstance(value, str) and value:
@@ -1047,7 +1049,8 @@ def _registra_righe_vendita(cursor, tenant_id, vendita_id, righe):
         cursor.execute(
             "SELECT l.articolo_id, l.unita_misura, "
             "l.quantita_disponibile, l.attivo, "
-            "a.unita_misura, a.attivo, a.prezzo_unitario "
+            "a.unita_misura, a.attivo, a.prezzo_unitario, "
+            "l.data_scadenza, CURRENT_DATE "
             "FROM lotti l JOIN articoli a "
             "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
             "WHERE l.tenant_id = %s AND l.id = %s FOR UPDATE",
@@ -1071,6 +1074,13 @@ def _registra_righe_vendita(cursor, tenant_id, vendita_id, righe):
             for riga in righe_lotto
         ):
             raise PrezzoVenditaNonValido()
+
+        oggi = _data_valore(_row_value(lotto, 8))
+        data_scadenza = _data_valore(_row_value(lotto, 7))
+        if oggi is not None and data_scadenza is not None and data_scadenza < oggi:
+            raise LottoScaduto(
+                f"Il lotto {lotto_id} ha una data di scadenza superata."
+            )
 
         quantita_disponibile = Decimal(str(lotto[2]))
         quantita_venduta = quantita_per_lotto[lotto_id]

@@ -1401,6 +1401,8 @@ def crea_vendita_completa(
         ) from error
     except tracciabilita_repo.GiacenzaInsufficiente as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.LottoScaduto as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except tracciabilita_repo.RigaVenditaNonValida as error:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -1440,6 +1442,8 @@ def aggiungi_righe_vendita(
             "Lotto, articolo o unità di misura non coerenti nella riga di vendita",
         ) from error
     except tracciabilita_repo.GiacenzaInsufficiente as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
+    except tracciabilita_repo.LottoScaduto as error:
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except tracciabilita_repo.PrezzoVenditaNonValido as error:
         raise HTTPException(

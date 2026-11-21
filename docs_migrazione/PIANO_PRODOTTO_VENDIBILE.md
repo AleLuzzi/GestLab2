@@ -411,7 +411,9 @@ Nuovo aggregato (nome da definire in implementazione, es. `documenti_vendita`
   informativa;
 - transazione unica: decremento `quantita_disponibile`, movimento
   `VENDITA` (già ammesso dallo schema aggiornato e dalla relativa migrazione),
-  chiusura lotto se giacenza a zero.
+  chiusura lotto se giacenza a zero. Una scadenza già passata rifiuta lo
+  scarico con HTTP 409 e annulla la transazione; la scadenza di oggi resta
+  vendibile e il TMC trascorso non blocca la vendita.
 
 Estendere [`core/services/vendite.py`](../core/services/vendite.py) e repository
 tracciabilità; non chiudere lotti sul modello legacy.
@@ -659,12 +661,19 @@ etichetta, vendita DDT.
   `MANUALE_UTENTE.md`, distinto da `ISTRUZIONI_USO.md`;
 - video o sequenza screenshot per il pilota: sequenza in
   `docs_migrazione/sequenza_pilota/README.md`;
-- test vendita, scadenze, isolamento tenant;
-- e2e **non** eseguito su database con dati da conservare; oggi
-  `test_saas_e2e.py` ricrea tabelle.
+- test vendita, scadenze, isolamento tenant: `tests/test_vendite_scadenze_tenant.py`
+  rifiuta la vendita di un lotto scaduto, lascia vendibili la scadenza di oggi
+  e il TMC trascorso, e fallisce se una lettura o uno scarico non filtra il
+  tenant del token. Eseguiti il 21 novembre 2026 insieme a vendite,
+  tracciabilità, IDOR e listino: 101 test superati;
+- e2e eseguito il 21 novembre 2026 solo su database sacrificabile
+  `gestlab_e2e_20261121` (bootstrap + `tests/test_saas_e2e.py`, 25 controlli
+  passati, DB eliminato); `data` non toccato.
 
 **Criterio:** un nuovo operatore completa il flusso pilota col solo manuale
-utente.
+utente. Regressione automatica (operatore, DB sacrificabile) e scheda
+`COLLAUDO_FLUSSO_MANUALE.md` verificate il 21 novembre 2026;
+`tests/test_flusso_pilota_manuale.py`.
 
 ---
 
