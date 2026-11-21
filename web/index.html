@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261121-2" />
+  <link rel="stylesheet" href="/static/app.css?v=20261121-6" />
 </head>
 <body>
   <!-- Login view -->
@@ -160,7 +160,7 @@
 
           <section class="ingresso-step" data-step="2" aria-labelledby="ingresso-articoli-title" hidden>
             <h3 id="ingresso-articoli-title">Articoli ricevuti</h3>
-            <p class="ingresso-help">Scegli una categoria, seleziona un articolo e inserisci la quantità nell'unità di misura indicata.</p>
+            <p class="ingresso-help">Scegli una categoria, seleziona un articolo e inserisci la quantità nell'unità di misura indicata. Lo scanner legge il codice a barre e seleziona l'articolo.</p>
             <div id="ingress-categorie" class="categoria-buttons" aria-label="Categorie articolo"></div>
             <div id="ingress-articoli-feedback" class="ingresso-feedback" aria-live="polite"></div>
             <div id="ingress-articoli" class="articoli-list" aria-label="Articoli disponibili"></div>
@@ -283,9 +283,11 @@
         <div class="panel-box">
           <h3>Lookup barcode (EAN)</h3>
           <div class="row">
-            <input type="text" id="ean-input" placeholder="Scansiona o digita un EAN-13" />
-            <button id="btn-ean" class="btn primary">Cerca</button>
+            <input type="text" id="ean-input" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Scansiona o digita un EAN" />
+            <button id="btn-ean" class="btn primary" type="button">Cerca</button>
+            <button id="btn-ean-tastiera" class="btn ghost" type="button">Tastiera</button>
           </div>
+          <p class="field-hint">Lo scanner invia il codice e Invio. Su tablet la tastiera resta chiusa finché non premi Tastiera.</p>
           <div id="ean-result" class="ean-result" role="status" aria-live="polite" hidden></div>
         </div>
       </section>
@@ -299,7 +301,7 @@
         <div class="form-card sales-selection">
           <div class="sales-selection-fields">
             <label for="sales-search">Cerca articolo
-              <input id="sales-search" type="search" autocomplete="off" placeholder="Digita il nome dell'articolo" />
+              <input id="sales-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Nome oppure scansione del codice a barre" />
             </label>
             <label class="sales-availability-filter" for="sales-only-available">
               <input id="sales-only-available" type="checkbox" checked />
@@ -1035,6 +1037,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261121-1"></script>
+<script type="module" src="/static/js/app.js?v=20261121-5"></script>
 </body>
 </html>

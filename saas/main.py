@@ -23,7 +23,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from core.env import valida_hosting_gestito
+from core.env import is_production_environment, valida_hosting_gestito
 from saas import auth, errori_operatore, osservabilita
 
 valida_hosting_gestito()
@@ -125,6 +125,29 @@ app = FastAPI(
 # raggiungibili sotto /static e la radice restituisce index.html.
 _WEB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 app.mount("/static", StaticFiles(directory=_WEB_DIR), name="static")
+
+
+def percorso_documentazione_sviluppatore(path):
+    """Swagger, ReDoc e schema OpenAPI: schermate da sviluppatore, non da banco."""
+    percorso = path.split("?", 1)[0]
+    if len(percorso) > 1:
+        percorso = percorso.rstrip("/")
+    return (
+        percorso in {"/docs", "/redoc", "/openapi.json"}
+        or percorso.startswith("/docs/")
+        or percorso.startswith("/redoc/")
+    )
+
+
+@app.middleware("http")
+async def chiudi_documentazione_produzione(request: Request, call_next):
+    """In produzione /docs non è pubblicato. Staging e sviluppo locale restano aperti."""
+    if is_production_environment() and percorso_documentazione_sviluppatore(request.url.path):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Non disponibile."},
+        )
+    return await call_next(request)
 
 
 @app.middleware("http")

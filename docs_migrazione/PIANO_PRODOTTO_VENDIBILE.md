@@ -646,8 +646,8 @@ eseguibile da admin. Le bozze del 21 novembre 2026 non sostituiscono la firma.
 
 - lookup EAN: la dashboard mostra il nome dell'articolo, con codice, EAN e prezzo, senza `JSON.stringify`;
 - errori API in italiano: le risposte applicative sono frasi; la validazione di schema diventa una frase italiana (`saas/errori_operatore.py`) e la console non mostra JSON né status HTTP inglesi;
-- flussi banco/laboratorio su tablet (viewport, tastiera virtuale, scanner HID);
-- niente schermate da sviluppatore in produzione (`/docs` chiuso o protetto).
+- flussi banco/laboratorio su tablet: fino a 1024 px la navigazione sta in alto; i campi usano almeno 16 px e il focus resta sopra la tastiera; lo scanner HID (almeno 6 caratteri entro 45 ms, poi Invio) seleziona l'articolo in dashboard, ingresso e vendita. Sul campo EAN la tastiera resta chiusa finché l'operatore non preme Tastiera. Verificato il 21 novembre 2026 nel browser con viewport iPad 820×1180 e 1180×820; il tablet fisico del pilota resta nel gate;
+- niente schermate da sviluppatore in produzione: con `GESTLAB_ENV=production`, `/docs`, `/redoc` e `/openapi.json` rispondono 404; staging e sviluppo locale le tengono aperte.
 
 **Criterio:** collaudo su un tablet reale: ingresso, lavorazione da ricetta,
 etichetta, vendita DDT.

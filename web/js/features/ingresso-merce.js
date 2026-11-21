@@ -1,5 +1,6 @@
 import { api } from "../api/client.js";
 import { $ } from "../core/dom.js";
+import { registraScanner } from "../core/scanner.js?v=20261121-5";
 
 let fornitori = [];
 let articoli = [];
@@ -349,7 +350,37 @@ export function openIngressoMerce() {
   caricaDatiIngresso();
 }
 
+async function selezionaArticoloDaScanner(codice) {
+  await caricaDatiIngresso();
+  let articolo = articoliAttivi().find((item) => String(item.ean || "") === codice);
+  if (!articolo) {
+    try {
+      const remoto = await api("/api/v1/articoli/ean/" + encodeURIComponent(codice));
+      articolo = articoliAttivi().find((item) => String(item.id) === String(remoto.id));
+    } catch (error) {
+      articolo = null;
+    }
+  }
+  mostraStep(2);
+  if (!articolo) {
+    $("ingress-articoli-feedback").textContent = "Nessun articolo attivo con questo codice a barre.";
+    return;
+  }
+  categoriaSelezionata = articolo.categoria?.trim() || "Senza categoria";
+  articoliSelezionati.clear();
+  articoliSelezionati.add(String(articolo.id));
+  renderCategorie();
+  renderArticoli();
+  $("ingress-articoli-feedback").textContent = `Selezionato: ${articolo.nome}. Inserisci la quantità.`;
+  $("ingress-quantita").focus();
+}
+
 export function initIngressoMerce() {
+  registraScanner((codice) => {
+    if (!$("view-ingresso-merce").classList.contains("active")) return false;
+    selezionaArticoloDaScanner(codice);
+    return true;
+  });
   $("btn-reset-ingresso").addEventListener("click", azzeraIngresso);
   $("btn-ingresso-step-1").addEventListener("click", () => {
     if (!$("ingress-fornitore").value) {

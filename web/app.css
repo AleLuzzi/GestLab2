@@ -14,17 +14,19 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body, html { height: 100%; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+html { overflow-x: hidden; --keyboard-inset: 0px; }
 
 .view { width: 100%; min-height: 100vh; }
 .view.centered { display: flex; align-items: center; justify-content: center; }
 
 .card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px; }
-.login-card { width: 360px; }
+.login-card { width: min(360px, 100%); }
 .login-card h1 { margin-bottom: 4px; }
 .link-button {
-  display: block; width: 100%; margin-top: 12px; padding: 0;
+  display: block; width: 100%; margin-top: 12px; padding: 10px 0;
   background: none; border: none; color: var(--accent-hover);
-  font-size: 14px; cursor: pointer; text-align: center;
+  font-size: 16px; cursor: pointer; text-align: center;
+  min-height: 44px; touch-action: manipulation;
 }
 .link-button:hover { text-decoration: underline; }
 .field-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--text-dim); }
@@ -34,13 +36,19 @@ label { display: block; margin-bottom: 14px; font-size: 14px; color: var(--text-
 input, select, textarea {
   width: 100%; margin-top: 6px; padding: 10px 12px;
   background: var(--bg-3); border: 1px solid var(--border);
-  border-radius: 7px; color: var(--text); font-size: 14px;
+  border-radius: 7px; color: var(--text); font-size: 16px;
+  scroll-margin-top: 80px; scroll-margin-bottom: 160px;
+}
+input[type="checkbox"], input[type="radio"] {
+  width: 1.25rem; height: 1.25rem; min-height: 1.25rem; margin-top: 0;
+  accent-color: var(--accent);
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
 
 .btn {
   display: inline-block; padding: 10px 18px; border: none; border-radius: 7px;
   font-size: 14px; cursor: pointer; font-weight: 600;
+  min-height: 44px; touch-action: manipulation;
 }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.primary:hover { background: var(--accent-hover); }
@@ -71,12 +79,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .nav-item {
   text-align: left; padding: 11px 14px; background: transparent; border: none;
   border-radius: 8px; color: var(--text-dim); font-size: 14px; cursor: pointer;
+  min-height: 44px; touch-action: manipulation;
 }
 .nav-item:hover { background: var(--bg-3); color: var(--text); }
 .nav-item.active { background: var(--accent); color: #fff; }
 .nav-item.admin-only, .config-card.admin-only { display: none; }
 
-.content { margin-left: 210px; padding: 28px; flex: 1; }
+.content { margin-left: 210px; padding: 28px; padding-bottom: calc(28px + var(--keyboard-inset, 0px)); flex: 1; min-width: 0; }
 .panel { display: none; }
 .panel.active { display: block; }
 .panel h2 { margin-bottom: 18px; }
@@ -100,10 +109,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   color: var(--text);
 }
 .sales-availability-filter input {
-  width: auto;
-  min-height: 0;
+  width: 1.25rem;
+  height: 1.25rem;
   margin: 0;
-  accent-color: var(--accent);
 }
 .listino-group { margin-top: 8px; }
 .listino-group h3 { margin: 18px 0 8px; color: var(--accent); }
@@ -405,6 +413,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .table tr:hover td { background: var(--bg-3); }
 
 .form-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-top: 18px; max-width: 480px; }
+.form-card.ingresso-card,
+.form-card.sales-selection { max-width: none; }
 .form-card h3 { margin-bottom: 14px; }
 .form-card .row { margin-top: 14px; }
 
@@ -579,7 +589,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .trace-line select,
 .trace-line input { min-width: 0; }
 .trace-line .btn.danger {
-  grid-column: 2; grid-row: 1 / span 2; min-height: 42px; padding: 8px 12px;
+  grid-column: 2; grid-row: 1 / span 2; min-height: 44px; padding: 8px 12px;
 }
 .trace-line-scrap .btn.danger { grid-row: 1 / span 3; }
 
@@ -589,10 +599,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (max-width: 900px) {
   .sales-selection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .trace-recipe-controls { grid-template-columns: 1fr; align-items: stretch; }
   .trace-recipe-ingredient-row { grid-template-columns: 1fr; }
   .trace-recipe-ingredient-required { padding-bottom: 0; }
+  .topbar { padding: 12px 16px; gap: 8px; }
+  .topbar-user { min-width: 0; }
+  #user-email { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .view.centered { align-items: flex-start; padding: 24px 16px calc(24px + var(--keyboard-inset, 0px)); }
+  .login-card { padding: 24px 18px; }
   .sidebar {
     position: sticky;
     top: 61px;
@@ -606,7 +621,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
     z-index: 9;
   }
   .nav-item { flex: 0 0 auto; min-height: 48px; white-space: nowrap; }
-  .content { margin-left: 0; padding: 18px; }
+  .content { margin-left: 0; padding: 18px; padding-bottom: calc(18px + var(--keyboard-inset, 0px)); }
+  .row .btn { flex: 1 1 8rem; }
+  .sales-selection-fields label[for="sales-search"] { grid-column: 1 / -1; }
   .ingresso-header-fields,
   .ingresso-metadata-fields { grid-template-columns: 1fr; }
   .ingresso-weight-row { grid-template-columns: 1fr 1fr; }

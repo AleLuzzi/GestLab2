@@ -1,5 +1,6 @@
 import { api, apiGetBlob } from "../api/client.js";
 import { $ } from "../core/dom.js";
+import { registraScanner } from "../core/scanner.js?v=20261121-5";
 
 let lottiVendita = [];
 let listinoVendita = [];
@@ -497,7 +498,36 @@ export async function loadVendite() {
   }
 }
 
+async function selezionaArticoloDaScanner(codice) {
+  if (!listinoVendita.length) await loadVendite();
+  let articoloId = "";
+  try {
+    const remoto = await api("/api/v1/articoli/ean/" + encodeURIComponent(codice));
+    articoloId = String(remoto.id);
+  } catch (error) {
+    $("sales-selection-error").textContent = "Nessun articolo con questo codice a barre.";
+    return;
+  }
+  const articolo = listinoVendita.find((item) => String(item.id) === articoloId);
+  if (!articolo) {
+    $("sales-selection-error").textContent = "Articolo trovato, ma non è nel listino di vendita.";
+    return;
+  }
+  if ($("sales-only-available").checked && !articolo.disponibile) {
+    $("sales-only-available").checked = false;
+  }
+  $("sales-search").value = "";
+  aggiornaArticoli(articoloId);
+  $("sales-selection-error").textContent = "";
+  $("sales-quantity").focus();
+}
+
 export function initVendite() {
+  registraScanner((codice) => {
+    if (!$("view-vendite").classList.contains("active")) return false;
+    selezionaArticoloDaScanner(codice);
+    return true;
+  });
   $("sales-search").addEventListener("input", () => aggiornaArticoli());
   $("sales-only-available").addEventListener("change", () => aggiornaArticoli());
   $("sales-article").addEventListener("change", (event) => {

@@ -534,7 +534,7 @@ python -m saas.print_agent --url https://<DOMINIO> --token <TOKEN_DISPOSITIVO>
 Eseguire nell'ordine:
 
 1. Aprire `https://<DOMINIO>/` oppure `http://<IP_STATICO>/`.
-2. Aprire `https://<DOMINIO>/docs` e verificare che Swagger risponda.
+2. Aprire `https://<DOMINIO>/docs`: con `GESTLAB_ENV=production` deve rispondere 404 «Non disponibile.» (Swagger, ReDoc e `/openapi.json` non sono pubblicati).
 3. Aprire `https://<DOMINIO>/health`.
 4. Effettuare il login con l'admin creato dalle variabili d'ambiente.
 5. Creare un reparto o un dipendente dalla console.

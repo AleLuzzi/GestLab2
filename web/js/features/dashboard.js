@@ -1,5 +1,6 @@
 import { api } from "../api/client.js";
 import { $ } from "../core/dom.js";
+import { registraScanner } from "../core/scanner.js?v=20261121-5";
 
 const EXPIRY_LIST_LIMIT = 50;
 
@@ -260,6 +261,22 @@ async function doEanLookup() {
 export function initDashboard() {
   $("btn-ean").addEventListener("click", doEanLookup);
   $("ean-input").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") doEanLookup();
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    doEanLookup();
+  });
+  $("btn-ean-tastiera").addEventListener("click", () => {
+    const input = $("ean-input");
+    const aperta = input.inputMode === "text";
+    input.inputMode = aperta ? "none" : "text";
+    $("btn-ean-tastiera").textContent = aperta ? "Tastiera" : "Chiudi tastiera";
+    input.focus();
+  });
+  registraScanner((codice) => {
+    if (!$("view-dashboard").classList.contains("active")) return false;
+    $("ean-input").value = codice;
+    doEanLookup();
+    $("ean-input").focus();
+    return true;
   });
 }

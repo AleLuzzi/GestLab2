@@ -1,18 +1,21 @@
 import { initAuth } from "./core/auth.js?v=20261114-4";
-import { initNavigation } from "./core/navigation.js?v=20261121-1";
+import { initNavigation } from "./core/navigation.js?v=20261121-5";
+import { initScanner } from "./core/scanner.js?v=20261121-5";
+import { initTastieraVirtuale } from "./core/tastiera.js?v=20261121-5";
 import { initAdmin } from "./features/admin.js?v=20261121-1";
 import { initAnagrafiche } from "./features/anagrafiche.js";
-import { initDashboard } from "./features/dashboard.js?v=20261121-2";
-import { initIngressoMerce } from "./features/ingresso-merce.js";
+import { initDashboard } from "./features/dashboard.js?v=20261121-5";
+import { initIngressoMerce } from "./features/ingresso-merce.js?v=20261121-5";
 import { initMenu } from "./features/menu.js?v=20261114-3";
 import { initPrinting } from "./features/printing.js";
 import { initProgressivi } from "./features/progressivi.js";
 import { initTracciabilita } from "./features/tracciabilita.js";
-import { initVendite } from "./features/vendite.js?v=20261114-3";
+import { initVendite } from "./features/vendite.js?v=20261121-5";
 
 document.addEventListener("DOMContentLoaded", () => {
   const showLanding = initNavigation();
   initAuth(showLanding);
+  initTastieraVirtuale();
   initDashboard();
   initAnagrafiche();
   initIngressoMerce();
@@ -22,4 +25,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initMenu();
   initVendite();
   initAdmin();
+  initScanner();
 });

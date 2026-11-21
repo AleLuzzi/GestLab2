@@ -16,7 +16,7 @@ python -m uvicorn saas.main:app --reload
 ```
 
 - **Console web (UI SaaS)**: <http://localhost:8000/>
-- **Documentazione interattiva (OpenAPI)**: <http://localhost:8000/docs>
+- **Documentazione interattiva (OpenAPI)**: <http://localhost:8000/docs> in sviluppo e staging. Con `GESTLAB_ENV=production` `/docs`, `/redoc` e `/openapi.json` rispondono 404.
 
 `GET /health` risponde 200 solo se il database esegue una lettura; se il
 database non risponde, lo stato è 503 e `status` vale `degraded`. Il log

@@ -90,8 +90,8 @@ Comportamento predefinito:
 - **codice del workspace locale** (anche se non è stato fatto `git push`);
 - HTTP sull'IP pubblico, senza HTTPS.
 
-Al termine lo script stampa URL della console, `/docs`, `/health` e il percorso
-del file env.
+Al termine lo script stampa URL della console, `/health` e il percorso
+del file env. Con `GESTLAB_ENV=production` la documentazione `/docs` non è pubblicata.
 
 Aprire `http://<IP>/` e accedere con `GESTLAB_ADMIN_EMAIL` /
 `GESTLAB_ADMIN_PASSWORD`.

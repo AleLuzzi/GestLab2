@@ -368,7 +368,11 @@ Write-Host ""
 Write-Host "Deploy terminato."
 Write-Host "  Console:  http://$publicIp/"
 if ($Domain) { Write-Host "  Dominio:  http://$Domain/" }
-Write-Host "  Swagger:  http://$publicIp/docs"
+if ($envMap.GESTLAB_ENV -eq "production") {
+    Write-Host "  Documentazione API: chiusa (GESTLAB_ENV=production)"
+} else {
+    Write-Host "  Swagger:  http://$publicIp/docs"
+}
 Write-Host "  Admin:    $($envMap.GESTLAB_ADMIN_EMAIL)"
 Write-Host "  Segreti:  $EnvFile"
 Write-Host "Non committare $EnvFile ne' $KeyPemPath."
