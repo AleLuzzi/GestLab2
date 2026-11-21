@@ -6,7 +6,7 @@ import { loadDashboard } from "../features/dashboard.js";
 import { openIngressoMerce } from "../features/ingresso-merce.js";
 import { loadMenu } from "../features/menu.js?v=20261114-3";
 import { loadLabelLots, loadPrintJobs } from "../features/printing.js";
-import { loadDatiOsa } from "../features/admin.js";
+import { loadDatiOsa } from "../features/admin.js?v=20261121-1";
 import { loadProgressivi } from "../features/progressivi.js";
 import { loadTracciabilita } from "../features/tracciabilita.js";
 import { loadVendite } from "../features/vendite.js?v=20261114-3";

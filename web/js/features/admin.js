@@ -1,4 +1,4 @@
-import { api } from "../api/client.js";
+import { api, apiGetBlob } from "../api/client.js";
 import { $ } from "../core/dom.js";
 
 async function creaUtente() {
@@ -70,8 +70,32 @@ async function salvaDatiOsa() {
   }
 }
 
+async function scaricaExport(formato, nomeFile, button) {
+  $("export-error").textContent = "";
+  button.disabled = true;
+  try {
+    const blob = await apiGetBlob(`/api/v1/export/tenant?formato=${formato}`);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nomeFile;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    $("export-error").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 export function initAdmin() {
   $("btn-crea-utente").addEventListener("click", creaUtente);
   $("btn-crea-dev").addEventListener("click", registraDispositivo);
   $("btn-salva-osa").addEventListener("click", salvaDatiOsa);
+  $("btn-export-json").addEventListener("click", (event) => {
+    scaricaExport("json", "dati-laboratorio.json", event.currentTarget);
+  });
+  $("btn-export-csv").addEventListener("click", (event) => {
+    scaricaExport("csv", "dati-laboratorio-csv.zip", event.currentTarget);
+  });
 }

@@ -2,7 +2,9 @@
 
 Procedura interna per aprire un tenant GestLab. Il comando crea tenant, dati OSA, primo admin e catalogo in una sola operazione. Non serve eseguire SQL.
 
-Il self-service pubblico resta fuori da questa procedura.
+Il self-service pubblico e il billing SaaS (Stripe/portale canone) restano fuori
+da questa procedura. Per i primi piloti paganti vedi
+[PILOTI_CONTRATTO_PAGAMENTO.md](PILOTI_CONTRATTO_PAGAMENTO.md).
 
 ## Prima di iniziare
 

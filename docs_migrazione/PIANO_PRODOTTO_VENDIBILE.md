@@ -4,7 +4,7 @@ Documento di prodotto (non di implementazione codice). Descrive i miglioramenti
 necessari perché GestLab sia vendibile come SaaS a macellerie che sezionano e
 producono preparati da cuocere.
 
-**Data aggiornamento:** 2026-11-14
+**Data aggiornamento:** 2026-11-21
 
 **Canale:** SaaS multi-tenant (`saas/` + console `web/`)  
 **Perimetro v1 concordato:** laboratorio (ingresso, lotti, lavorazioni,
@@ -122,7 +122,7 @@ Legenda: **C** = coperto, **P** = parziale, **A** = assente.
 | Migrazioni | P | [`saas/init_database.sql`](../saas/init_database.sql) per installazioni nuove; [`saas/migrations/`](../saas/migrations/) da applicare a mano sui DB esistenti. Bootstrap non esegue tutte le migrazioni. |
 | Test | P | Unit: soggetti, tracciabilità, ingresso, dipendenti, bootstrap. E2E [`tests/test_saas_e2e.py`](../tests/test_saas_e2e.py) **distruttivo**. |
 | Produzione | P | Il profilo `GESTLAB_HOSTING=managed` separa produzione e staging: HTTPS, database remoti distinti, Secret Manager e point-in-time recovery sono obbligatori all'avvio. Le istanze AWS non sono ancora create: l'account locale non ha credenziali. |
-| GDPR / legale | A | Accennato in `SAAS_MIGRATION_PLAN.md`. Nessuna informativa, DPA, export tenant. |
+| GDPR / legale | P | Bozze in `docs_migrazione/legale/`: informativa, DPA con il laboratorio, sub-responsabili cloud e checklist da firmare prima del primo canone. Export tenant ancora assente. |
 | Manuale utente | P | `ISTRUZIONI_USO.md` è per sviluppatori (venv, uvicorn, agent). |
 
 ---
@@ -609,23 +609,38 @@ nuovo in esecuzione dopo un riavvio del servizio.
 ### 7.5 Billing
 
 Contratto manuale per i primi 1–2 pilota (bonifico, piano `tenant.piano`
-già nello schema come stringa). Stripe/portale self-service: fase successiva
-(`SAAS_MIGRATION_PLAN.md` Fase 7).
+già nello schema come etichetta commerciale, non stato di pagamento).
+Processo operativo in `docs_migrazione/PILOTI_CONTRATTO_PAGAMENTO.md`; bozza
+contratto in `docs_migrazione/legale/CONTRATTO_SAAS_PILOTA.md` § 2. Nessun
+endpoint Stripe/billing nel codice; il login non blocca per mancato canone
+(`tests/test_billing_fuori_v1.py`). Stripe/portale self-service: fase successiva
+(`SAAS_MIGRATION_PLAN.md` Fase 7), dopo i piloti manuali.
 
 ### 7.6 GDPR e contratto
 
 Dati personali: dipendenti, clienti, utenti, email.
 
-- informativa privacy e base giuridica;
-- DPA con il cliente OSA e con il cloud provider;
-- export dati del tenant (portabilità);
+- informativa privacy e base giuridica: bozza art. 13 in
+  `docs_migrazione/legale/INFORMATIVA_PRIVACY.md`, con i campi del titolare
+  ancora aperti;
+- DPA con il cliente OSA: bozza art. 28 in
+  `docs_migrazione/legale/DPA_CLIENTE_OSA.md`. Con il cloud provider non si
+  scrive un testo nostro: si accetta il DPA del fornitore (AWS, SMTP, Sentry
+  se acceso). Adempimenti e regioni in
+  `docs_migrazione/legale/DPA_FORNITORI_CLOUD.md`;
+- export dati del tenant (portabilità): l’admin scarica da console JSON o
+  CSV del solo laboratorio del token (`GET /api/v1/export/tenant`). Restano
+  esclusi hash delle password, token di reimpostazione, refresh token e token
+  dei dispositivi di stampa. Coperto da `tests/test_export_tenant.py`;
 - cancellazione conforme: anagrafiche già in soft-delete; **vietare** delete
   hard di lotti e documenti (vincoli RESTRICT già sullo schema nuovo);
 - nel contratto SaaS: esclusione esplicita di validità fiscale RT/FE e di
-  certificazione etichette/HACCP.
+  certificazione etichette/HACCP (clausola già nella bozza di DPA, da
+  riportare nel contratto firmato).
 
-**Criterio:** checklist legale firmata prima del primo canone; export JSON/CSV
-del tenant eseguibile da admin.
+**Criterio:** checklist legale firmata prima del primo canone
+(`docs_migrazione/legale/CHECKLIST_LEGALE.md`); export JSON/CSV del tenant
+eseguibile da admin. Le bozze del 21 novembre 2026 non sostituiscono la firma.
 
 ### 7.7 UX e collaudo
 

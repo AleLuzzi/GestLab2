@@ -168,4 +168,5 @@ def require_roles(*ruoli: str):
             )
         return user
 
+    _checker.ruoli_ammessi = ruoli
     return _checker

@@ -1022,10 +1022,19 @@
           <button id="btn-crea-dev" class="btn primary">Registra dispositivo</button>
           <pre id="dev-result" class="code-box"></pre>
         </div>
+        <div class="form-card">
+          <h3>Esporta i dati del laboratorio</h3>
+          <p class="field-hint">Scarica i dati di questo laboratorio in JSON oppure in un archivio di file CSV. Password e token di accesso o di stampa non sono inclusi.</p>
+          <div class="row">
+            <button id="btn-export-json" class="btn primary" type="button">Scarica JSON</button>
+            <button id="btn-export-csv" class="btn ghost" type="button">Scarica CSV</button>
+          </div>
+          <div id="export-error" class="error"></div>
+        </div>
       </section>
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261114-4"></script>
+<script type="module" src="/static/js/app.js?v=20261121-1"></script>
 </body>
 </html>

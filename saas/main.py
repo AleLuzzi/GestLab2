@@ -28,7 +28,7 @@ from saas import auth, osservabilita
 valida_hosting_gestito()
 osservabilita.avvia_error_tracking()
 from saas.repositories import audit_repo, print_repo, tenant_repo, tracciabilita_repo
-from saas.services import login_guard, password_reset, sessioni
+from saas.services import export_tenant, login_guard, password_reset, sessioni
 from saas.services import vendite as vendite_service
 from saas.schemas import (
     AuditLogOut,
@@ -327,6 +327,42 @@ def aggiorna_dati_osa(
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tenant non trovato")
     return payload.model_dump()
+
+
+@app.get("/api/v1/export/tenant")
+def esporta_dati_tenant(
+    formato: str = Query("json"),
+    tenant_id: int | None = Query(None),
+    user: dict = Depends(auth.require_roles("admin")),
+):
+    """Scarica in JSON o CSV i dati del laboratorio dell'admin."""
+    if tenant_id is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Il laboratorio si ricava dall'accesso, non dalla richiesta.",
+        )
+    if formato not in ("json", "csv"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Formato non valido: indicare json oppure csv.",
+        )
+    try:
+        laboratorio = int(user["tenant_id"])
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Utente non identificato")
+    try:
+        contenuto, media_type, nome_file = export_tenant.prepara(laboratorio, formato)
+    except mysql.connector.Error:
+        logger.exception("Export dati tenant non completato")
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "Impossibile esportare i dati del laboratorio.",
+        )
+    return Response(
+        content=contenuto,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{nome_file}"'},
+    )
 
 
 @app.post("/api/v1/utenti", status_code=status.HTTP_201_CREATED)
