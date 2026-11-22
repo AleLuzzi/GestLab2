@@ -122,12 +122,14 @@ function aggiungiTestoZona(gruppo, { t, x, y, rotate, size }) {
  *   etichetta?: string,
  *   d: string | string[],
  *   testi?: { t: string, x: number, y: number, rotate?: number, size?: number }[],
+ *   hitSullaForma?: boolean,
  * }} zona
  * `etichetta` è il testo sul disegno; se assente coincide con `nome`.
  * `testi` sostituisce il testo automatico al centro della forma.
+ * `hitSullaForma` usa il path disegnato come area cliccabile, senza espansione.
  * @returns {SVGGElement}
  */
-export function creaGruppoZona({ codice, nome, etichetta, d, testi }) {
+export function creaGruppoZona({ codice, nome, etichetta, d, testi, hitSullaForma = false }) {
   const testoEtichetta = etichetta ?? nome;
   const forme = Array.isArray(d) ? d : [d];
   const gruppo = document.createElementNS(SVG_NS, "g");
@@ -142,7 +144,7 @@ export function creaGruppoZona({ codice, nome, etichetta, d, testi }) {
     gruppo.appendChild(forma);
 
     const hit = document.createElementNS(SVG_NS, "path");
-    hit.setAttribute("d", pathHitDaForma(formaD));
+    hit.setAttribute("d", hitSullaForma ? formaD : pathHitDaForma(formaD));
     hit.setAttribute("class", "profilo-zona-hit");
     hit.setAttribute("tabindex", "0");
     hit.setAttribute("role", "button");

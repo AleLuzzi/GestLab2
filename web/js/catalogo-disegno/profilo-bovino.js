@@ -177,10 +177,10 @@ export const ZONE_BOVINO_POSTERIORE = [
   {
     codice: "BOV-GER-POST",
     nome: "Geretto posteriore bovino",
-    d: "M 802 408 C 818 405 840 398 862 386 L 868 448 L 822 452 C 815 436 808 422 802 408 Z",
+    d: "M 860 340 L 865 440 C 865 475 860 505 850 520 L 845 540 L 890 540 L 875 520 C 885 475 885 435 880 395 L 862 386 Z",
     testi: [
-      { t: "Geretto", x: 842, y: 422, size: 11 },
-      { t: "posteriore", x: 842, y: 435, size: 11 },
+      { t: "Geretto", x: 866, y: 448, rotate: -88, size: 11 },
+      { t: "posteriore", x: 878, y: 448, rotate: -88, size: 11 },
     ],
   },
   {
@@ -254,7 +254,9 @@ export function creaProfiloBovinoPosteriore() {
 
   const zone = document.createElementNS(SVG_NS, "g");
   zone.setAttribute("class", "profilo-zone");
-  ZONE_BOVINO_POSTERIORE.forEach((zona) => zone.appendChild(creaGruppoZona(zona)));
+  ZONE_BOVINO_POSTERIORE.forEach((zona) =>
+    zone.appendChild(creaGruppoZona({ ...zona, hitSullaForma: true })),
+  );
   svg.appendChild(zone);
 
   return svg;
