@@ -121,7 +121,13 @@ class OnboardingRepositoryTests(unittest.TestCase):
             if "INSERT INTO articoli" in sql
         ]
         self.assertEqual(len(articoli), len(TEMPLATE_MACELLERIA))
-        self.assertEqual(articoli[2][1:], ("SUI-PANCIA", "Pancia di suino", "Suino", "kg", 1))
+        self.assertEqual(
+            [params[1:] for params in articoli],
+            [
+                (codice, nome, categoria, unita, int(come_input))
+                for codice, nome, categoria, unita, come_input in TEMPLATE_MACELLERIA
+            ],
+        )
         self.assertEqual(
             articoli[-3][1:],
             ("PREP-SALSICCIA", "Salsicce fresche", "Preparato", "kg", 0),

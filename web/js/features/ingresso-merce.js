@@ -1,6 +1,12 @@
 import { api } from "../api/client.js";
 import { $ } from "../core/dom.js";
 import { registraScanner } from "../core/scanner.js?v=20261121-5";
+import { testoConfermaTaglio } from "../catalogo-disegno/profilo-interazione.js";
+import {
+  categoriaUsaProfiloDisegno,
+  quartoBovinoPerCodice,
+  renderArticoliConDisegno,
+} from "./ingresso-articoli-disegno.js";
 
 let fornitori = [];
 let articoli = [];
@@ -10,6 +16,8 @@ let articoliSelezionati = new Set();
 let datiCaricati = false;
 let caricamentoDati = null;
 let prossimoIdRiga = 1;
+/** @type {"anteriore"|"posteriore"} */
+let quartoBovino = "anteriore";
 
 function dataLocaleISO() {
   const oggi = new Date();
@@ -161,10 +169,45 @@ function renderCategorie() {
   });
 }
 
+function messaggioFeedbackSelezioneArticoli() {
+  if (articoliSelezionati.size === 1) {
+    const id = [...articoliSelezionati][0];
+    const articolo = articoliAttivi().find((item) => String(item.id) === id);
+    if (articolo) {
+      return testoConfermaTaglio(articolo.nome);
+    }
+  }
+  if (categoriaSelezionata && categoriaUsaProfiloDisegno(categoriaSelezionata)) {
+    return "Seleziona un taglio sul profilo o tra i pezzi fuori profilo.";
+  }
+  return "Seleziona un articolo da aggiungere.";
+}
+
+function cambiaQuartoBovino(quarto) {
+  if (quarto === quartoBovino) {
+    return;
+  }
+  quartoBovino = quarto;
+  articoliSelezionati.clear();
+  renderArticoli();
+}
+
+function toggleSelezioneArticolo(id) {
+  if (articoliSelezionati.has(id)) {
+    articoliSelezionati.delete(id);
+  } else {
+    articoliSelezionati.clear();
+    articoliSelezionati.add(id);
+  }
+  renderArticoli();
+  $("ingress-articoli-feedback").textContent = messaggioFeedbackSelezioneArticoli();
+}
+
 function renderArticoli() {
   const container = $("ingress-articoli");
   container.replaceChildren();
   if (!categoriaSelezionata) {
+    container.className = "articoli-list";
     $("ingress-articoli-feedback").textContent = "Seleziona una categoria per vedere gli articoli.";
     return;
   }
@@ -172,32 +215,40 @@ function renderArticoli() {
   const disponibili = articoliAttivi().filter((articolo) =>
     (articolo.categoria?.trim() || "Senza categoria") === categoriaSelezionata);
   if (disponibili.length === 0) {
+    container.className = "articoli-list";
     $("ingress-articoli-feedback").textContent = "Nessun articolo attivo in questa categoria.";
     return;
   }
 
-  $("ingress-articoli-feedback").textContent = "Seleziona un articolo da aggiungere.";
+  if (categoriaUsaProfiloDisegno(categoriaSelezionata)) {
+    renderArticoliConDisegno(container, {
+      categoria: categoriaSelezionata,
+      articoliDisponibili: disponibili,
+      articoliSelezionati,
+      onToggleArticolo: toggleSelezioneArticolo,
+      quartoBovino,
+      onQuartoBovinoChange: cambiaQuartoBovino,
+    });
+    $("ingress-articoli-feedback").textContent = messaggioFeedbackSelezioneArticoli();
+    return;
+  }
+
+  container.className = "articoli-list";
+  $("ingress-articoli-feedback").textContent = messaggioFeedbackSelezioneArticoli();
   disponibili.forEach((articolo) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "articolo-button";
     button.textContent = `${articolo.nome} (${articolo.unita_misura})`;
     button.setAttribute("aria-pressed", String(articoliSelezionati.has(String(articolo.id))));
-    button.addEventListener("click", () => {
-      const id = String(articolo.id);
-      if (articoliSelezionati.has(id)) articoliSelezionati.delete(id);
-      else {
-        articoliSelezionati.clear();
-        articoliSelezionati.add(id);
-      }
-      renderArticoli();
-    });
+    button.addEventListener("click", () => toggleSelezioneArticolo(String(articolo.id)));
     container.appendChild(button);
   });
 }
 
 function selezionaCategoria(categoria) {
   categoriaSelezionata = categoria;
+  quartoBovino = "anteriore";
   articoliSelezionati.clear();
   $("ingress-articoli-feedback").textContent = "";
   renderCategorie();
@@ -328,6 +379,7 @@ function azzeraIngresso() {
   $("ingress-temperatura").value = "";
   righeIngresso = [];
   categoriaSelezionata = null;
+  quartoBovino = "anteriore";
   articoliSelezionati.clear();
   prossimoIdRiga = 1;
   $("btn-salva-ingresso").disabled = false;
@@ -367,11 +419,19 @@ async function selezionaArticoloDaScanner(codice) {
     return;
   }
   categoriaSelezionata = articolo.categoria?.trim() || "Senza categoria";
+  if (categoriaSelezionata === "Bovino") {
+    const quarto = quartoBovinoPerCodice(articolo.codice);
+    if (quarto) {
+      quartoBovino = quarto;
+    }
+  } else {
+    quartoBovino = "anteriore";
+  }
   articoliSelezionati.clear();
   articoliSelezionati.add(String(articolo.id));
   renderCategorie();
   renderArticoli();
-  $("ingress-articoli-feedback").textContent = `Selezionato: ${articolo.nome}. Inserisci la quantità.`;
+  $("ingress-articoli-feedback").textContent = testoConfermaTaglio(articolo.nome);
   $("ingress-quantita").focus();
 }
 

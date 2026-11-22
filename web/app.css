@@ -308,6 +308,123 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   outline-offset: 2px;
 }
 .articoli-list { margin-top: 12px; }
+.ingress-articoli-disegno {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+.profilo-macelleria-riga {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+}
+.profilo-macelleria-wrap {
+  flex: 1 1 280px;
+  min-width: 0;
+  width: auto;
+}
+.articoli-fuori-profilo {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: min(100%, 200px);
+  max-width: 260px;
+}
+.profilo-bovino-quarti {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.profilo-macelleria {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+  margin-top: 12px;
+  touch-action: manipulation;
+}
+.profilo-contorno {
+  fill: var(--bg-3);
+  stroke: var(--border);
+  stroke-width: 2;
+  pointer-events: none;
+}
+.profilo-suino .profilo-contorno { stroke: none; }
+.profilo-bovino .profilo-contorno {
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.profilo-bovino .profilo-zona-forma {
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.profilo-bovino .profilo-zona-etichetta { font-size: 13px; }
+.profilo-contorno-linea {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.profilo-zona { cursor: pointer; }
+.profilo-zona-forma {
+  fill: rgba(47, 158, 110, 0.35);
+  stroke: var(--accent);
+  stroke-width: 2;
+  transition: fill 0.12s ease, stroke 0.12s ease;
+  pointer-events: none;
+}
+.profilo-zona-hit {
+  fill: rgba(0, 0, 0, 0.001);
+  stroke: none;
+  pointer-events: fill;
+}
+.profilo-zona-hit:focus { outline: none; }
+.profilo-zona-hit:focus-visible {
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-opacity: 1;
+}
+.profilo-zona-etichetta {
+  font-size: 11px;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  fill: #fff;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2px;
+  paint-order: stroke;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.profilo-zona:hover .profilo-zona-etichetta,
+.profilo-zona:focus-within .profilo-zona-etichetta {
+  opacity: 1;
+}
+.profilo-zona--disattiva .profilo-zona-etichetta { opacity: 0; }
+.profilo-zona:hover .profilo-zona-forma,
+.profilo-zona:focus-visible .profilo-zona-forma,
+.profilo-zona:focus-within .profilo-zona-forma {
+  fill: rgba(47, 158, 110, 0.55);
+  stroke: var(--accent-hover);
+}
+.profilo-zona--disattiva { cursor: not-allowed; pointer-events: none; }
+.profilo-zona--disattiva .profilo-zona-forma {
+  fill: rgba(159, 176, 192, 0.12);
+  stroke: var(--border);
+}
+.profilo-zona--selezionata .profilo-zona-forma {
+  fill: var(--accent);
+  stroke: #fff;
+}
+.profilo-zona--selezionata .profilo-zona-etichetta { opacity: 1; }
 .ingresso-feedback { min-height: 24px; margin-top: 10px; color: var(--text-dim); }
 .ingresso-feedback.success { color: var(--accent-hover); }
 .ingresso-weight-row {
