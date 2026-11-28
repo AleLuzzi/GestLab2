@@ -1,16 +1,16 @@
 import { $ } from "./dom.js";
 import {
   loadArticoli, loadDipendenti, loadFornitori, loadMerceologie, loadReparti,
-} from "../features/anagrafiche.js?v=20261128-3";
+} from "../features/anagrafiche.js?v=20261128-4";
 import { loadDashboard } from "../features/dashboard.js?v=20261121-5";
-import { openIngressoMerce } from "../features/ingresso-merce.js?v=20261128-1";
+import { openIngressoMerce } from "../features/ingresso-merce.js?v=20261128-2";
 import { loadMenu } from "../features/menu.js?v=20261114-3";
 import { loadLabelLots, loadPrintJobs } from "../features/printing.js";
 import { loadDatiOsa } from "../features/admin.js?v=20261121-1";
 import { loadProgressivi } from "../features/progressivi.js";
 import { loadTracciabilita } from "../features/tracciabilita.js";
 import { loadReport } from "../features/report.js?v=20261128-2";
-import { loadVendite } from "../features/vendite.js?v=20261128-2";
+import { loadVendite } from "../features/vendite.js?v=20261128-5";
 
 function showLanding() {
   document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));

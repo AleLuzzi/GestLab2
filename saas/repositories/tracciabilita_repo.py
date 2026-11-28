@@ -56,7 +56,7 @@ class RigaVenditaNonValida(Exception):
 
 
 class PrezzoVenditaNonValido(Exception):
-    """Prezzo della riga diverso dal prezzo commerciale dell'articolo."""
+    """Prezzo della riga non utilizzabile per la vendita."""
 
 
 class LottoScaduto(Exception):
@@ -1067,13 +1067,6 @@ def _registra_righe_vendita(cursor, tenant_id, vendita_id, righe):
             for riga in righe_lotto
         ):
             raise RigaVenditaNonValida()
-
-        prezzo_articolo = _row_value(lotto, 6)
-        if prezzo_articolo is None or any(
-            Decimal(str(riga.prezzo_unitario)) != Decimal(str(prezzo_articolo))
-            for riga in righe_lotto
-        ):
-            raise PrezzoVenditaNonValido()
 
         oggi = _data_valore(_row_value(lotto, 8))
         data_scadenza = _data_valore(_row_value(lotto, 7))

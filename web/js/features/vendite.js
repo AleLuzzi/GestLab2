@@ -49,9 +49,49 @@ function lottoSelezionato() {
     .find((item) => String(item.id) === $("sales-lot").value);
 }
 
-function prezzoInCentesimi(lotto) {
-  const prezzo = Number(lotto?.prezzo_unitario);
-  return Number.isFinite(prezzo) && prezzo >= 0 ? Math.round(prezzo * 100) : null;
+function prezzoAnagrafica(lotto) {
+  const grezzo = lotto?.prezzo_unitario;
+  if (grezzo === null || grezzo === undefined || grezzo === "") return null;
+  const prezzo = Number(grezzo);
+  return Number.isFinite(prezzo) && prezzo >= 0 ? prezzo : null;
+}
+
+function prezzoDigitatoCentesimi() {
+  const input = $("sales-price");
+  if (input.disabled || input.validity.badInput || input.validity.stepMismatch || input.validity.rangeUnderflow) {
+    return null;
+  }
+  const prezzo = input.valueAsNumber;
+  if (!Number.isFinite(prezzo) || prezzo <= 0) return null;
+  return Math.round(prezzo * 100);
+}
+
+function applicaPrezzoLotto(lotto) {
+  const input = $("sales-price");
+  const nota = $("sales-price-note");
+  if (!lotto) {
+    input.value = "";
+    input.disabled = true;
+    $("sales-price-label").textContent = "Prezzo unitario";
+    nota.hidden = true;
+    nota.textContent = "";
+    return;
+  }
+  input.disabled = false;
+  const unita = lotto.unita_misura ? ` (€ / ${lotto.unita_misura})` : " (€)";
+  $("sales-price-label").textContent = `Prezzo unitario${unita}`;
+  const catalogo = prezzoAnagrafica(lotto);
+  if (catalogo === null || catalogo === 0) {
+    input.value = "";
+    nota.hidden = false;
+    nota.textContent = catalogo === 0
+      ? "In anagrafica il prezzo è 0,00 €. Inserisci il prezzo di questa vendita."
+      : "Prezzo non in anagrafica. Inserisci il prezzo di questa vendita.";
+    return;
+  }
+  input.value = catalogo.toFixed(2);
+  nota.hidden = true;
+  nota.textContent = "";
 }
 
 function aggiornaPulsanteAggiungi() {
@@ -59,7 +99,7 @@ function aggiornaPulsanteAggiungi() {
   const inputQuantita = $("sales-quantity");
   const quantita = inputQuantita.valueAsNumber;
   const disponibili = Number(lotto?.quantita_disponibile);
-  const prezzo = prezzoInCentesimi(lotto);
+  const prezzo = prezzoDigitatoCentesimi();
   $("btn-add-sales-line").disabled = registrazioneInCorso
     || !lotto
     || prezzo === null
@@ -75,7 +115,7 @@ function aggiornaRiepilogo() {
     $("sales-lot-summary").textContent = $("sales-article").value
       ? "Nessun lotto disponibile per questo articolo"
       : "";
-    $("sales-price").value = "—";
+    applicaPrezzoLotto(null);
     $("sales-quantity").max = "";
     aggiornaPulsanteAggiungi();
     return;
@@ -84,14 +124,11 @@ function aggiornaRiepilogo() {
   const tipoData = lotto?.data_scadenza ? "Scadenza" : lotto?.data_tmc ? "TMC" : "Data";
   const tmcSuperato = lotto?.data_tmc
     && String(lotto.data_tmc).slice(0, 10) < dataLocaleISO();
-  const prezzo = prezzoInCentesimi(lotto);
 
   $("sales-lot-summary").textContent = lotto
     ? `Disponibili: ${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 3 }).format(Number(lotto.quantita_disponibile))} ${lotto.unita_misura} · ${tipoData}: ${formattaData(dataLotto)}${tmcSuperato ? " · TMC superato: richiede conferma" : ""}`
     : "";
-  $("sales-price").value = prezzo === null
-    ? "Prezzo non configurato"
-    : `${formattaImporto(prezzo)} / ${lotto.unita_misura}`;
+  applicaPrezzoLotto(lotto);
   $("sales-quantity").max = lotto?.quantita_disponibile ?? "";
   aggiornaPulsanteAggiungi();
 }
@@ -132,7 +169,7 @@ function articoliDisponibili() {
   return articoli;
 }
 
-function aggiornaArticoli(articoloPreferito = $("sales-article").value) {
+function aggiornaArticoli(articoloPreferito = $("sales-article").value, autoSelezionaPrimo = true) {
   const selettoreArticolo = $("sales-article");
   const articoli = articoliDisponibili();
   const ricerca = $("sales-search").value.trim().toLocaleLowerCase("it-IT");
@@ -147,12 +184,21 @@ function aggiornaArticoli(articoloPreferito = $("sales-article").value) {
     selettoreArticolo.appendChild(creaOpzione(id, etichetta));
   });
 
-  const selezione = filtrati.some(([id]) => id === String(articoloPreferito))
+  const preferitoValido = filtrati.some(([id]) => id === String(articoloPreferito))
     ? String(articoloPreferito)
-    : String(filtrati[0]?.[0] ?? "");
+    : "";
+  const selezione = autoSelezionaPrimo
+    ? (preferitoValido || String(filtrati[0]?.[0] ?? ""))
+    : preferitoValido;
   selettoreArticolo.value = selezione;
   selettoreArticolo.disabled = filtrati.length === 0;
   aggiornaLotti(selezione);
+}
+
+function azzeraCampiArticoloVendita() {
+  $("sales-search").value = "";
+  $("sales-quantity").value = "";
+  aggiornaArticoli("", false);
 }
 
 function aggiornaClienti() {
@@ -261,12 +307,17 @@ function aggiungiRiga() {
   const lotto = lottoSelezionato();
   const inputQuantita = $("sales-quantity");
   const quantita = inputQuantita.valueAsNumber;
-  const prezzoCentesimi = prezzoInCentesimi(lotto);
+  const prezzoCentesimi = prezzoDigitatoCentesimi();
   const errore = $("sales-selection-error");
   errore.textContent = "";
 
-  if (!lotto || prezzoCentesimi === null) {
-    errore.textContent = "Seleziona un lotto con prezzo commerciale configurato.";
+  if (!lotto) {
+    errore.textContent = "Seleziona un lotto.";
+    return;
+  }
+  if (prezzoCentesimi === null) {
+    errore.textContent = "Inserisci il prezzo unitario di questa vendita.";
+    $("sales-price").focus();
     return;
   }
   if (!Number.isFinite(quantita)
@@ -294,7 +345,7 @@ function aggiungiRiga() {
     importoCentesimi: Math.round((quantitaMilli * prezzoCentesimi) / 1000),
     unita: lotto.unita_misura,
   });
-  $("sales-quantity").value = "";
+  azzeraCampiArticoloVendita();
   $("sales-checkout-status").textContent = "";
   $("sales-checkout-error").textContent = "";
   renderCarrello();
@@ -447,7 +498,8 @@ async function selezionaArticoloDaScanner(codice) {
   $("sales-search").value = "";
   aggiornaArticoli(articoloId);
   $("sales-selection-error").textContent = "";
-  $("sales-quantity").focus();
+  if ($("sales-price").value === "") $("sales-price").focus();
+  else $("sales-quantity").focus();
 }
 
 export function initVendite() {
@@ -484,6 +536,7 @@ export function initVendite() {
   });
   $("sales-lot").addEventListener("change", aggiornaRiepilogo);
   $("sales-quantity").addEventListener("input", aggiornaPulsanteAggiungi);
+  $("sales-price").addEventListener("input", aggiornaPulsanteAggiungi);
   $("btn-add-sales-line").addEventListener("click", aggiungiRiga);
   $("btn-refresh-sales-lots").addEventListener("click", loadVendite);
   $("sales-cart-body").addEventListener("click", (event) => {

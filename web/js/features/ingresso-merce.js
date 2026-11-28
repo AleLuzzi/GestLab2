@@ -300,6 +300,21 @@ async function caricaDatiIngresso() {
   return caricamentoDati;
 }
 
+function azzeraCampiArticoloIngresso() {
+  categoriaSelezionata = null;
+  quartoBovino = "anteriore";
+  articoliSelezionati.clear();
+  $("ingress-quantita").value = "";
+  $("ingress-lotto-fornitore").value = "";
+  $("ingress-origine").value = "";
+  $("ingress-note-lotto").value = "";
+  $("ingress-tipo-data").value = "";
+  $("ingress-data-lotto").value = "";
+  $("ingress-temperatura").value = "";
+  renderCategorie();
+  renderArticoli();
+}
+
 function aggiungiRighe() {
   const inputQuantita = $("ingress-quantita");
   const quantita = inputQuantita.valueAsNumber;
@@ -357,31 +372,20 @@ function aggiungiRighe() {
       temperaturaIngresso,
     });
   });
-  articoliSelezionati.clear();
-  $("ingress-quantita").value = "";
+  const messaggioAggiunta = `${selezionati.length} ${selezionati.length === 1 ? "articolo aggiunto" : "articoli aggiunti"} al riepilogo.`;
+  azzeraCampiArticoloIngresso();
   $("ingress-error").textContent = "";
   $("ingress-error").classList.remove("success");
-  renderArticoli();
   aggiornaRiepilogo();
-  $("ingress-articoli-feedback").textContent =
-    `${selezionati.length} ${selezionati.length === 1 ? "articolo aggiunto" : "articoli aggiunti"} al riepilogo.`;
+  $("ingress-articoli-feedback").textContent = messaggioAggiunta;
 }
 
 function azzeraIngresso() {
   $("ingress-fornitore").value = "";
   $("ingress-data").value = dataLocaleISO();
   $("ingress-ddt").value = "";
-  $("ingress-quantita").value = "";
-  $("ingress-lotto-fornitore").value = "";
-  $("ingress-origine").value = "";
-  $("ingress-note-lotto").value = "";
-  $("ingress-tipo-data").value = "";
-  $("ingress-data-lotto").value = "";
-  $("ingress-temperatura").value = "";
+  azzeraCampiArticoloIngresso();
   righeIngresso = [];
-  categoriaSelezionata = null;
-  quartoBovino = "anteriore";
-  articoliSelezionati.clear();
   prossimoIdRiga = 1;
   $("btn-salva-ingresso").disabled = false;
   $("ingress-success").textContent = "";
@@ -389,8 +393,6 @@ function azzeraIngresso() {
   $("ingress-error").textContent = "";
   $("ingress-articoli-feedback").textContent = "";
   mostraStep(1);
-  renderCategorie();
-  renderArticoli();
   aggiornaRiepilogo();
 }
 

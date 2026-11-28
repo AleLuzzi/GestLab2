@@ -104,6 +104,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   touch-action: manipulation;
 }
 .sales-selection-fields input[readonly] { color: var(--text-dim); }
+.sales-price-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
 .sales-selection-fields .sales-availability-filter { grid-column: 1 / -1; }
 .sales-availability-filter {
   display: flex;

@@ -190,7 +190,7 @@ async function editDip(id) {
     $("dip-form-title").textContent = `Modifica dipendente #${item.id}`;
     $("dip-error").textContent = "";
     await loadOptions("dip-reparto", "/api/v1/reparti", "reparto", "Seleziona reparto", "Nessun reparto disponibile", "Errore caricamento reparti", item.reparto ?? "");
-    $("dip-form").style.display = "block";
+    apriDialog("dip-dialog");
   } catch (error) { $("dip-error").textContent = error.message; }
 }
 
@@ -202,13 +202,14 @@ function nuovaDip() {
   $("dip-form-title").textContent = "Nuovo dipendente";
   $("dip-error").textContent = "";
   loadOptions("dip-reparto", "/api/v1/reparti", "reparto", "Seleziona reparto", "Nessun reparto disponibile", "Errore caricamento reparti")
-    .then(() => { $("dip-form").style.display = "block"; });
+    .then(() => { apriDialog("dip-dialog"); });
 }
 
 function salvaDip() {
   const id = $("dip-id").value;
   const reparto = $("dip-reparto").value;
   return saveResource({ id, endpoint: "/api/v1/dipendenti", formId: "dip-form", errorId: "dip-error", reload: loadDipendenti,
+    onSuccess: () => chiudiDialog("dip-dialog"),
     payload: {
       nome: $("dip-nome").value,
       cognome: $("dip-cognome").value,
@@ -232,7 +233,7 @@ async function editArticolo(id) {
     $("articoli-utilizzabile-input").checked = item.utilizzabile_come_input;
     $("articoli-form-title").textContent = `Modifica articolo #${item.id}`;
     $("articoli-error").textContent = "";
-    $("articoli-form").style.display = "block";
+    apriDialog("articoli-dialog");
   } catch (error) { $("articoli-error").textContent = error.message; }
 }
 
@@ -248,7 +249,7 @@ function nuovoArticolo() {
   $("articoli-utilizzabile-input").checked = true;
   $("articoli-form-title").textContent = "Nuovo articolo";
   $("articoli-error").textContent = "";
-  $("articoli-form").style.display = "block";
+  apriDialog("articoli-dialog");
 }
 
 function salvaArticolo() {
@@ -259,6 +260,7 @@ function salvaArticolo() {
     formId: "articoli-form",
     errorId: "articoli-error",
     reload: loadArticoli,
+    onSuccess: () => chiudiDialog("articoli-dialog"),
     payload: {
       nome: $("articoli-nome").value.trim(),
       codice: $("articoli-codice").value.trim() || null,
@@ -364,10 +366,19 @@ function salvaReparto() {
     payload: { reparto: $("reparti-nome").value, flag1_dip: $("reparti-flag1").checked ? 1 : 0, flag2_prod: $("reparti-flag2").checked ? 1 : 0 } });
 }
 
-function apriDialogFornitore() {
-  const dialog = $("fornitori-dialog");
+function apriDialog(id) {
+  const dialog = $(id);
   dialog.scrollTop = 0;
-  dialog.showModal();
+  if (!dialog.open) dialog.showModal();
+}
+
+function chiudiDialog(id) {
+  const dialog = $(id);
+  if (dialog.open) dialog.close();
+}
+
+function apriDialogFornitore() {
+  apriDialog("fornitori-dialog");
 }
 
 function nuovoFornitore() {
@@ -444,7 +455,7 @@ function salvaFornitore() {
     formId: "fornitori-form",
     errorId: "fornitori-error",
     reload: loadFornitori,
-    onSuccess: () => $("fornitori-dialog").close(),
+    onSuccess: () => chiudiDialog("fornitori-dialog"),
     payload: {
       denominazione: $("fornitori-azienda").value.trim(),
       tipo_soggetto: $("fornitori-tipo").value,
@@ -522,14 +533,18 @@ export function initAnagrafiche() {
     if (action) action(Number(button.dataset.id));
   });
 
-  bindForm("btn-nuovo-dip", "btn-save-dip", "btn-cancel-dip", "dip-form", nuovaDip, salvaDip);
-  bindForm("btn-nuovo-articolo", "btn-save-articolo", "btn-cancel-articolo", "articoli-form", nuovoArticolo, salvaArticolo);
+  bindForm("btn-nuovo-dip", "btn-save-dip", "btn-cancel-dip", "dip-form", nuovaDip, salvaDip,
+    () => chiudiDialog("dip-dialog"));
+  bindForm("btn-nuovo-articolo", "btn-save-articolo", "btn-cancel-articolo", "articoli-form", nuovoArticolo, salvaArticolo,
+    () => chiudiDialog("articoli-dialog"));
   bindForm("btn-nuovo-merc", "btn-save-merc", "btn-cancel-merc", "merc-form", nuovaMerc, salvaMerc);
   bindForm("btn-nuovo-reparto", "btn-save-reparto", "btn-cancel-reparto", "reparti-form", nuovoReparto, salvaReparto);
   bindForm("btn-nuovo-fornitore", "btn-save-fornitore", "btn-cancel-fornitore", "fornitori-form", nuovoFornitore, salvaFornitore,
-    () => $("fornitori-dialog").close());
-  $("fornitori-dialog").addEventListener("click", (event) => {
-    if (event.target === $("fornitori-dialog")) $("fornitori-dialog").close();
+    () => chiudiDialog("fornitori-dialog"));
+  ["dip-dialog", "articoli-dialog", "fornitori-dialog"].forEach((id) => {
+    $(id).addEventListener("click", (event) => {
+      if (event.target === $(id)) chiudiDialog(id);
+    });
   });
   $("fornitori-role-fornitore").addEventListener("change", aggiornaCampiFornitore);
   $("articoli-search").addEventListener("input", renderArticoli);

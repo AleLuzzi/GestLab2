@@ -987,21 +987,20 @@ class AggiungiRigheVenditaTests(unittest.TestCase):
         self.assertEqual(connection.commits, 0)
         self.assertEqual(connection.rollbacks, 1)
 
-    def test_noncanonical_price_is_rejected_and_rolls_back(self):
-        cursor = FakeRigheVenditaCursor(prezzo_articolo=Decimal("13.00"))
-        connection = FakeConnection(cursor)
+    def test_sale_price_overrides_zero_catalog_price(self):
+        righe, cursor, connection = self.invoke_repository(
+            prezzo_articolo=Decimal("0.00")
+        )
 
-        @contextmanager
-        def fake_connection():
-            yield connection
-
-        with patch.object(tracciabilita_repo, "connection", fake_connection):
-            with self.assertRaises(tracciabilita_repo.PrezzoVenditaNonValido):
-                tracciabilita_repo.aggiungi_righe_vendita(42, 81, [self.riga])
-
-        self.assertFalse(any(query.startswith("UPDATE lotti") for query, _ in cursor.statements))
-        self.assertEqual(connection.commits, 0)
-        self.assertEqual(connection.rollbacks, 1)
+        insert = next(
+            params
+            for query, params in cursor.statements
+            if query.startswith("INSERT INTO righe_vendita")
+        )
+        self.assertEqual(insert[6], Decimal("12.5000"))
+        self.assertEqual(righe[0]["prezzo_unitario"], "12.5000")
+        self.assertEqual(connection.commits, 1)
+        self.assertEqual(connection.rollbacks, 0)
 
     def test_combined_lines_cannot_exceed_locked_lot_stock(self):
         seconda_riga = self.riga.model_copy(

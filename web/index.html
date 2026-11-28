@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261128-2" />
+  <link rel="stylesheet" href="/static/app.css?v=20261128-5" />
 </head>
 <body>
   <!-- Login view -->
@@ -356,8 +356,9 @@
               <label for="sales-quantity">Quantità / peso
                 <input id="sales-quantity" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="0,000" />
               </label>
-              <label for="sales-price">Prezzo unitario
-                <input id="sales-price" type="text" readonly value="—" aria-label="Prezzo unitario dell'articolo" />
+              <label for="sales-price"><span id="sales-price-label">Prezzo unitario</span>
+                <input id="sales-price" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00" disabled />
+                <span id="sales-price-note" class="sales-price-note" hidden></span>
               </label>
             </div>
             <div id="sales-lot-summary" class="sales-lot-summary" role="status" aria-live="polite"></div>
@@ -458,21 +459,23 @@
           <thead><tr><th>ID</th><th>Nome</th><th>Cognome</th><th>Email</th><th>Reparto</th><th>Azioni</th></tr></thead>
           <tbody id="dip-tbody"></tbody>
         </table>
-        <div id="dip-form" class="form-card" style="display:none">
-          <h3 id="dip-form-title">Nuovo dipendente</h3>
-          <input type="hidden" id="dip-id" />
-          <label>Nome <input type="text" id="dip-nome" required /></label>
-          <label>Cognome <input type="text" id="dip-cognome" /></label>
-          <label>Email <input type="email" id="dip-email" /></label>
-          <label>Reparto
-            <select id="dip-reparto"></select>
-          </label>
-          <div class="row">
-            <button id="btn-save-dip" class="btn primary">Salva</button>
-            <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
+        <dialog id="dip-dialog" class="anagrafiche-dialog" aria-labelledby="dip-form-title">
+          <div id="dip-form" class="form-card">
+            <h3 id="dip-form-title">Nuovo dipendente</h3>
+            <input type="hidden" id="dip-id" />
+            <label>Nome <input type="text" id="dip-nome" required /></label>
+            <label>Cognome <input type="text" id="dip-cognome" /></label>
+            <label>Email <input type="email" id="dip-email" /></label>
+            <label>Reparto
+              <select id="dip-reparto"></select>
+            </label>
+            <div class="row">
+              <button id="btn-save-dip" class="btn primary">Salva</button>
+              <button id="btn-cancel-dip" class="btn ghost">Annulla</button>
+            </div>
+            <div id="dip-error" class="error"></div>
           </div>
-          <div id="dip-error" class="error"></div>
-        </div>
+        </dialog>
       </section>
 
       <!-- Articoli -->
@@ -489,33 +492,35 @@
             <input id="articoli-search" type="search" placeholder="Nome, codice, categoria o EAN" />
           </label>
         </div>
+        <dialog id="articoli-dialog" class="anagrafiche-dialog" aria-labelledby="articoli-form-title">
+          <div id="articoli-form" class="form-card">
+            <h3 id="articoli-form-title">Nuovo articolo</h3>
+            <input type="hidden" id="articoli-id" />
+            <label>Nome <input type="text" id="articoli-nome" maxlength="120" required /></label>
+            <label>Codice <input type="text" id="articoli-codice" maxlength="60" /></label>
+            <label>Categoria <input type="text" id="articoli-categoria" maxlength="80" /></label>
+            <label>EAN / codice a barre <input type="text" id="articoli-ean" maxlength="32" /></label>
+            <label>Prezzo unitario <input type="number" id="articoli-prezzo" min="0" step="0.01" /></label>
+            <label>Unità di misura
+              <select id="articoli-unita">
+                <option value="kg">kg</option>
+                <option value="pz">pz</option>
+                <option value="lt">lt</option>
+              </select>
+            </label>
+            <label><input type="checkbox" id="articoli-attivo" checked /> Articolo attivo</label>
+            <label><input type="checkbox" id="articoli-utilizzabile-input" checked /> Utilizzabile come input di lavorazione</label>
+            <div class="row">
+              <button id="btn-save-articolo" class="btn primary" type="button">Salva</button>
+              <button id="btn-cancel-articolo" class="btn ghost" type="button">Annulla</button>
+            </div>
+            <div id="articoli-error" class="error"></div>
+          </div>
+        </dialog>
         <table class="table">
           <thead><tr><th>ID</th><th>Codice</th><th>Nome</th><th>Categoria</th><th>Unità di misura</th><th>EAN</th><th>Prezzo unitario</th><th>Stato</th><th>Input lavorazione</th><th>Azioni</th></tr></thead>
           <tbody id="articoli-tbody"></tbody>
         </table>
-        <div id="articoli-form" class="form-card" style="display:none">
-          <h3 id="articoli-form-title">Nuovo articolo</h3>
-          <input type="hidden" id="articoli-id" />
-          <label>Nome <input type="text" id="articoli-nome" maxlength="120" required /></label>
-          <label>Codice <input type="text" id="articoli-codice" maxlength="60" /></label>
-          <label>Categoria <input type="text" id="articoli-categoria" maxlength="80" /></label>
-          <label>EAN / codice a barre <input type="text" id="articoli-ean" maxlength="32" /></label>
-          <label>Prezzo unitario <input type="number" id="articoli-prezzo" min="0" step="0.01" /></label>
-          <label>Unità di misura
-            <select id="articoli-unita">
-              <option value="kg">kg</option>
-              <option value="pz">pz</option>
-              <option value="lt">lt</option>
-            </select>
-          </label>
-          <label><input type="checkbox" id="articoli-attivo" checked /> Articolo attivo</label>
-          <label><input type="checkbox" id="articoli-utilizzabile-input" checked /> Utilizzabile come input di lavorazione</label>
-          <div class="row">
-            <button id="btn-save-articolo" class="btn primary" type="button">Salva</button>
-            <button id="btn-cancel-articolo" class="btn ghost" type="button">Annulla</button>
-          </div>
-          <div id="articoli-error" class="error"></div>
-        </div>
       </section>
 
       <!-- Merceologie -->
@@ -1086,6 +1091,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261128-3"></script>
+<script type="module" src="/static/js/app.js?v=20261128-5"></script>
 </body>
 </html>

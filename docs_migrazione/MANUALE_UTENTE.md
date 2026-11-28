@@ -217,7 +217,10 @@ carrello né cambiare passo.
 3. Il **lotto disponibile** preselezionato è il primo in ordine FEFO. Puoi
    sceglierne un altro. Sotto il lotto leggi la quantità disponibile e la data.
 4. Inserisci **quantità / peso** con fino a tre decimali. Il **prezzo
-   unitario** è quello dell’articolo e non si cambia in vendita.
+   unitario** parte da quello dell’articolo e si può modificare per questa
+   vendita. Se in anagrafica è zero, il campo resta vuoto: inserisci il
+   prezzo prima di aggiungere la riga. Il prezzo scritto vale solo per la
+   vendita, l’anagrafica non cambia.
 5. Premi **Aggiungi al riepilogo**. Puoi aggiungere più righe; il passo non
    cambia da solo.
 6. **Indietro** torna all’intestazione. **Vai al riepilogo** si attiva solo
@@ -328,7 +331,7 @@ I messaggi della console sono in italiano. I casi più frequenti:
 | Disponibilità FEFO insufficiente | Riduci la quantità prevista oppure registra prima un ingresso. |
 | Manca il prodotto della ricetta o un ingrediente obbligatorio | Rimetti la riga prima di registrare. |
 | La vendita supera la giacenza | Riduci la quantità. La vendita non è stata registrata. |
-| Prezzo non configurato | In Articoli imposta il prezzo unitario. |
+| Prezzo a zero in anagrafica | Nel passo Articoli inserisci il prezzo unitario prima di aggiungere la riga. |
 | DDT senza cliente | Scegli un cliente attivo, oppure passa a ricevuta non fiscale. |
 | La stampante non stampa | Controlla Coda stampa e avvisa chi gestisce il PC di banco. |
 | Accesso bloccato dopo molti tentativi | Aspetta e riprova, oppure usa **Password dimenticata**. |
