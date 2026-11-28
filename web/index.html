@@ -60,6 +60,7 @@
       <button class="nav-item" data-view="dashboard">Dashboard</button>
       <button class="nav-item" data-view="ingresso-merce">Ingresso merce</button>
       <button class="nav-item" data-view="vendite">Vendite</button>
+      <button class="nav-item" data-view="report">Report</button>
       <button class="nav-item" data-view="menu">Listino</button>
       <button class="nav-item" data-view="tracciabilita">Tracciabilità</button>
       <button class="nav-item" data-view="stampa">Stampa</button>
@@ -299,71 +300,113 @@
           <h2>Nuova vendita</h2>
           <button id="btn-refresh-sales-lots" class="btn ghost" type="button">Aggiorna lotti</button>
         </div>
-        <div class="form-card sales-selection">
-          <div class="sales-selection-fields">
-            <label for="sales-search">Cerca articolo
-              <input id="sales-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Nome oppure scansione del codice a barre" />
-            </label>
-            <label class="sales-availability-filter" for="sales-only-available">
-              <input id="sales-only-available" type="checkbox" checked />
-              Solo articoli con lotto disponibile
-            </label>
-            <label for="sales-article">Articolo
-              <select id="sales-article" disabled>
-                <option value="">Caricamento articoli...</option>
-              </select>
-            </label>
-            <label for="sales-lot">Lotto disponibile
-              <select id="sales-lot" disabled>
-                <option value="">Seleziona un articolo</option>
-              </select>
-            </label>
-            <label for="sales-quantity">Quantità / peso
-              <input id="sales-quantity" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="0,000" />
-            </label>
-            <label for="sales-price">Prezzo unitario
-              <input id="sales-price" type="text" readonly value="—" aria-label="Prezzo unitario dell'articolo" />
-            </label>
-            <label for="sales-customer">Cliente (necessario per DDT)
-              <select id="sales-customer">
-                <option value="">Banco / cliente non indicato</option>
-              </select>
-            </label>
-            <label for="sales-document-type">Documento
-              <select id="sales-document-type">
-                <option value="RICEVUTA">Ricevuta non fiscale</option>
-                <option value="DDT">DDT</option>
-              </select>
-            </label>
-          </div>
-          <div id="sales-lot-summary" class="sales-lot-summary" role="status" aria-live="polite"></div>
-          <div id="sales-selection-error" class="error" role="alert" aria-live="assertive"></div>
-          <div class="sales-actions">
-            <button id="btn-add-sales-line" class="btn ghost" type="button">Aggiungi alla vendita</button>
-          </div>
-        </div>
 
-        <div class="sales-cart">
-          <div class="panel-head">
-            <h3>Articoli della vendita</h3>
-            <strong>Totale <span id="sales-total">0,00 €</span></strong>
-          </div>
-          <div class="sales-cart-table-wrap">
-            <table class="table">
-              <thead>
-                <tr><th>Articolo / lotto</th><th>Quantità</th><th>Prezzo</th><th>Importo</th><th></th></tr>
-              </thead>
-              <tbody id="sales-cart-body">
-                <tr><td colspan="5" class="empty">Nessun articolo aggiunto</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div id="sales-checkout-error" class="error" role="alert" aria-live="assertive"></div>
-          <div id="sales-checkout-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
-          <div class="sales-checkout-actions">
-            <span class="sales-help">Documento non fiscale — non sostituisce lo scontrino del registratore telematico. La ricevuta è generata dal documento registrato e inviata al Local Print Agent; si ristampa dallo storico senza creare una nuova vendita. Il DDT si scarica in PDF.</span>
-            <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra vendita</button>
-          </div>
+        <ol class="ingresso-steps" aria-label="Passaggi vendita">
+          <li class="active" data-step-indicator="1" aria-current="step">1. Intestazione</li>
+          <li data-step-indicator="2">2. Articoli</li>
+          <li data-step-indicator="3">3. Riepilogo</li>
+        </ol>
+
+        <div class="form-card ingresso-card sales-selection">
+          <section class="ingresso-step active" data-step="1" aria-labelledby="vendite-intestazione-title">
+            <h3 id="vendite-intestazione-title">Intestazione</h3>
+            <div class="ingresso-header-fields">
+              <label for="sales-date">Data
+                <input type="date" id="sales-date" readonly />
+              </label>
+              <label for="sales-customer">Cliente (necessario per DDT)
+                <select id="sales-customer">
+                  <option value="">Banco / cliente non indicato</option>
+                </select>
+              </label>
+              <label for="sales-document-type">Documento
+                <select id="sales-document-type">
+                  <option value="RICEVUTA">Ricevuta non fiscale</option>
+                  <option value="DDT">DDT</option>
+                </select>
+              </label>
+            </div>
+            <div id="sales-header-error" class="error" role="alert" aria-live="assertive"></div>
+            <div id="sales-result" class="sales-checkout-status" role="status" aria-live="polite"></div>
+            <div class="ingresso-actions">
+              <button id="btn-sales-step-1" class="btn primary" type="button">Continua agli articoli</button>
+            </div>
+          </section>
+
+          <section class="ingresso-step" data-step="2" aria-labelledby="vendite-articoli-title" hidden>
+            <h3 id="vendite-articoli-title">Articoli</h3>
+            <div class="sales-selection-fields">
+              <label for="sales-search">Cerca articolo
+                <input id="sales-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="Nome oppure scansione del codice a barre" />
+              </label>
+              <label class="sales-availability-filter" for="sales-only-available">
+                <input id="sales-only-available" type="checkbox" checked />
+                Solo articoli con lotto disponibile
+              </label>
+              <label for="sales-article">Articolo
+                <select id="sales-article" disabled>
+                  <option value="">Caricamento articoli...</option>
+                </select>
+              </label>
+              <label for="sales-lot">Lotto disponibile
+                <select id="sales-lot" disabled>
+                  <option value="">Seleziona un articolo</option>
+                </select>
+              </label>
+              <label for="sales-quantity">Quantità / peso
+                <input id="sales-quantity" type="number" min="0.001" step="0.001" inputmode="decimal" placeholder="0,000" />
+              </label>
+              <label for="sales-price">Prezzo unitario
+                <input id="sales-price" type="text" readonly value="—" aria-label="Prezzo unitario dell'articolo" />
+              </label>
+            </div>
+            <div id="sales-lot-summary" class="sales-lot-summary" role="status" aria-live="polite"></div>
+            <div id="sales-selection-error" class="error" role="alert" aria-live="assertive"></div>
+            <div class="sales-actions">
+              <button id="btn-add-sales-line" class="btn primary" type="button">Aggiungi al riepilogo</button>
+            </div>
+            <div class="ingresso-actions">
+              <button class="btn ghost" type="button" data-step-back="1">Indietro</button>
+              <button id="btn-sales-step-2" class="btn primary" type="button">Vai al riepilogo</button>
+            </div>
+          </section>
+
+          <section class="ingresso-step" data-step="3" aria-labelledby="vendite-riepilogo-title" hidden>
+            <h3 id="vendite-riepilogo-title">Riepilogo</h3>
+            <div class="summary-list ingresso-summary">
+              <div><span>Data</span><strong id="sales-summary-date">—</strong></div>
+              <div><span>Cliente</span><strong id="sales-summary-customer">Banco</strong></div>
+              <div><span>Documento</span><strong id="sales-summary-document">—</strong></div>
+              <div><span>Righe</span><strong id="sales-summary-count">0</strong></div>
+              <div><span>Totale</span><strong id="sales-total">0,00 €</strong></div>
+            </div>
+            <div class="sales-cart">
+              <div class="sales-cart-table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr><th>Articolo / lotto</th><th>Quantità</th><th>Prezzo</th><th>Importo</th><th></th></tr>
+                  </thead>
+                  <tbody id="sales-cart-body">
+                    <tr><td colspan="5" class="empty">Nessun articolo aggiunto</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div id="sales-checkout-error" class="error" role="alert" aria-live="assertive"></div>
+            <div id="sales-checkout-status" class="sales-checkout-status" role="status" aria-live="polite"></div>
+            <p class="sales-help">Documento non fiscale — non sostituisce lo scontrino del registratore telematico. La ricevuta è generata dal documento registrato e inviata al Local Print Agent; si ristampa da Report senza creare una nuova vendita. Il DDT si scarica in PDF.</p>
+            <div class="ingresso-actions">
+              <button class="btn ghost" type="button" data-step-back="2">Indietro</button>
+              <button id="btn-register-sales" class="btn primary" type="button" disabled>Registra vendita</button>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <!-- Report -->
+      <section id="view-report" class="panel">
+        <div class="panel-head">
+          <h2>Report</h2>
         </div>
 
         <div class="sales-cart">
@@ -1038,6 +1081,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261121-5"></script>
+<script type="module" src="/static/js/app.js?v=20261128-2"></script>
 </body>
 </html>

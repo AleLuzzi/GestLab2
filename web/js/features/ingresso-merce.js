@@ -32,12 +32,13 @@ function nomeFornitoreSelezionato() {
 }
 
 function mostraStep(numero) {
-  document.querySelectorAll(".ingresso-step").forEach((step) => {
+  const pannello = $("view-ingresso-merce");
+  pannello.querySelectorAll(".ingresso-step").forEach((step) => {
     const attivo = Number(step.dataset.step) === numero;
     step.hidden = !attivo;
     step.classList.toggle("active", attivo);
   });
-  document.querySelectorAll("[data-step-indicator]").forEach((indicator) => {
+  pannello.querySelectorAll("[data-step-indicator]").forEach((indicator) => {
     const attivo = Number(indicator.dataset.stepIndicator) === numero;
     indicator.classList.toggle("active", attivo);
     if (attivo) indicator.setAttribute("aria-current", "step");
@@ -460,7 +461,7 @@ export function initIngressoMerce() {
     aggiornaRiepilogo();
     mostraStep(3);
   });
-  document.querySelectorAll("[data-step-back]").forEach((button) => {
+  $("view-ingresso-merce").querySelectorAll("[data-step-back]").forEach((button) => {
     button.addEventListener("click", () => mostraStep(Number(button.dataset.stepBack)));
   });
   $("ingress-fornitore").addEventListener("change", aggiornaRiepilogo);

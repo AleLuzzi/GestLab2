@@ -28,7 +28,7 @@ caratteri, con una lettera e un numero.
 
 Dopo l’accesso la Home propone tre azioni: **Ingresso merce**,
 **Configurazioni** e **Tracciabilità**. Il menu laterale (in alto sul tablet)
-apre anche Dashboard, Vendite, Listino, Stampa e Coda stampa.
+apre anche Dashboard, Vendite, Report, Listino, Stampa e Coda stampa.
 
 La console ha bisogno di rete. Senza connessione non lavora in locale.
 
@@ -193,52 +193,79 @@ sul PC di banco li segue chi amministra il laboratorio.
 
 ## 6. Vendita
 
-Apri **Vendite**. In basso resta visibile la dicitura: il documento **non è
-fiscale** e non sostituisce lo scontrino del registratore telematico.
+Apri **Vendite**. I passaggi sono tre, come in **Ingresso merce**. In alto,
+**Aggiorna lotti** ricarica listino, lotti e clienti senza svuotare il
+carrello né cambiare passo.
 
-### 6.1 Aggiungere gli articoli
+### 6.1 Intestazione
 
-1. Cerca l’articolo per nome oppure scansionalo. Con **Solo articoli con
-   lotto disponibile** restano gli articoli attivi che hanno almeno un lotto
-   vendibile: attivo, con giacenza e non scaduto. Togli la spunta per vedere
-   anche gli articoli attivi senza giacenza. Gli articoli disattivati non
-   compaiono.
-2. Il **lotto disponibile** preselezionato è il primo in ordine FEFO. Puoi
-   sceglierne un altro. Sotto il lotto leggi la quantità disponibile e la
-   data.
-3. Inserisci **quantità / peso** con fino a tre decimali. Il **prezzo
+1. La **data** è quella di oggi e non si modifica.
+2. Scegli il **cliente**. Per un **DDT** il cliente è obbligatorio prima di
+   andare avanti. Con **Ricevuta non fiscale** puoi lasciare **Banco / cliente
+   non indicato** oppure indicare un cliente.
+3. Scegli il **documento**: **DDT** oppure **Ricevuta non fiscale**.
+4. Premi **Continua agli articoli**.
+
+### 6.2 Articoli
+
+1. Cerca l’articolo per nome oppure scansionalo. Lo scanner funziona solo in
+   questo passo: seleziona l’articolo e porta il focus sulla quantità.
+2. Con **Solo articoli con lotto disponibile** restano gli articoli attivi che
+   hanno almeno un lotto vendibile: attivo, con giacenza e non scaduto. Togli
+   la spunta per vedere anche gli articoli attivi senza giacenza. Gli articoli
+   disattivati non compaiono.
+3. Il **lotto disponibile** preselezionato è il primo in ordine FEFO. Puoi
+   sceglierne un altro. Sotto il lotto leggi la quantità disponibile e la data.
+4. Inserisci **quantità / peso** con fino a tre decimali. Il **prezzo
    unitario** è quello dell’articolo e non si cambia in vendita.
-4. Scegli il documento:
-   - **DDT**: scegli un cliente anagrafico. Senza cliente il DDT non si
-     registra.
-   - **Ricevuta non fiscale**: puoi lasciare **Banco / cliente non indicato**
-     oppure scegliere un cliente.
-5. Premi **Aggiungi alla vendita**. Il totale si aggiorna. Per togliere una
-   riga usa il pulsante sulla riga stessa.
+5. Premi **Aggiungi al riepilogo**. Puoi aggiungere più righe; il passo non
+   cambia da solo.
+6. **Indietro** torna all’intestazione. **Vai al riepilogo** si attiva solo
+   con almeno una riga nel carrello.
 
 Un lotto scaduto non è vendibile. Se il TMC è superato, prima di aggiungerlo
 compare la domanda «Il TMC del lotto è superato. Vuoi confermare la vendita?».
 
-### 6.2 Registrare
+### 6.3 Riepilogo
 
-Premi **Registra vendita** solo quando carrello, cliente e tipo documento
-sono quelli giusti. La registrazione scarica i lotti e crea il documento
-insieme. Se la quantità supera la giacenza, la vendita è rifiutata e le
-giacenze restano com’erano: riduci la quantità o aggiorna i lotti con
-**Aggiorna lotti**.
+Controlla **data**, **cliente** (o banco), **tipo documento**, **righe** e
+**totale**. Ogni riga mostra articolo, lotto, quantità, prezzo e importo; con
+**Rimuovi** togli una riga. Senza righe **Registra vendita** resta disattivo.
 
-Dopo una ricevuta, il messaggio conferma che è stata inviata alla stampante
-del banco. Il DDT si scarica in PDF. Numero e righe sono quelli appena
-registrati.
+Nel riepilogo compare la dicitura: il documento **non è fiscale** e non
+sostituisce lo scontrino del registratore telematico.
 
-### 6.3 Ristampare
+Premi **Registra vendita** solo quando intestazione e righe sono corrette.
+La registrazione scarica i lotti e crea il documento insieme. Se la quantità
+supera la giacenza, la vendita è rifiutata e le giacenze restano com’erano:
+riduci la quantità o aggiorna i lotti con **Aggiorna lotti**.
 
-- In **Storico DDT**, **Scarica / ristampa** rilegge lo stesso DDT: stesso
-  numero, stesse righe, nessun documento nuovo.
-- In **Storico ricevute non fiscali**, **Ristampa** rimanda la stessa ricevuta
-  alla stampante e non crea un’altra vendita.
+Dopo una registrazione riuscita torni all’intestazione con carrello vuoto. Se
+la ricevuta è stata inviata, il messaggio lo conferma. Il DDT si scarica in
+PDF al momento della registrazione. Numero e righe sono quelli appena
+registrati. Se il DDT o la ricevuta non sono stati generati, il messaggio
+invita a riprovare da **Report**, non dallo storico in questa schermata.
 
-## 7. Risalire dal preparato al fornitore
+## 7. Report
+
+Dal menu laterale apri **Report**, subito dopo **Vendite**.
+
+### 7.1 Storico DDT
+
+La tabella elenca i DDT già registrati (documento, data, cliente, righe).
+**Scarica / ristampa** rilegge lo stesso DDT: stesso numero, stesse righe,
+nessun documento nuovo. Il file è un PDF `ddt_{numero}.pdf`.
+
+### 7.2 Storico ricevute non fiscali
+
+La tabella elenca le ricevute già registrate. Resta visibile la dicitura: il
+documento non è fiscale e non sostituisce lo scontrino del registratore
+telematico.
+
+**Ristampa** rimanda la stessa ricevuta al Local Print Agent e non crea
+un’altra vendita.
+
+## 8. Risalire dal preparato al fornitore
 
 Apri **Tracciabilità** → **Lotti**. Cerca il codice del lotto prodotto e premi
 **Traccia**.
@@ -261,7 +288,7 @@ vendite (DDT o ricevuta, numero, data, cliente o banco, quantità).
 In **Movimenti** restano ingresso, lavorazione, vendita e rettifiche, con data
 e quantità.
 
-## 8. Controlli di magazzino
+## 9. Controlli di magazzino
 
 **Dashboard** mostra i lotti scaduti ancora disponibili, quelli in scadenza
 entro 48 ore, quelli in scadenza da 3 a 7 giorni, le giacenze a zero e i job
@@ -278,7 +305,7 @@ delta positivo o negativo (per esempio `-0,250`) e un motivo tra inventario,
 calo, reso ed errore. La giacenza non può andare sotto zero. Non si corregge
 riscrivendo la quantità del lotto.
 
-## 9. Sul tablet
+## 10. Sul tablet
 
 Fino allo schermo di un tablet il menu sta in alto e ingresso e vendita usano
 tutta la larghezza. I campi sono abbastanza grandi da non far ingrandire la
@@ -289,7 +316,7 @@ vendita: legge almeno 6 caratteri in rapida successione e chiude con Invio.
 Una digitazione lenta seguita da Invio non è una scansione. Sul campo EAN la
 tastiera resta chiusa finché non premi **Tastiera**.
 
-## 10. Se compare un messaggio
+## 11. Se compare un messaggio
 
 I messaggi della console sono in italiano. I casi più frequenti:
 

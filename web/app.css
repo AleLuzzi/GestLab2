@@ -98,7 +98,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   gap: 4px 18px;
 }
 .sales-selection-fields select,
-.sales-selection-fields input { min-height: 52px; font-size: 17px; }
+.sales-selection-fields input {
+  min-height: 52px;
+  font-size: 17px;
+  touch-action: manipulation;
+}
 .sales-selection-fields input[readonly] { color: var(--text-dim); }
 .sales-selection-fields .sales-availability-filter { grid-column: 1 / -1; }
 .sales-availability-filter {
@@ -252,6 +256,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   border-color: var(--accent);
   background: var(--accent);
   color: #fff;
+}
+.ingresso-card .ingresso-step {
+  display: flex;
+  flex-direction: column;
+}
+.ingresso-card .ingresso-step > .ingresso-actions {
+  margin-top: auto;
+  padding-top: 24px;
 }
 .ingresso-step h3 { margin-bottom: 20px; }
 .ingresso-header-fields {
@@ -465,12 +477,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   gap: 12px;
   margin-top: 24px;
 }
-.ingresso-card .btn {
+.ingresso-card .btn,
+.ingresso-card .sales-actions .btn {
   min-height: 52px;
   padding: 12px 18px;
   font-size: 16px;
   touch-action: manipulation;
 }
+#view-report > .sales-cart:first-of-type { margin-top: 0; }
 .ingresso-lines-heading {
   display: flex;
   align-items: center;
@@ -739,6 +753,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 @media (max-width: 900px) {
   .sales-selection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (max-width: 640px) {
+  .sales-selection-fields { grid-template-columns: 1fr; }
+}
 @media (max-width: 1024px) {
   .trace-recipe-controls { grid-template-columns: 1fr; align-items: stretch; }
   .trace-recipe-ingredient-row { grid-template-columns: 1fr; }
@@ -772,7 +789,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 
 @media (max-width: 560px) {
-  .sales-selection-fields { grid-template-columns: 1fr; }
   .sales-checkout-actions { align-items: stretch; flex-direction: column; }
   .sales-checkout-actions .btn { min-height: 52px; width: 100%; }
   .sales-actions .btn { min-height: 52px; width: 100%; }
