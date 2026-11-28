@@ -3,7 +3,7 @@ import {
   loadArticoli, loadDipendenti, loadFornitori, loadMerceologie, loadReparti,
 } from "../features/anagrafiche.js?v=20261128-4";
 import { loadDashboard } from "../features/dashboard.js?v=20261121-5";
-import { openIngressoMerce } from "../features/ingresso-merce.js?v=20261128-2";
+import { openIngressoMerce } from "../features/ingresso-merce.js?v=20261128-4";
 import { loadMenu } from "../features/menu.js?v=20261114-3";
 import { loadLabelLots, loadPrintJobs } from "../features/printing.js";
 import { loadDatiOsa } from "../features/admin.js?v=20261121-1";

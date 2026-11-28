@@ -1059,6 +1059,21 @@ def conferma_ingresso_merce(
     )
 
 
+@app.get("/api/v1/tracciabilita/ingressi/duplicato")
+def verifica_ingresso_duplicato(
+    data: date,
+    fornitore_id: int = Query(..., gt=0),
+    numero_ddt: str = Query(default="", max_length=40),
+    user: dict = Depends(auth.require_roles("admin", "operatore")),
+):
+    """Indica se data, fornitore e numero documento sono già registrati."""
+    return {
+        "duplicato": tracciabilita_repo.documento_ingresso_duplicato(
+            user["tenant_id"], data, numero_ddt, fornitore_id
+        )
+    }
+
+
 @app.post(
     "/api/v1/tracciabilita/ingressi",
     status_code=status.HTTP_201_CREATED,
@@ -1085,6 +1100,12 @@ def registra_ingresso_tracciato(
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             "Uno o più articoli non esistono o non sono attivi",
+        ) from error
+    except tracciabilita_repo.DocumentoIngressoDuplicato as error:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Esiste già un ingresso con la stessa data, lo stesso fornitore "
+            "e lo stesso numero documento.",
         ) from error
     except Exception as error:
         riferimento = uuid.uuid4().hex

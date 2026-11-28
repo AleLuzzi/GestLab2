@@ -100,6 +100,12 @@ function aggiornaPulsanteAggiungi() {
   const quantita = inputQuantita.valueAsNumber;
   const disponibili = Number(lotto?.quantita_disponibile);
   const prezzo = prezzoDigitatoCentesimi();
+  const errore = $("sales-selection-error");
+  const quantitaSuperaDisponibilita = Boolean(lotto)
+    && Number.isFinite(quantita)
+    && quantita > 0
+    && quantita > disponibili;
+
   $("btn-add-sales-line").disabled = registrazioneInCorso
     || !lotto
     || prezzo === null
@@ -107,6 +113,20 @@ function aggiornaPulsanteAggiungi() {
     || !Number.isFinite(quantita)
     || quantita <= 0
     || quantita > disponibili;
+
+  if (quantitaSuperaDisponibilita) {
+    const unita = lotto.unita_misura ?? "";
+    const disponibilita = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 3 }).format(disponibili);
+    errore.textContent = `La quantità supera la disponibilità del lotto (massimo ${disponibilita} ${unita}).`.trim();
+    return;
+  }
+  if (inputQuantita.validity.stepMismatch && Number.isFinite(quantita) && quantita > 0) {
+    errore.textContent = "Inserisci una quantità valida, con al massimo 3 decimali.";
+    return;
+  }
+  if (lotto && prezzo !== null && Number.isFinite(quantita) && quantita > 0 && quantita <= disponibili) {
+    errore.textContent = "";
+  }
 }
 
 function aggiornaRiepilogo() {

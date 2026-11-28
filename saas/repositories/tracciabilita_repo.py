@@ -19,6 +19,10 @@ class ArticoloNonTrovato(Exception):
     """Articolo inesistente o non appartenente al tenant."""
 
 
+class DocumentoIngressoDuplicato(Exception):
+    """Documento già registrato per la stessa data, fornitore e numero."""
+
+
 class LottoNonTrovato(Exception):
     """Lotto inesistente o non appartenente al tenant."""
 
@@ -1446,6 +1450,26 @@ def rettifica_lotto(tenant_id, lotto_id, delta, motivo, utente_email=None):
             raise
 
 
+def documento_ingresso_duplicato(tenant_id, data, numero_ddt, fornitore_id):
+    """True se data, fornitore e numero documento sono già stati registrati."""
+    with connection() as conn:
+        cursor = conn.cursor()
+        return _documento_ingresso_duplicato(
+            cursor, tenant_id, data, numero_ddt, fornitore_id
+        )
+
+
+def _documento_ingresso_duplicato(cursor, tenant_id, data, numero_ddt, fornitore_id):
+    cursor.execute(
+        "SELECT id FROM documenti_ingresso "
+        "WHERE tenant_id = %s AND data_ingresso = %s "
+        "AND fornitore_id = %s AND TRIM(numero_ddt) = %s "
+        "LIMIT 1",
+        (tenant_id, data, fornitore_id, (numero_ddt or "").strip()),
+    )
+    return cursor.fetchone() is not None
+
+
 def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
     """Registra un documento e crea un lotto A distinto per ogni sua riga."""
     with connection() as conn:
@@ -1456,6 +1480,10 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
             )
             if not fornitore:
                 raise FornitoreNonValido
+            if _documento_ingresso_duplicato(
+                cursor, tenant_id, data, numero_ddt, fornitore_id
+            ):
+                raise DocumentoIngressoDuplicato
 
             articolo_ids = sorted({riga.articolo_id for riga in righe})
             placeholders = ", ".join(["%s"] * len(articolo_ids))

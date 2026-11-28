@@ -620,8 +620,31 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   margin-bottom: 18px;
 }
-.trace-nav-grid { width: 100%; }
-.trace-nav-card { align-items: flex-start; }
+.trace-nav-grid {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.trace-nav-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 16px;
+  flex: 0 1 auto;
+}
+.trace-nav-card .config-icon {
+  font-size: 1.15rem;
+  margin-bottom: 0;
+  line-height: 1;
+}
+.trace-nav-card .config-name {
+  display: inline;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
 .trace-nav-card.active {
   border-color: var(--accent);
   background: linear-gradient(135deg, rgba(47, 158, 110, 0.2), rgba(47, 158, 110, 0.08));
@@ -647,9 +670,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .trace-checkbox input { width: auto; margin-top: 0; }
 .trace-section { display: none; }
 .trace-section.active { display: block; }
-.trace-inventory { margin-bottom: 24px; }
-.trace-inventory h3 { margin-bottom: 4px; }
-.trace-inventory input { min-width: 120px; max-width: 180px; }
 .trace-table { margin-top: 12px; }
 .trace-detail {
   background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius);

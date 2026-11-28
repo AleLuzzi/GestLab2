@@ -5,7 +5,7 @@ import { initTastieraVirtuale } from "./core/tastiera.js?v=20261121-5";
 import { initAdmin } from "./features/admin.js?v=20261121-1";
 import { initAnagrafiche } from "./features/anagrafiche.js?v=20261128-4";
 import { initDashboard } from "./features/dashboard.js?v=20261121-5";
-import { initIngressoMerce } from "./features/ingresso-merce.js?v=20261128-2";
+import { initIngressoMerce } from "./features/ingresso-merce.js?v=20261128-4";
 import { initMenu } from "./features/menu.js?v=20261114-3";
 import { initPrinting } from "./features/printing.js";
 import { initProgressivi } from "./features/progressivi.js";

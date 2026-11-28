@@ -16,6 +16,15 @@ let articoliSelezionati = new Set();
 let datiCaricati = false;
 let caricamentoDati = null;
 let prossimoIdRiga = 1;
+const MESSAGGIO_DOCUMENTO_DUPLICATO =
+  "Esiste già un ingresso con la stessa data, lo stesso fornitore e lo stesso numero documento.";
+const ORDINE_CATEGORIE_INGRESSO = [
+  "Bovino",
+  "Vitello",
+  "Suino",
+  "Condimento",
+  "Preparato",
+];
 /** @type {"anteriore"|"posteriore"} */
 let quartoBovino = "anteriore";
 
@@ -145,8 +154,19 @@ function articoliAttivi() {
 }
 
 function categorieArticoli() {
-  return [...new Set(articoliAttivi().map((articolo) =>
+  const categorie = [...new Set(articoliAttivi().map((articolo) =>
     articolo.categoria?.trim() || "Senza categoria"))];
+  const dopoOrdineNoto = ORDINE_CATEGORIE_INGRESSO.length;
+  return categorie.sort((a, b) => {
+    const indiceA = ORDINE_CATEGORIE_INGRESSO.indexOf(a);
+    const indiceB = ORDINE_CATEGORIE_INGRESSO.indexOf(b);
+    const pesoA = indiceA === -1 ? dopoOrdineNoto : indiceA;
+    const pesoB = indiceB === -1 ? dopoOrdineNoto : indiceB;
+    if (pesoA !== pesoB) {
+      return pesoA - pesoB;
+    }
+    return a.localeCompare(b, "it");
+  });
 }
 
 function renderCategorie() {
@@ -380,6 +400,20 @@ function aggiungiRighe() {
   $("ingress-articoli-feedback").textContent = messaggioAggiunta;
 }
 
+function pulisciErroreIntestazione() {
+  $("ingress-header-error").textContent = "";
+}
+
+async function documentoGiaRegistrato() {
+  const params = new URLSearchParams({
+    data: $("ingress-data").value,
+    fornitore_id: $("ingress-fornitore").value,
+    numero_ddt: $("ingress-ddt").value.trim(),
+  });
+  const risposta = await api(`/api/v1/tracciabilita/ingressi/duplicato?${params}`);
+  return Boolean(risposta.duplicato);
+}
+
 function azzeraIngresso() {
   $("ingress-fornitore").value = "";
   $("ingress-data").value = dataLocaleISO();
@@ -392,6 +426,7 @@ function azzeraIngresso() {
   $("ingress-success").classList.remove("success");
   $("ingress-error").textContent = "";
   $("ingress-articoli-feedback").textContent = "";
+  pulisciErroreIntestazione();
   mostraStep(1);
   aggiornaRiepilogo();
 }
@@ -446,13 +481,28 @@ export function initIngressoMerce() {
     return true;
   });
   $("btn-reset-ingresso").addEventListener("click", azzeraIngresso);
-  $("btn-ingresso-step-1").addEventListener("click", () => {
+  $("btn-ingresso-step-1").addEventListener("click", async () => {
+    pulisciErroreIntestazione();
     if (!$("ingress-fornitore").value) {
-      $("ingress-error").textContent = "Seleziona un fornitore prima di continuare.";
+      $("ingress-header-error").textContent = "Seleziona un fornitore prima di continuare.";
       $("ingress-fornitore").focus();
       return;
     }
-    mostraStep(2);
+    const button = $("btn-ingresso-step-1");
+    button.disabled = true;
+    try {
+      if (await documentoGiaRegistrato()) {
+        $("ingress-header-error").textContent = MESSAGGIO_DOCUMENTO_DUPLICATO;
+        $("ingress-ddt").focus();
+        return;
+      }
+      mostraStep(2);
+    } catch (error) {
+      $("ingress-header-error").textContent =
+        `Impossibile verificare il documento: ${error.message}`;
+    } finally {
+      button.disabled = false;
+    }
   });
   $("btn-aggiungi-ingresso").addEventListener("click", aggiungiRighe);
   $("btn-ingresso-step-2").addEventListener("click", () => {
@@ -466,8 +516,18 @@ export function initIngressoMerce() {
   $("view-ingresso-merce").querySelectorAll("[data-step-back]").forEach((button) => {
     button.addEventListener("click", () => mostraStep(Number(button.dataset.stepBack)));
   });
-  $("ingress-fornitore").addEventListener("change", aggiornaRiepilogo);
-  $("ingress-ddt").addEventListener("input", aggiornaRiepilogo);
+  $("ingress-data").addEventListener("change", () => {
+    pulisciErroreIntestazione();
+    aggiornaRiepilogo();
+  });
+  $("ingress-fornitore").addEventListener("change", () => {
+    pulisciErroreIntestazione();
+    aggiornaRiepilogo();
+  });
+  $("ingress-ddt").addEventListener("input", () => {
+    pulisciErroreIntestazione();
+    aggiornaRiepilogo();
+  });
 
   $("btn-salva-ingresso").addEventListener("click", async () => {
     if (!$("ingress-fornitore").value || righeIngresso.length === 0) {
@@ -478,8 +538,14 @@ export function initIngressoMerce() {
     const button = $("btn-salva-ingresso");
     button.disabled = true;
     $("ingress-error").classList.remove("success");
-    $("ingress-error").textContent = "Salvataggio ingresso in corso…";
+    $("ingress-error").textContent = "Verifica documento in corso…";
     try {
+      if (await documentoGiaRegistrato()) {
+        button.disabled = false;
+        $("ingress-error").textContent = MESSAGGIO_DOCUMENTO_DUPLICATO;
+        return;
+      }
+      $("ingress-error").textContent = "Salvataggio ingresso in corso…";
       const response = await api("/api/v1/tracciabilita/ingressi", {
         method: "POST",
         body: JSON.stringify({

@@ -142,7 +142,7 @@
             <h3 id="ingresso-intestazione-title">Intestazione documento</h3>
             <div class="ingresso-header-fields">
               <label>Data
-                <input type="date" id="ingress-data" readonly />
+                <input type="date" id="ingress-data" />
               </label>
               <label>Fornitore
                 <select id="ingress-fornitore" required>
@@ -153,6 +153,7 @@
                 <input type="text" id="ingress-ddt" maxlength="40" autocomplete="off" placeholder="Inserisci numero documento" />
               </label>
             </div>
+            <div id="ingress-header-error" class="error" role="alert" aria-live="assertive"></div>
             <div id="ingress-success" class="ingresso-feedback" role="status" aria-live="polite"></div>
             <div class="ingresso-actions">
               <button id="btn-reset-ingresso" class="btn ghost" type="button">Azzera movimento</button>
@@ -722,22 +723,6 @@
         <div id="trace-detail" class="trace-detail" hidden>        </div>
 
         <div data-trace-section="lotti" class="trace-section" hidden>
-          <div class="trace-inventory">
-            <h3>Confronto inventario per articolo</h3>
-            <p class="trace-help">La giacenza teorica somma tutti i lotti. Inserisci il conteggio fisico per vedere lo scostamento; il confronto non modifica le giacenze.</p>
-            <table class="table trace-table">
-              <thead>
-                <tr>
-                  <th>Articolo</th>
-                  <th>Giacenza teorica</th>
-                  <th>Conteggio fisico</th>
-                  <th>Scostamento</th>
-                </tr>
-              </thead>
-              <tbody id="trace-inventory-tbody"></tbody>
-            </table>
-            <div id="trace-inventory-error" class="error"></div>
-          </div>
           <div class="trace-controls">
             <label class="trace-search-field">
               <span>Filtra lotti</span>
@@ -1091,6 +1076,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261128-5"></script>
+<script type="module" src="/static/js/app.js?v=20261128-7"></script>
 </body>
 </html>

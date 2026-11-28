@@ -781,6 +781,63 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 0)
         self.assertEqual(conn.rollbacks, 1)
 
+    def test_incoming_rejects_same_date_supplier_and_document_number(self):
+        def handle(query, params):
+            if query.startswith("SELECT s.id, s.denominazione FROM soggetti s"):
+                return [(1, "Fornitore")]
+            if query.startswith("SELECT id FROM documenti_ingresso"):
+                self.assertEqual(params, (42, "2026-10-03", 1, "DDT-1"))
+                return [(77,)]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.DocumentoIngressoDuplicato):
+                tracciabilita_repo.registra_ingresso(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    numero_ddt="  DDT-1  ",
+                    fornitore_id=1,
+                    righe=[
+                        type(
+                            "Riga",
+                            (),
+                            {"articolo_id": 3, "quantita": Decimal("8.250")},
+                        )()
+                    ],
+                )
+
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(
+            any(query.startswith("INSERT INTO documenti_ingresso")
+                for query, _params in cursor.statements)
+        )
+
+    def test_duplicate_ingress_returns_conflict(self):
+        payload = IngressoTracciatoCreate(
+            data="2026-10-03",
+            numero_ddt="DDT-1",
+            fornitore_id=1,
+            righe=[{"articolo_id": 3, "quantita": "8.250"}],
+        )
+
+        with patch(
+            "saas.main.tracciabilita_repo.registra_ingresso",
+            side_effect=tracciabilita_repo.DocumentoIngressoDuplicato,
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                registra_ingresso_tracciato(payload, {"tenant_id": 42})
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertIn("numero documento", raised.exception.detail)
+
     def test_work_creates_V_lots_and_consumption_ledger(self):
         def handle(query, params):
             if query.startswith("SELECT nome, cognome FROM dipendenti"):
