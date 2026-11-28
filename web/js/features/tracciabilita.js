@@ -628,6 +628,98 @@ function testoScelta(numero, singolare, plurale) {
   return `${numero} ${numero === 1 ? singolare : plurale}`;
 }
 
+function arrotondaMilli(value) {
+  return Math.round(Number(value) * 1000) / 1000;
+}
+
+function datiBilancioLavorazione() {
+  const input = leggiRighe("trace-work-inputs", ["lotto_id", "quantita"]).map((riga) => {
+    const lotto = lottiDisponibili.find((item) => String(item.id) === String(riga.lotto_id));
+    return { quantita: riga.quantita, unita: lotto?.unita_misura || "" };
+  });
+  const output = leggiRighe(
+    "trace-work-outputs",
+    ["articolo_id", "quantita", "tipo_data", "data", "origine"],
+  ).map((riga) => {
+    const articolo = articoli.find((item) => String(item.id) === String(riga.articolo_id));
+    return { quantita: riga.quantita, unita: articolo?.unita_misura || "" };
+  });
+  const scarti = leggiRighe("trace-work-scraps", ["descrizione", "quantita", "unita_misura"]).map((riga) => ({
+    quantita: riga.quantita,
+    unita: riga.unita_misura,
+  }));
+  return { input, output, scarti };
+}
+
+function messaggioBilancioMassa(input, output, scarti) {
+  const voci = [
+    ...input.map((riga) => ({ ...riga, segno: 1 })),
+    ...output.map((riga) => ({ ...riga, segno: -1 })),
+    ...scarti.map((riga) => ({ ...riga, segno: -1 })),
+  ].filter((voce) => {
+    const quantita = Number(voce.quantita);
+    return Number.isFinite(quantita) && quantita > 0;
+  });
+  if (!voci.length) return "";
+  if (voci.some((voce) => !String(voce.unita ?? "").trim())) {
+    return "Unità di misura mancante: non è possibile verificare che input, output e scarti quadrino.";
+  }
+  const totali = new Map();
+  voci.forEach((voce) => {
+    const unita = String(voce.unita).trim();
+    const chiave = unita.toLocaleLowerCase("it");
+    const corrente = totali.get(chiave) || { unita, quantita: 0 };
+    corrente.quantita += Number(voce.quantita) * voce.segno;
+    totali.set(chiave, corrente);
+  });
+  const parti = [];
+  [...totali.keys()].sort().forEach((chiave) => {
+    const { unita, quantita } = totali.get(chiave);
+    const delta = arrotondaMilli(quantita);
+    if (delta === 0) return;
+    if (delta > 0) {
+      parti.push(
+        `mancano ${formattaQuantita(delta, unita)} tra prodotti in output e scarti rispetto alla quantità consumata`,
+      );
+    } else {
+      parti.push(
+        `prodotti e scarti superano la quantità consumata di ${formattaQuantita(-delta, unita)}`,
+      );
+    }
+  });
+  if (!parti.length) return "";
+  const testo = parti.join("; ");
+  return `${testo.charAt(0).toLocaleUpperCase("it")}${testo.slice(1)}. Registra lo scarto oppure correggi le quantità.`;
+}
+
+function passoTreVisibile() {
+  const panel = document.querySelector('[data-trace-work-panel="3"]');
+  return Boolean(panel && !panel.hidden);
+}
+
+function aggiornaAvvisoBilancio() {
+  const { input, output, scarti } = datiBilancioLavorazione();
+  const messaggio = messaggioBilancioMassa(input, output, scarti);
+  const elemento = $("trace-work-error");
+  if (!passoTreVisibile()) {
+    if (!messaggio && elemento.dataset.bilancio === "1") {
+      impostaMessaggio("trace-work-error");
+      delete elemento.dataset.bilancio;
+    }
+    return messaggio;
+  }
+  if (messaggio) {
+    impostaMessaggio("trace-work-error", messaggio);
+    elemento.dataset.bilancio = "1";
+    return messaggio;
+  }
+  if (elemento.dataset.bilancio === "1") {
+    impostaMessaggio("trace-work-error");
+    delete elemento.dataset.bilancio;
+  }
+  return "";
+}
+
 function testoQuantitaTotale(righe) {
   const totale = new Map();
   righe.forEach((riga) => {
@@ -742,12 +834,12 @@ function aggiornaRiepilogoLavorazione() {
     output,
     "Nessun prodotto in output. Torna all'output per aggiungerlo.",
   );
+  aggiornaAvvisoBilancio();
 }
 
 function mostraPassoLavorazione(numero) {
   const sezione = document.querySelector('[data-trace-section="lavorazione"]');
   const passo = Number(numero);
-  if (passo === 3) aggiornaRiepilogoLavorazione();
   sezione.querySelectorAll("[data-trace-work-panel]").forEach((panel) => {
     const attivo = Number(panel.dataset.traceWorkPanel) === passo;
     panel.hidden = !attivo;
@@ -759,6 +851,7 @@ function mostraPassoLavorazione(numero) {
     if (attivo) indicator.setAttribute("aria-current", "step");
     else indicator.removeAttribute("aria-current");
   });
+  if (passo === 3) aggiornaRiepilogoLavorazione();
 }
 
 function applicaRicettaSelezionata() {
@@ -1341,6 +1434,7 @@ function configuraFormLavorazione() {
     });
     $(containerId).addEventListener("input", () => {
       $("trace-work-confirm-weights").checked = false;
+      aggiornaAvvisoBilancio();
     });
     $(containerId).addEventListener("change", (event) => {
       $("trace-work-confirm-weights").checked = false;
@@ -1348,6 +1442,9 @@ function configuraFormLavorazione() {
         aggiornaOutputPerCategoriaInput();
       }
     });
+  });
+  ["input", "change", "click"].forEach((tipo) => {
+    $("trace-work-scraps").addEventListener(tipo, aggiornaAvvisoBilancio);
   });
   $("trace-work-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1402,6 +1499,14 @@ function configuraFormLavorazione() {
     const scarti = leggiRighe("trace-work-scraps", ["descrizione", "quantita", "unita_misura"]);
     if (!input.length || !output.length) {
       impostaMessaggio("trace-work-error", "La lavorazione richiede almeno un lotto in ingresso e un prodotto in uscita.");
+      return;
+    }
+    const { input: consumi, output: prodotti, scarti: rifili } = datiBilancioLavorazione();
+    const bilancio = messaggioBilancioMassa(consumi, prodotti, rifili);
+    if (bilancio) {
+      mostraPassoLavorazione(3);
+      impostaMessaggio("trace-work-error", bilancio);
+      $("trace-work-error").dataset.bilancio = "1";
       return;
     }
     const oggi = dataLocaleISO();

@@ -1516,6 +1516,8 @@ def registra_lavorazione_tracciata(
         raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except tracciabilita_repo.ArticoloNonUtilizzabileComeInput as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+    except tracciabilita_repo.BilancioMassaNonQuadrato as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
     except tracciabilita_repo.RicettaNonTrovata as error:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,

@@ -39,6 +39,10 @@ class ArticoloNonUtilizzabileComeInput(Exception):
     """L'articolo del lotto non è abilitato come input di lavorazione."""
 
 
+class BilancioMassaNonQuadrato(Exception):
+    """Input, output e scarti della lavorazione non quadrano per unità."""
+
+
 class RicettaNonTrovata(Exception):
     """Ricetta assente, inattiva o non associata all'articolo prodotto."""
 
@@ -1577,6 +1581,58 @@ def registra_ingresso(tenant_id, data, numero_ddt, fornitore_id, righe):
             raise
 
 
+def _testo_quantita_bilancio(valore):
+    testo = f"{Decimal(valore).quantize(Decimal('0.001')):.3f}"
+    return testo.replace(".", ",").rstrip("0").rstrip(",") or "0"
+
+
+def verifica_bilancio_massa(voci):
+    """Blocca la lavorazione se, per una unità, input non eguaglia output più scarti.
+
+    Ogni voce è (unita, quantita, segno): +1 per i consumi, -1 per prodotti e scarti.
+    """
+    totali = defaultdict(Decimal)
+    etichette = {}
+    presenti = False
+    for unita, quantita, segno in voci:
+        quantita = Decimal(str(quantita))
+        if quantita <= 0:
+            continue
+        presenti = True
+        if unita is None or not str(unita).strip():
+            raise BilancioMassaNonQuadrato(
+                "Unità di misura mancante: non è possibile verificare che input, "
+                "output e scarti quadrino."
+            )
+        chiave = str(unita).strip().casefold()
+        etichette.setdefault(chiave, str(unita).strip())
+        totali[chiave] += segno * quantita.quantize(Decimal("0.001"))
+    if not presenti:
+        return
+    parti = []
+    for chiave in sorted(totali):
+        delta = totali[chiave].quantize(Decimal("0.001"))
+        if delta == 0:
+            continue
+        etichetta = etichette[chiave]
+        if delta > 0:
+            parti.append(
+                f"mancano {_testo_quantita_bilancio(delta)} {etichetta} tra prodotti "
+                "in output e scarti rispetto alla quantità consumata"
+            )
+        else:
+            parti.append(
+                "prodotti e scarti superano la quantità consumata di "
+                f"{_testo_quantita_bilancio(-delta)} {etichetta}"
+            )
+    if parti:
+        testo = "; ".join(parti)
+        raise BilancioMassaNonQuadrato(
+            f"{testo[0].upper()}{testo[1:]}. "
+            "Registra lo scarto oppure correggi le quantità."
+        )
+
+
 def registra_lavorazione(
     tenant_id,
     data,
@@ -1616,7 +1672,7 @@ def registra_lavorazione(
             placeholders = ", ".join(["%s"] * len(lotto_ids))
             cursor.execute(
                 "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input, "
-                "l.data_scadenza, l.data_tmc, CURRENT_DATE "
+                "l.data_scadenza, l.data_tmc, CURRENT_DATE, l.unita_misura "
                 "FROM lotti l JOIN articoli a "
                 "ON a.tenant_id = l.tenant_id AND a.id = l.articolo_id "
                 f"WHERE l.tenant_id = %s AND l.id IN ({placeholders}) "
@@ -1664,6 +1720,22 @@ def registra_lavorazione(
             articoli = {row[0]: row[1] for row in cursor.fetchall()}
             if len(articoli) != len(articolo_ids):
                 raise ArticoloNonTrovato
+
+            unita_lotti = {row[0]: _row_value(row, 6) for row in righe_lotti}
+            verifica_bilancio_massa(
+                [
+                    (unita_lotti.get(riga.lotto_id), riga.quantita, Decimal(1))
+                    for riga in input_lavorazione
+                ]
+                + [
+                    (articoli[riga.articolo_id], riga.quantita, Decimal(-1))
+                    for riga in output
+                ]
+                + [
+                    (scarto.unita_misura, scarto.quantita, Decimal(-1))
+                    for scarto in scarti
+                ]
+            )
 
             if ricetta_id is not None:
                 cursor.execute(

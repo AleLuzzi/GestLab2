@@ -171,6 +171,7 @@ def esegui_flusso_operatore(utente: dict, setup: dict) -> dict:
         LavorazioneCreate,
         LavorazioneInputCreate,
         LavorazioneOutputCreate,
+        LavorazioneScartoCreate,
         VenditaCompletaCreate,
         VenditaRigaCreate,
     )
@@ -215,6 +216,13 @@ def esegui_flusso_operatore(utente: dict, setup: dict) -> dict:
                     quantita=Decimal("0.050"),
                     origine="Italia",
                     data_scadenza=scadenza_prodotto,
+                )
+            ],
+            scarti=[
+                LavorazioneScartoCreate(
+                    descrizione="Calo di lavorazione",
+                    quantita=Decimal("0.050"),
+                    unita_misura="kg",
                 )
             ],
         ),

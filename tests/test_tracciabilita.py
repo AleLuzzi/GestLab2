@@ -845,7 +845,7 @@ class TracciabilitaTests(unittest.TestCase):
             if query.startswith(
                 "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
             ):
-                return [(7, Decimal("5.000"), True, date(2026, 12, 1), None, date(2026, 11, 7))]
+                return [(7, Decimal("5.000"), True, date(2026, 12, 1), None, date(2026, 11, 7), "kg")]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
             if query.startswith("SELECT articolo_id FROM ricette"):
@@ -890,7 +890,7 @@ class TracciabilitaTests(unittest.TestCase):
                         (),
                         {
                             "descrizione": "Rifilatura",
-                            "quantita": Decimal("0.1"),
+                            "quantita": Decimal("0.5"),
                             "unita_misura": "kg",
                         },
                     )()
@@ -924,6 +924,46 @@ class TracciabilitaTests(unittest.TestCase):
         self.assertEqual(conn.commits, 1)
         self.assertEqual(conn.rollbacks, 0)
 
+    def test_work_rejects_unbalanced_input_and_output(self):
+        def handle(query, params):
+            if query.startswith("SELECT nome, cognome FROM dipendenti"):
+                return [("Ada", "Lovelace")]
+            if query.startswith(
+                "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
+            ):
+                return [(7, Decimal("20.000"), True, None, None, date(2026, 11, 7), "kg")]
+            if query.startswith("SELECT id, unita_misura FROM articoli"):
+                return [(9, "kg")]
+            return []
+
+        cursor = FakeCursor(handle)
+        conn = FakeConnection(cursor)
+
+        @contextmanager
+        def fake_connection():
+            yield conn
+
+        with patch.object(tracciabilita_repo, "connection", fake_connection):
+            with self.assertRaises(tracciabilita_repo.BilancioMassaNonQuadrato) as raised:
+                tracciabilita_repo.registra_lavorazione(
+                    tenant_id=42,
+                    data="2026-10-03",
+                    descrizione="Stacco pancia",
+                    operatore_id=5,
+                    input_lavorazione=[
+                        type("Input", (), {"lotto_id": 7, "quantita": Decimal("8")})()
+                    ],
+                    output=[
+                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("7")})()
+                    ],
+                    scarti=[],
+                )
+
+        self.assertIn("Mancano 1 kg", str(raised.exception))
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 1)
+        self.assertFalse(any("INSERT INTO lavorazioni" in query for query, _ in cursor.statements))
+
     def test_work_rolls_back_stock_update_if_movement_insert_fails(self):
         def handle(query, params):
             if query.startswith("SELECT nome, cognome FROM dipendenti"):
@@ -931,7 +971,7 @@ class TracciabilitaTests(unittest.TestCase):
             if query.startswith(
                 "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
             ):
-                return [(7, Decimal("5.000"), True)]
+                return [(7, Decimal("5.000"), True, None, None, None, "kg")]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
             if query.startswith("INSERT INTO movimenti_lotto"):
@@ -956,7 +996,7 @@ class TracciabilitaTests(unittest.TestCase):
                         type("Input", (), {"lotto_id": 7, "quantita": Decimal("2")})()
                     ],
                     output=[
-                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("1")})()
+                        type("Output", (), {"articolo_id": 9, "quantita": Decimal("2")})()
                     ],
                     scarti=[],
                 )
@@ -1168,7 +1208,7 @@ class TracciabilitaTests(unittest.TestCase):
             if query.startswith(
                 "SELECT l.id, l.quantita_disponibile, a.utilizzabile_come_input"
             ):
-                return [(7, Decimal("5.000"), True, None, date(2026, 11, 6), oggi)]
+                return [(7, Decimal("5.000"), True, None, date(2026, 11, 6), oggi, "kg")]
             if query.startswith("SELECT id, unita_misura FROM articoli"):
                 return [(9, "kg")]
             if query.startswith("SELECT prog_ven"):
@@ -1205,7 +1245,7 @@ class TracciabilitaTests(unittest.TestCase):
                         (),
                         {
                             "articolo_id": 9,
-                            "quantita": Decimal("1"),
+                            "quantita": Decimal("2"),
                             "data_tmc": date(2026, 12, 1),
                             "data_scadenza": None,
                             "origine": None,
@@ -1270,6 +1310,28 @@ class TracciabilitaTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.status_code, 422)
         self.assertEqual(raised.exception.detail, "Articolo non abilitato come input.")
+
+    def test_work_endpoint_blocks_unbalanced_mass(self):
+        payload = LavorazioneCreate(
+            data="2026-10-03",
+            operatore_id=5,
+            input=[{"lotto_id": 7, "quantita": "8"}],
+            output=[{"articolo_id": 9, "quantita": "7"}],
+        )
+
+        with patch.object(
+            tracciabilita_repo,
+            "registra_lavorazione",
+            side_effect=tracciabilita_repo.BilancioMassaNonQuadrato(
+                "Mancano 1 kg tra prodotti in output e scarti rispetto alla quantità consumata. "
+                "Registra lo scarto oppure correggi le quantità."
+            ),
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                registra_lavorazione_tracciata(payload, {"tenant_id": 42})
+
+        self.assertEqual(raised.exception.status_code, 422)
+        self.assertIn("Mancano 1 kg", raised.exception.detail)
 
     def test_ingress_keeps_lotto_metadata_for_scadenza_and_origin(self):
         def handle(query, params):
