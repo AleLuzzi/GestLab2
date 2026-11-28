@@ -82,9 +82,22 @@ La data è quella di oggi e non si modifica. Scegli il fornitore e scrivi il
 
 ### 3.2 Articoli
 
-1. Scegli la categoria, poi l’articolo. Con lo scanner sul campo, il codice a
-   barre seleziona l’articolo.
-2. Compila i dati del lotto, se il fornitore li indica. Valgono per gli
+1. Scegli la **categoria**, poi il taglio:
+   - **Bovino**, **Vitello** e **Suino**: sul profilo dell’animale tocca la zona
+     del taglio che stai ricevendo. Un secondo tocco sulla stessa zona la
+     deseleziona.
+   - **Bovino**: con **Quarto anteriore** e **Quarto posteriore** vedi un solo
+     profilo alla volta.
+   - Accanto al profilo trovi i pulsanti per tagli fuori dal disegno: mezzena
+     (bovino, vitello e suino), filetto (bovino e suino), lardo (solo suino).
+     Sul vitello resta solo la mezzena.
+   - **Condimento** e **Preparato**: elenco a pulsanti con il nome dell’articolo,
+     senza disegno (per esempio Sale, Salsicce fresche).
+   - Un articolo disattivato in Configurazioni non si seleziona: la zona o il
+     pulsante resta spento.
+2. Con lo scanner sul campo, il codice a barre seleziona l’articolo, anche con
+   il profilo a video: apre la categoria giusta e evidenzia la zona o il pulsante.
+3. Compila i dati del lotto, se il fornitore li indica. Valgono per gli
    articoli che aggiungi subito dopo:
    - **Lotto fornitore**
    - **Origine**
@@ -96,10 +109,10 @@ La data è quella di oggi e non si modifica. Scegli il fornitore e scrivi il
    - **Note del lotto**, facoltative, fino a 500 caratteri (per esempio «bio»
      o la razza). La nota resta su questo lotto e non passa da sola ai
      preparati.
-3. Inserisci la **quantità ricevuta** con fino a tre decimali, per esempio
+4. Inserisci la **quantità ricevuta** con fino a tre decimali, per esempio
    `12,500`, nell’unità dell’articolo.
-4. Premi **Aggiungi al riepilogo**. Ripeti per ogni articolo del DDT.
-5. Premi **Vai al riepilogo**.
+5. Premi **Aggiungi al riepilogo**. Ripeti per ogni articolo del DDT.
+6. Premi **Vai al riepilogo**.
 
 ### 3.3 Riepilogo
 

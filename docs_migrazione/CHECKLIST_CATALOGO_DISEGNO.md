@@ -133,13 +133,13 @@ Punto di innesto: `renderArticoli` in `web/js/features/ingresso-merce.js` e il p
 
 ## 4. Verifica
 
-- [ ] Con un tenant `macelleria` nuovo, in Ingresso merce scegliere Suino, cliccare la lonza, inserire una quantità e aggiungere la riga: il riepilogo mostra «Lonza di suino» e la conferma crea il lotto su quell'articolo.
-- [ ] Ripetere con Vitello (un taglio di zona, per esempio il carrè) e con Bovino su entrambi i quarti (un taglio anteriore e uno posteriore).
-- [ ] Verificare i pulsanti fuori profilo: mezzena bovina, filetto bovino, filetto di suino e lardo di suino finiscono nel riepilogo con il nome dell'articolo.
-- [ ] Disattivare da Configurazioni un taglio presente sul disegno, ricaricare l'ingresso e verificare che la zona sia spenta e che il clic non aggiunga righe.
-- [ ] Verificare che Condimento e Preparato mostrino ancora i pulsanti Sale, Salsicce fresche, Hamburger di bovino e Arrosto di vitello, senza disegno.
-- [ ] Verificare la regressione del passo 1 e del passo 3: fornitore obbligatorio, quantità, azzera movimento e conferma. Un ingresso completo continua a creare documento e lotto come prima del disegno.
-- [ ] Aggiornare in `docs_migrazione/MANUALE_UTENTE.md` solo il passo articoli dell'ingresso (§ 3): categoria, poi taglio sul disegno per bovino, vitello e suino, pulsanti per mezzena, filetto e lardo, elenco testuale per le altre categorie, scanner invariato.
+- [x] Con un tenant `macelleria` nuovo, in Ingresso merce scegliere Suino, cliccare la lonza, inserire una quantità e aggiungere la riga: il riepilogo mostra «Lonza di suino» e la conferma crea il lotto su quell'articolo. Collaudo live `GESTLAB_COLLAUDO_LIVE=1`: onboarding `macelleria`, ingresso `SUI-LONZA` 1,250 kg, lotto con articolo «Lonza di suino»; riepilogo UI verificato in `tests/test_catalogo_disegno.py` (`articolo.nome` → riga riepilogo; simulazione DOM con Node/jsdom se disponibile).
+- [x] Ripetere con Vitello (un taglio di zona, per esempio il carrè) e con Bovino su entrambi i quarti (un taglio anteriore e uno posteriore). Collaudo live: `VIT-CARRE`, `BOV-PETTO` (quarto anteriore), `BOV-COSTATA` (quarto posteriore) sullo stesso DDT; profilo e selezione in `test_verifica_checklist_vitello_carre_e_bovino_quarti_su_profilo`.
+- [x] Verificare i pulsanti fuori profilo: mezzena bovina, filetto bovino, filetto di suino e lardo di suino finiscono nel riepilogo con il nome dell'articolo. Collaudo live: `BOV-MEZZENA`, `BOV-FILETTO`, `SUI-FILETTO`, `SUI-LARDO` sullo stesso DDT; clic e riepilogo in `test_verifica_checklist_pulsanti_fuori_profilo_riepilogo`.
+- [x] Disattivare da Configurazioni un taglio presente sul disegno, ricaricare l'ingresso e verificare che la zona sia spenta e che il clic non aggiunga righe. Simulazione ricarica e `aggiungiRighe` in `test_verifica_checklist_zona_spenta_dopo_disattivazione_articolo`; collaudo live disattivazione `SUI-LONZA` in `test_tenant_macelleria_disattiva_taglio_su_profilo`.
+- [x] Verificare che Condimento e Preparato mostrino ancora i pulsanti Sale, Salsicce fresche, Hamburger di bovino e Arrosto di vitello, senza disegno. Template e UI elenco in `test_verifica_checklist_condimento_preparato_pulsanti_senza_disegno` (confronto con profilo Suino); catalogo tenant in `test_tenant_macelleria_condimento_e_preparato_in_catalogo`.
+- [x] Verificare la regressione del passo 1 e del passo 3: fornitore obbligatorio, quantità, azzera movimento e conferma. Un ingresso completo continua a creare documento e lotto come prima del disegno. Simulazione passi in `test_verifica_checklist_regressione_passo_1_e_3_ingresso` (taglio Suino sul profilo); collaudo live `test_tenant_macelleria_ingresso_completo_crea_documento_e_lotto` (`documento_ingresso` + lotto `SUI-LONZA`, `FornitoreNonValido` se fornitore assente).
+- [x] Aggiornare in `docs_migrazione/MANUALE_UTENTE.md` solo il passo articoli dell'ingresso (§ 3.2): categoria, profilo per bovino, vitello e suino, quarti bovino, pulsanti mezzena/filetto/lardo, elenco testuale Condimento e Preparato, scanner invariato.
 
 ## Fuori da questa checklist
 
