@@ -73,33 +73,48 @@ export const loadDipendenti = () => renderTable("dip-tbody", "/api/v1/dipendenti
     <button class="btn danger" data-action="delete-dip" data-id="${esc(item.id)}">Elimina</button>
   </td>`, "Nessun dipendente", 6);
 
+function renderArticoli() {
+  const tbody = $("articoli-tbody");
+  const search = ($("articoli-search")?.value ?? "").trim().toLocaleLowerCase("it");
+  const articoli = articoliCache.filter((articolo) => {
+    if (!search) return true;
+    return [articolo.id, articolo.codice, articolo.nome, articolo.categoria, articolo.ean, articolo.unita_misura]
+      .some((value) => String(value ?? "").toLocaleLowerCase("it").includes(search));
+  });
+  if (!articoli.length) {
+    const messaggio = articoliCache.length
+      ? "Nessun articolo corrisponde al filtro"
+      : "Nessun articolo. Aggiungine uno per iniziare.";
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">${messaggio}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = articoli.map((articolo) => `
+    <tr>
+      <td>${esc(articolo.id)}</td>
+      <td>${esc(articolo.codice ?? "")}</td>
+      <td>${esc(articolo.nome)}</td>
+      <td>${esc(articolo.categoria ?? "")}</td>
+      <td>${esc(articolo.unita_misura)}</td>
+      <td>${esc(articolo.ean ?? "")}</td>
+      <td>${esc(articolo.prezzo_unitario ?? "")}</td>
+      <td>${articolo.attivo ? "Attivo" : "Disattivato"}</td>
+      <td>${articolo.utilizzabile_come_input ? "Sì" : "No"}</td>
+      <td class="row-actions">
+        <button class="btn ghost" data-action="edit-articolo" data-id="${esc(articolo.id)}">Modifica</button>
+        ${articolo.attivo
+          ? `<button class="btn danger" data-action="deactivate-articolo" data-id="${esc(articolo.id)}">Disattiva</button>`
+          : `<button class="btn ghost" data-action="activate-articolo" data-id="${esc(articolo.id)}">Riattiva</button>`}
+      </td>
+    </tr>`).join("");
+}
+
 export const loadArticoli = async () => {
   const tbody = $("articoli-tbody");
   try {
     articoliCache = await api("/api/v1/articoli");
-    const articoli = articoliCache;
-    tbody.innerHTML = articoli.length
-      ? articoli.map((articolo) => `
-        <tr>
-          <td>${esc(articolo.id)}</td>
-          <td>${esc(articolo.codice ?? "")}</td>
-          <td>${esc(articolo.nome)}</td>
-          <td>${esc(articolo.categoria ?? "")}</td>
-          <td>${esc(articolo.unita_misura)}</td>
-          <td>${esc(articolo.ean ?? "")}</td>
-          <td>${esc(articolo.prezzo_unitario ?? "")}</td>
-          <td>${articolo.attivo ? "Attivo" : "Disattivato"}</td>
-          <td>${articolo.utilizzabile_come_input ? "Sì" : "No"}</td>
-          <td class="row-actions">
-            <button class="btn ghost" data-action="edit-articolo" data-id="${esc(articolo.id)}">Modifica</button>
-            ${articolo.attivo
-              ? `<button class="btn danger" data-action="deactivate-articolo" data-id="${esc(articolo.id)}">Disattiva</button>`
-              : `<button class="btn ghost" data-action="activate-articolo" data-id="${esc(articolo.id)}">Riattiva</button>`}
-          </td>
-        </tr>`).join("")
-      : '<tr><td colspan="10" class="empty">Nessun articolo. Aggiungine uno per iniziare.</td></tr>';
+    renderArticoli();
   } catch (error) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">${esc(error.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">${esc(error.message)}</td></tr>`;
   }
 };
 
@@ -517,6 +532,7 @@ export function initAnagrafiche() {
     if (event.target === $("fornitori-dialog")) $("fornitori-dialog").close();
   });
   $("fornitori-role-fornitore").addEventListener("change", aggiornaCampiFornitore);
+  $("articoli-search").addEventListener("input", renderArticoli);
   $("anagrafiche-search").addEventListener("input", renderSoggetti);
   $("anagrafiche-ruolo").addEventListener("change", renderSoggetti);
   $("anagrafiche-stato").addEventListener("change", renderSoggetti);

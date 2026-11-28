@@ -1,9 +1,9 @@
 import { initAuth } from "./core/auth.js?v=20261114-4";
-import { initNavigation } from "./core/navigation.js?v=20261128-2";
+import { initNavigation } from "./core/navigation.js?v=20261128-3";
 import { initScanner } from "./core/scanner.js?v=20261121-5";
 import { initTastieraVirtuale } from "./core/tastiera.js?v=20261121-5";
 import { initAdmin } from "./features/admin.js?v=20261121-1";
-import { initAnagrafiche } from "./features/anagrafiche.js";
+import { initAnagrafiche } from "./features/anagrafiche.js?v=20261128-3";
 import { initDashboard } from "./features/dashboard.js?v=20261121-5";
 import { initIngressoMerce } from "./features/ingresso-merce.js?v=20261128-1";
 import { initMenu } from "./features/menu.js?v=20261114-3";

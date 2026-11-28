@@ -261,6 +261,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   display: flex;
   flex-direction: column;
 }
+.ingresso-card .ingresso-step[hidden] {
+  display: none;
+}
 .ingresso-card .ingresso-step > .ingresso-actions {
   margin-top: auto;
   padding-top: 24px;
