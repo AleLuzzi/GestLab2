@@ -517,6 +517,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .ingresso-line-description { display: grid; gap: 4px; }
 .ingresso-line-description span { color: var(--text-dim); font-size: 14px; }
 .ingresso-line-weight { white-space: nowrap; }
+.trace-summary-line { grid-template-columns: minmax(0, 1fr) auto; }
 .ingresso-card .ingresso-remove-line { min-height: 44px; padding: 8px 12px; font-size: 14px; }
 .ingresso-summary { margin-top: 8px; }
 .ingresso-summary strong { max-width: 65%; overflow-wrap: anywhere; }
@@ -702,13 +703,27 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 .trace-type-A { background: rgba(47, 158, 110, 0.15); border-color: rgba(47, 158, 110, 0.3); color: #bfead8; }
 .trace-type-V { background: rgba(15, 112, 168, 0.15); border-color: rgba(15, 112, 168, 0.3); color: #cfe9ff; }
 .trace-detail-button { padding: 7px 12px; }
-.trace-work-columns {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 16px;
-}
 #trace-work-form { max-width: none; }
+.trace-work-steps { margin-top: 20px; }
+.trace-work-steps li { padding: 0; }
+.trace-work-steps button {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px;
+}
+.trace-work-forward { justify-content: flex-end; }
+#trace-work-form .trace-lines-header .btn,
+#trace-work-form .trace-line .btn {
+  min-height: 44px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
 .trace-recipe-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 0.6fr) auto;
@@ -756,11 +771,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   margin: 0;
   accent-color: var(--accent);
 }
-.trace-work-column { min-width: 0; }
-.trace-work-column .trace-lines-header { flex-wrap: wrap; }
-.trace-work-column .trace-lines-header .btn { padding: 8px 10px; }
 .trace-lines-header {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 10px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 20px 0 10px;
 }
 .trace-lines {
   display: grid; gap: 12px;
@@ -777,9 +789,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
 }
 .trace-line-scrap .btn.danger { grid-row: 1 / span 3; }
 
-@media (max-width: 1200px) {
-  .trace-work-columns { grid-template-columns: 1fr; gap: 4px; }
-}
 @media (max-width: 900px) {
   .sales-selection-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -832,5 +841,6 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--a
   .articolo-button { min-height: 58px; padding: 10px 8px; font-size: 15px; }
   .ingresso-line { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
   .ingresso-line-weight { grid-column: 1; }
+  .trace-summary-line .ingresso-line-weight { grid-column: auto; }
   .ingresso-remove-line { grid-column: 2; grid-row: 1 / span 2; }
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GestLab SaaS — Console</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261128-5" />
+  <link rel="stylesheet" href="/static/app.css?v=20261128-7" />
 </head>
 <body>
   <!-- Login view -->
@@ -758,7 +758,7 @@
 
         <div data-trace-section="lavorazione" class="trace-section active">
           <div id="trace-work-data-error" class="error"></div>
-          <form id="trace-work-form" class="form-card">
+          <form id="trace-work-form" class="form-card ingresso-card">
             <h3>Nuova lavorazione</h3>
             <div class="row split-row">
               <label>Data
@@ -787,40 +787,80 @@
             </div>
             <p id="trace-work-recipe-help" class="trace-help" hidden></p>
 
-            <div class="trace-work-columns">
-              <div class="trace-work-column">
-                <div class="trace-lines-header">
-                  <h4>Input</h4>
-                  <button id="btn-trace-add-input" class="btn ghost" type="button">+ Aggiungi lotto</button>
-                </div>
-                <p class="trace-help">Il lotto con scadenza più vicina è preselezionato; puoi scegliere un altro lotto disponibile.</p>
-                <div id="trace-work-inputs" class="trace-lines"></div>
-              </div>
+            <ol class="ingresso-steps trace-work-steps" aria-label="Passaggi lavorazione">
+              <li class="active" data-trace-work-indicator="1" aria-current="step">
+                <button type="button" data-trace-work-step="1">1. Input</button>
+              </li>
+              <li data-trace-work-indicator="2">
+                <button type="button" data-trace-work-step="2">2. Output</button>
+              </li>
+              <li data-trace-work-indicator="3">
+                <button type="button" data-trace-work-step="3">3. Riepilogo</button>
+              </li>
+            </ol>
 
-              <div class="trace-work-column">
-                <div class="trace-lines-header">
-                  <h4>Output</h4>
-                  <button id="btn-trace-add-output" class="btn ghost" type="button">+ Aggiungi prodotto</button>
-                </div>
-                <div id="trace-work-outputs" class="trace-lines"></div>
+            <section class="ingresso-step active" data-trace-work-panel="1" aria-labelledby="trace-work-input-title">
+              <div class="trace-lines-header">
+                <h4 id="trace-work-input-title">Input</h4>
+                <button id="btn-trace-add-input" class="btn ghost" type="button">+ Aggiungi lotto</button>
               </div>
-
-              <div class="trace-work-column">
-                <div class="trace-lines-header">
-                  <h4>Scarti</h4>
-                  <button id="btn-trace-add-scrap" class="btn ghost" type="button">+ Aggiungi scarto</button>
-                </div>
-                <div id="trace-work-scraps" class="trace-lines"></div>
+              <p class="trace-help">Il lotto con scadenza più vicina è preselezionato; puoi scegliere un altro lotto disponibile.</p>
+              <div id="trace-work-inputs" class="trace-lines"></div>
+              <div class="ingresso-actions trace-work-forward">
+                <button class="btn primary" type="button" data-trace-work-step="2">Continua all'output</button>
               </div>
-            </div>
+            </section>
 
-            <label class="trace-work-confirmation">
-              <input id="trace-work-confirm-weights" type="checkbox" required />
-              Confermo che le quantità di input e output sono i pesi reali rilevati e verificati dall'operatore.
-            </label>
-            <div class="row">
-              <button class="btn primary" type="submit">Registra lavorazione</button>
-            </div>
+            <section class="ingresso-step" data-trace-work-panel="2" aria-labelledby="trace-work-output-title" hidden>
+              <div class="trace-lines-header">
+                <h4 id="trace-work-output-title">Output</h4>
+                <button id="btn-trace-add-output" class="btn ghost" type="button">+ Aggiungi prodotto</button>
+              </div>
+              <p id="trace-work-output-help" class="trace-help">Gli articoli proposti hanno la stessa categoria dei lotti in input.</p>
+              <div id="trace-work-outputs" class="trace-lines"></div>
+              <div class="ingresso-actions">
+                <button class="btn ghost" type="button" data-trace-work-step="1">Indietro</button>
+                <button class="btn primary" type="button" data-trace-work-step="3">Vai al riepilogo</button>
+              </div>
+            </section>
+
+            <section class="ingresso-step" data-trace-work-panel="3" aria-labelledby="trace-work-summary-title" hidden>
+              <h4 id="trace-work-summary-title">Riepilogo</h4>
+              <div class="summary-list ingresso-summary">
+                <div><span>Data</span><strong id="trace-summary-date">—</strong></div>
+                <div><span>Operatore</span><strong id="trace-summary-operator">—</strong></div>
+                <div><span>Descrizione</span><strong id="trace-summary-description">—</strong></div>
+                <div><span>Ricetta</span><strong id="trace-summary-recipe">Lavorazione manuale</strong></div>
+                <div><span>Lotti in input</span><strong id="trace-summary-input-count">0</strong></div>
+                <div><span>Quantità input</span><strong id="trace-summary-input-qty">0</strong></div>
+                <div><span>Prodotti in output</span><strong id="trace-summary-output-count">0</strong></div>
+                <div><span>Quantità output</span><strong id="trace-summary-output-qty">0</strong></div>
+              </div>
+              <div class="ingresso-lines-heading">
+                <h4>Input</h4>
+                <span id="trace-summary-input-badge" class="role-badge">0 lotti</span>
+              </div>
+              <div id="trace-work-summary-inputs" class="ingresso-lines"></div>
+              <div class="ingresso-lines-heading">
+                <h4>Output</h4>
+                <span id="trace-summary-output-badge" class="role-badge">0 prodotti</span>
+              </div>
+              <div id="trace-work-summary-outputs" class="ingresso-lines"></div>
+              <div class="trace-lines-header">
+                <h4>Scarti</h4>
+                <button id="btn-trace-add-scrap" class="btn ghost" type="button">+ Aggiungi scarto</button>
+              </div>
+              <div id="trace-work-scraps" class="trace-lines"></div>
+              <label class="trace-work-confirmation">
+                <input id="trace-work-confirm-weights" type="checkbox" required />
+                Confermo che le quantità di input e output sono i pesi reali rilevati e verificati dall'operatore.
+              </label>
+              <div class="ingresso-actions">
+                <button class="btn ghost" type="button" data-trace-work-step="2">Torna all'output</button>
+                <button class="btn primary" type="submit">Registra lavorazione</button>
+              </div>
+            </section>
+
             <div id="trace-work-error" class="error"></div>
           </form>
         </div>
@@ -1076,6 +1116,6 @@
     </main>
   </div>
 
-<script type="module" src="/static/js/app.js?v=20261128-7"></script>
+<script type="module" src="/static/js/app.js?v=20261128-8"></script>
 </body>
 </html>

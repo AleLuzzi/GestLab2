@@ -47,16 +47,102 @@ function articoliAttivi() {
   return articoli.filter((articolo) => articolo.attivo);
 }
 
+function etichettaArticolo(articolo, mostraCategoria = false) {
+  const codice = articolo.codice ? ` · ${articolo.codice}` : "";
+  const categoria = mostraCategoria && articolo.categoria?.trim()
+    ? ` · ${articolo.categoria.trim()}`
+    : "";
+  return `${articolo.nome}${codice} (${articolo.unita_misura})${categoria}`;
+}
+
 function riempiSelectArticoli(select) {
   const selected = select.value;
   select.replaceChildren(creaOpzione("", "Seleziona articolo"));
   articoliAttivi().forEach((articolo) => {
-    select.appendChild(creaOpzione(
-      articolo.id,
-      `${articolo.nome}${articolo.codice ? ` · ${articolo.codice}` : ""} (${articolo.unita_misura})`,
-    ));
+    select.appendChild(creaOpzione(articolo.id, etichettaArticolo(articolo)));
   });
   select.value = selected;
+}
+
+function normalizzaCategoria(value) {
+  return String(value ?? "").trim().toLocaleLowerCase("it");
+}
+
+function categoriaDelLotto(lotto) {
+  const diretta = String(lotto?.categoria ?? "").trim();
+  if (diretta) return diretta;
+  const articolo = articoli.find((item) => String(item.id) === String(lotto?.articolo_id));
+  return String(articolo?.categoria ?? "").trim();
+}
+
+function etichetteCategorieInput() {
+  const etichette = new Map();
+  document.querySelectorAll('#trace-work-inputs select[data-field="lotto_id"]').forEach((select) => {
+    if (!select.value) return;
+    const lotto = lottiDisponibili.find((item) => String(item.id) === select.value);
+    const categoria = categoriaDelLotto(lotto);
+    if (!categoria) return;
+    const chiave = normalizzaCategoria(categoria);
+    if (!etichette.has(chiave)) etichette.set(chiave, categoria);
+  });
+  return etichette;
+}
+
+function idArticoloRicettaSelezionata() {
+  const ricetta = ricette.find((item) => String(item.id) === $("trace-work-recipe").value);
+  return ricetta ? String(ricetta.articolo_id) : "";
+}
+
+function articoliPropostiInOutput() {
+  const categorie = etichetteCategorieInput();
+  const ricettaId = idArticoloRicettaSelezionata();
+  const attivi = articoliAttivi();
+  if (!categorie.size) return attivi;
+  return attivi.filter((articolo) => (
+    categorie.has(normalizzaCategoria(articolo.categoria))
+    || (ricettaId && String(articolo.id) === ricettaId)
+  ));
+}
+
+function fraseCategorie(nomi) {
+  if (nomi.length <= 1) return `della categoria ${nomi[0] || ""}`.trim();
+  if (nomi.length === 2) return `delle categorie ${nomi[0]} e ${nomi[1]}`;
+  return `delle categorie ${nomi.slice(0, -1).join(", ")} e ${nomi.at(-1)}`;
+}
+
+function aggiornaAiutoOutput() {
+  const help = $("trace-work-output-help");
+  if (!help) return;
+  const nomi = [...etichetteCategorieInput().values()];
+  if (!nomi.length) {
+    help.textContent = "Seleziona un lotto in input: in output compariranno gli articoli della stessa categoria.";
+    return;
+  }
+  const proposti = articoliPropostiInOutput();
+  help.textContent = proposti.length
+    ? `In output sono proposti gli articoli ${fraseCategorie(nomi)}.`
+    : `Nessun articolo attivo ${fraseCategorie(nomi)}.`;
+}
+
+function riempiSelectArticoliOutput(select) {
+  const selected = select.value;
+  const categorie = etichetteCategorieInput();
+  const proposti = articoliPropostiInOutput();
+  const mostraCategoria = categorie.size > 1;
+  select.replaceChildren(creaOpzione(
+    "",
+    categorie.size ? "Seleziona articolo della stessa categoria" : "Seleziona articolo",
+  ));
+  proposti.forEach((articolo) => {
+    select.appendChild(creaOpzione(articolo.id, etichettaArticolo(articolo, mostraCategoria)));
+  });
+  select.value = proposti.some((articolo) => String(articolo.id) === selected) ? selected : "";
+}
+
+function aggiornaOutputPerCategoriaInput() {
+  document.querySelectorAll('#trace-work-outputs select[data-field="articolo_id"]')
+    .forEach(riempiSelectArticoliOutput);
+  aggiornaAiutoOutput();
 }
 
 function riempiSelectLotti(select) {
@@ -116,8 +202,8 @@ function riempiSelectDipendenti(select) {
 }
 
 function aggiornaSelettoriRighe() {
-  document.querySelectorAll('.trace-line select[data-field="articolo_id"]').forEach(riempiSelectArticoli);
   document.querySelectorAll('.trace-line select[data-field="lotto_id"]').forEach(riempiSelectLotti);
+  aggiornaOutputPerCategoriaInput();
   riempiSelectDipendenti($("trace-work-operator"));
 }
 
@@ -429,6 +515,7 @@ function aggiungiRigaInput() {
     riempiSelectLotti,
     "Rimuovi lotto input",
   );
+  aggiornaOutputPerCategoriaInput();
 }
 
 function arrotondaQuantita(value) {
@@ -503,10 +590,11 @@ function selezionaRicetta(ricetta, targetQuantity) {
       { name: "data", label: "Data", type: "date", required: false },
       { name: "origine", label: "Origine dichiarata", type: "text", required: false },
     ],
-    (select) => riempiSelectArticoli(select),
+    (select) => riempiSelectArticoliOutput(select),
     "Rimuovi prodotto output",
   );
   outputRow.querySelector('[data-field="articolo_id"]').value = String(ricetta.articolo_id);
+  aggiornaAiutoOutput();
 
   const aiuto = [
     "Le quantità precompilate sono stime della ricetta: correggi input e prodotto con i pesi reali prima di confermare.",
@@ -518,6 +606,159 @@ function selezionaRicetta(ricetta, targetQuantity) {
   const help = $("trace-work-recipe-help");
   help.textContent = aiuto;
   help.hidden = !aiuto;
+}
+
+function valoreCampoRiga(row, field) {
+  return row.querySelector(`[data-field="${field}"]`)?.value.trim() ?? "";
+}
+
+function righeCompilate(containerId, campi) {
+  return [...$(containerId).querySelectorAll(".trace-line")]
+    .map((row) => {
+      const valori = {};
+      campi.forEach((campo) => {
+        valori[campo] = valoreCampoRiga(row, campo);
+      });
+      return valori;
+    })
+    .filter((riga) => campi.some((campo) => riga[campo]));
+}
+
+function testoScelta(numero, singolare, plurale) {
+  return `${numero} ${numero === 1 ? singolare : plurale}`;
+}
+
+function testoQuantitaTotale(righe) {
+  const totale = new Map();
+  righe.forEach((riga) => {
+    if (riga.quantitaNumero === null) return;
+    totale.set(riga.unita, (totale.get(riga.unita) || 0) + riga.quantitaNumero);
+  });
+  return totale.size
+    ? [...totale].map(([unita, quantita]) => formattaQuantita(quantita, unita)).join(" · ")
+    : "0";
+}
+
+function creaRigaSintesi(nome, dettagli, quantita) {
+  const item = document.createElement("div");
+  item.className = "ingresso-line trace-summary-line";
+
+  const description = document.createElement("div");
+  description.className = "ingresso-line-description";
+  const name = document.createElement("strong");
+  name.textContent = nome;
+  description.appendChild(name);
+  const testoDettagli = dettagli.filter(Boolean).join(" · ");
+  if (testoDettagli) {
+    const details = document.createElement("span");
+    details.textContent = testoDettagli;
+    description.appendChild(details);
+  }
+
+  const weight = document.createElement("strong");
+  weight.className = "ingresso-line-weight";
+  weight.textContent = quantita;
+  item.append(description, weight);
+  return item;
+}
+
+function riempiSintesi(container, righe, messaggioVuoto) {
+  container.replaceChildren();
+  if (righe.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = messaggioVuoto;
+    container.appendChild(empty);
+    return;
+  }
+  righe.forEach((riga) => container.appendChild(creaRigaSintesi(riga.nome, riga.dettagli, riga.quantita)));
+}
+
+function testoOpzioneSelezionata(select) {
+  return select.selectedIndex > 0 ? select.options[select.selectedIndex].textContent : "";
+}
+
+function aggiornaRiepilogoLavorazione() {
+  const data = $("trace-work-date").value;
+  $("trace-summary-date").textContent = data
+    ? new Date(`${data}T00:00:00`).toLocaleDateString("it-IT")
+    : "—";
+  $("trace-summary-operator").textContent = testoOpzioneSelezionata($("trace-work-operator")) || "—";
+  $("trace-summary-description").textContent = $("trace-work-description").value.trim() || "—";
+  $("trace-summary-recipe").textContent = testoOpzioneSelezionata($("trace-work-recipe")) || "Lavorazione manuale";
+
+  const input = righeCompilate("trace-work-inputs", ["lotto_id", "quantita"]).map((riga) => {
+    const lotto = lottiDisponibili.find((item) => String(item.id) === riga.lotto_id);
+    const quantita = riga.quantita === "" ? null : Number(riga.quantita);
+    const quantitaValida = Number.isFinite(quantita);
+    const dataTipo = lotto?.data_scadenza ? "Scadenza" : lotto?.data_tmc ? "TMC" : "";
+    const dataValore = lotto?.data_scadenza || lotto?.data_tmc;
+    return {
+      nome: lotto?.articolo || "Lotto non selezionato",
+      dettagli: [
+        lotto?.codice_lotto,
+        lotto?.categoria,
+        dataTipo && dataValore && `${dataTipo}: ${formattaData(dataValore)}`,
+      ],
+      quantita: quantitaValida ? formattaQuantita(quantita, lotto?.unita_misura || "") : "—",
+      quantitaNumero: quantitaValida ? quantita : null,
+      unita: lotto?.unita_misura || "",
+    };
+  });
+  const output = righeCompilate(
+    "trace-work-outputs",
+    ["articolo_id", "quantita", "tipo_data", "data", "origine"],
+  ).map((riga) => {
+    const articolo = articoli.find((item) => String(item.id) === riga.articolo_id);
+    const quantita = riga.quantita === "" ? null : Number(riga.quantita);
+    const quantitaValida = Number.isFinite(quantita);
+    const tipoData = riga.tipo_data === "scadenza" ? "Scadenza" : riga.tipo_data === "tmc" ? "TMC" : "";
+    return {
+      nome: articolo?.nome || "Articolo non selezionato",
+      dettagli: [
+        articolo?.categoria?.trim(),
+        tipoData && (riga.data ? `${tipoData}: ${formattaData(riga.data)}` : tipoData),
+        riga.origine && `Origine: ${riga.origine}`,
+      ],
+      quantita: quantitaValida ? formattaQuantita(quantita, articolo?.unita_misura || "") : "—",
+      quantitaNumero: quantitaValida ? quantita : null,
+      unita: articolo?.unita_misura || "",
+    };
+  });
+
+  $("trace-summary-input-count").textContent = String(input.length);
+  $("trace-summary-output-count").textContent = String(output.length);
+  $("trace-summary-input-qty").textContent = testoQuantitaTotale(input);
+  $("trace-summary-output-qty").textContent = testoQuantitaTotale(output);
+  $("trace-summary-input-badge").textContent = testoScelta(input.length, "lotto", "lotti");
+  $("trace-summary-output-badge").textContent = testoScelta(output.length, "prodotto", "prodotti");
+  riempiSintesi(
+    $("trace-work-summary-inputs"),
+    input,
+    "Nessun lotto in input. Torna all'input per selezionarlo.",
+  );
+  riempiSintesi(
+    $("trace-work-summary-outputs"),
+    output,
+    "Nessun prodotto in output. Torna all'output per aggiungerlo.",
+  );
+}
+
+function mostraPassoLavorazione(numero) {
+  const sezione = document.querySelector('[data-trace-section="lavorazione"]');
+  const passo = Number(numero);
+  if (passo === 3) aggiornaRiepilogoLavorazione();
+  sezione.querySelectorAll("[data-trace-work-panel]").forEach((panel) => {
+    const attivo = Number(panel.dataset.traceWorkPanel) === passo;
+    panel.hidden = !attivo;
+    panel.classList.toggle("active", attivo);
+  });
+  sezione.querySelectorAll("[data-trace-work-indicator]").forEach((indicator) => {
+    const attivo = Number(indicator.dataset.traceWorkIndicator) === passo;
+    indicator.classList.toggle("active", attivo);
+    if (attivo) indicator.setAttribute("aria-current", "step");
+    else indicator.removeAttribute("aria-current");
+  });
 }
 
 function applicaRicettaSelezionata() {
@@ -538,6 +779,7 @@ function applicaRicettaSelezionata() {
   }
   impostaMessaggio("trace-work-error");
   selezionaRicetta(ricetta, target);
+  mostraPassoLavorazione(1);
 }
 
 function aggiungiRigaOutput() {
@@ -563,9 +805,10 @@ function aggiungiRigaOutput() {
       { name: "data", label: "Data", type: "date", required: false },
       { name: "origine", label: "Origine dichiarata", type: "text", required: false },
     ],
-    (select) => riempiSelectArticoli(select),
+    (select) => riempiSelectArticoliOutput(select),
     "Rimuovi prodotto output",
   );
+  aggiornaAiutoOutput();
 }
 
 function aggiungiRigaScarto() {
@@ -1058,6 +1301,11 @@ function configuraFormLavorazione() {
   $("trace-work-date").value = dataLocaleISO();
   aggiungiRigaInput();
   aggiungiRigaOutput();
+  document.querySelector('[data-trace-section="lavorazione"]').addEventListener("click", (event) => {
+    const button = event.target.closest("[data-trace-work-step]");
+    if (!button) return;
+    mostraPassoLavorazione(button.dataset.traceWorkStep);
+  });
   $("btn-trace-add-input").addEventListener("click", aggiungiRigaInput);
   $("btn-trace-add-output").addEventListener("click", aggiungiRigaOutput);
   $("btn-trace-add-scrap").addEventListener("click", aggiungiRigaScarto);
@@ -1067,6 +1315,10 @@ function configuraFormLavorazione() {
     });
   });
   $("btn-trace-apply-recipe").addEventListener("click", applicaRicettaSelezionata);
+  ["trace-work-date", "trace-work-operator", "trace-work-description"].forEach((id) => {
+    $(id).addEventListener("input", aggiornaRiepilogoLavorazione);
+    $(id).addEventListener("change", aggiornaRiepilogoLavorazione);
+  });
   $("trace-work-recipe").addEventListener("change", () => {
     const ricetta = ricette.find((item) => String(item.id) === $("trace-work-recipe").value);
     const help = $("trace-work-recipe-help");
@@ -1084,19 +1336,28 @@ function configuraFormLavorazione() {
     $(containerId).addEventListener("click", (event) => {
       if (event.target.closest(".btn.danger")) {
         $("trace-work-confirm-weights").checked = false;
+        if (containerId === "trace-work-inputs") aggiornaOutputPerCategoriaInput();
       }
     });
     $(containerId).addEventListener("input", () => {
       $("trace-work-confirm-weights").checked = false;
     });
-    $(containerId).addEventListener("change", () => {
+    $(containerId).addEventListener("change", (event) => {
       $("trace-work-confirm-weights").checked = false;
+      if (containerId === "trace-work-inputs" && event.target.matches('[data-field="lotto_id"]')) {
+        aggiornaOutputPerCategoriaInput();
+      }
     });
   });
   $("trace-work-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     impostaMessaggio("trace-work-error");
+    if (!$("trace-work-confirm-weights").checked) {
+      mostraPassoLavorazione(3);
+      impostaMessaggio("trace-work-error", "Conferma i pesi rilevati prima di registrare la lavorazione.");
+      return;
+    }
     let input = leggiRighe("trace-work-inputs", ["lotto_id", "quantita"]);
     const outputRighe = leggiRighe(
       "trace-work-outputs",
@@ -1182,6 +1443,7 @@ function configuraFormLavorazione() {
       $("trace-work-outputs").replaceChildren();
       $("trace-work-scraps").replaceChildren();
       $("trace-work-recipe-help").hidden = true;
+      mostraPassoLavorazione(1);
       await loadTracciabilita();
       aggiungiRigaInput();
       aggiungiRigaOutput();
