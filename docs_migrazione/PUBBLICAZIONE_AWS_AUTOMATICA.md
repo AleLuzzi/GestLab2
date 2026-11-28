@@ -225,7 +225,7 @@ console web.
 |---|---|
 | 4–5 Creazione istanza e SSH | `publish-lightsail.ps1` |
 | 6–7 Pacchetti e database | `setup-server.sh` |
-| 8.1 / 12 Bootstrap schema vuoto | `setup-server.sh` (`python -m saas.bootstrap`) |
+| 12 Bootstrap schema vuoto (panoramica §8.1) | `setup-server.sh` (`python -m saas.bootstrap`) |
 | 9–11 Codice, venv, env | `setup-server.sh` (`-Source Local` o `Git`) |
 | 13–14 systemd e Nginx | `setup-server.sh` |
 | 14.1 HTTPS | `-Domain` + `-Https` |

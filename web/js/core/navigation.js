@@ -38,6 +38,7 @@ function switchView(view) {
 
   const loaders = {
     dashboard: loadDashboard,
+    "ingresso-merce": openIngressoMerce,
     articoli: loadArticoli,
     dipendenti: loadDipendenti,
     merceologie: loadMerceologie,

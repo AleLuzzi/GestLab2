@@ -1,0 +1,73 @@
+# Ambienti virtuali
+venv/
+.venv/
+env/
+.env/
+ENV/
+conda-meta/
+
+# Segreti (allineato a .gitignore)
+.env
+*.env.local
+deploy/gestlab.env
+deploy/*.pem
+
+# Cache di Python e file compilati
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Cache di test, linter e type checker
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Build, pacchetti e distribuzione
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# Dati, database locali e file pesanti
+*.sqlite3
+*.db
+*.csv
+*.parquet
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+data/
+datasets/
+
+# Modelli di Machine Learning / pesi
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.bin
+checkpoints/
+
+# Log, backup e file temporanei
+logs/
+*.log
+backups/
+tmp/
+temp/
+
+# Configurazioni locali di IDE ed estensioni
+.idea/
+.vscode/
+.continue/
+.DS_Store
+
+# Asset e immagini non utilizzati
+immagini/
+docs_migrazione/sequenza_pilota/*.png

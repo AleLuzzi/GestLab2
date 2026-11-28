@@ -106,9 +106,10 @@ e non inserirlo in Git. Prima del deploy:
 Il modulo `core/env.py` dà precedenza alle variabili d'ambiente rispetto a
 `config.ini`, quindi sul server verranno usate le variabili AWS.
 
-Variabili necessarie:
+Variabili necessarie (modello completo in `deploy/gestlab.env.example`):
 
 ```text
+GESTLAB_ENV=production
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=gestlab
@@ -119,6 +120,9 @@ GESTLAB_ADMIN_EMAIL=<email-admin-di-test>
 GESTLAB_ADMIN_PASSWORD=<password-admin-di-test>
 GESTLAB_TENANT_NOME=Laboratorio Test AWS
 ```
+
+`GESTLAB_ENV=production` chiude al pubblico `/docs`, `/redoc` e `/openapi.json`
+sul server di test (vedi sezione 15).
 
 Generare un segreto JWT casuale, per esempio da PowerShell:
 
@@ -213,94 +217,94 @@ Verificare la connessione:
 mariadb -h 127.0.0.1 -u gestlab_app -p gestlab
 ```
 
-## 8. Importare lo schema e creare il database
+## 8. Schema database e migrazione dati
 
-### 8.1 Test con database vuoto (nuovo flusso unificato)
+Su un **database vuoto** non eseguire comandi in questa sezione: dopo aver
+completato le sezioni 9–11 lanciare il bootstrap alla **sezione 12**.
 
-A partire da 2026-09-11, lo schema è consolidato in un unico file `saas/init_database.sql`.
-Copiare il progetto sul server, quindi dalla root del progetto eseguire:
+### 8.1 Database vuoto (flusso unificato)
 
-```bash
-cd /opt/gestlab/app
-. .venv/bin/activate
-python3 -m saas.bootstrap
-```
+Lo schema è consolidato in `saas/init_database.sql`. Il comando
+`python -m saas.bootstrap` (sezione 12):
 
+- esegue gli statement in `saas/init_database.sql` (tabelle business multi-tenant,
+  catalogo `articoli`, tracciabilità, vendite, ecc., più tenant, utenti, stampa,
+  audit);
+- applica le migration in `saas/migrations/` ancora non registrate;
+- crea la tabella `schema_migrations`;
+- crea un tenant e un utente admin iniziale dalle variabili `GESTLAB_*`;
+- è idempotente: tabelle e admin già presenti non vengono duplicati.
 
-
-Questo comando:
-- Legge il file unificato `saas/init_database.sql`
-- Crea tutte le tabelle di business (dipendenti, fornitori, prodotti, ecc.) con supporto multi-tenant
-- Crea le tabelle SaaS (tenant, utenti, dispositivi_stampa, print_jobs)
-- Crea un tenant e utente admin iniziale
-
-Il bootstrap è idempotente: se le tabelle o l'utente esistono già, il comando
-non le ricrea e completa comunque con successo.
-
-Verificare che lo schema sia stato creato:
-
-```bash
-mariadb -h 127.0.0.1 -u gestlab_app -p gestlab \
-  -e "SHOW TABLES;"
-```
-
-Dovrai vedere 19 tabelle. Per verificare l'admin creato:
-
-```bash
-mariadb -h 127.0.0.1 -u gestlab_app -p gestlab \
-  -e "SELECT id, email, ruolo FROM utenti;"
-```
+Dopo il bootstrap ci si aspetta circa **31 tabelle** (30 da `init_database.sql`
+più `schema_migrations`; se esisteva la vecchia `ingresso_merce`, compare anche
+`ingresso_merce_legacy_archive`).
 
 ### 8.2 Migrazione di dati esistenti dal database locale
 
-Se hai dati locali da migrare:
+Percorso manuale: completare le **sezioni 7 e 9–11**, poi importare il dump,
+poi **sezione 12** (bootstrap), infine il mapping `tenant_id`.
 
-1. **Fare un backup del database locale:**
-   ```bash
-   # Da PowerShell sul PC locale
+1. **Backup del database locale** (nome DB locale `data`, vedi `config.ini`):
+
+   ```powershell
    mysqldump -h localhost -u root -p data > gestlab_backup.sql
    ```
 
-2. **Importare il backup su AWS:**
-   ```bash
-   # Sull'istanza AWS
-   cd /tmp
-   scp -i <chiave>.pem ubuntu@<IP_LOCALE>:gestlab_backup.sql .
-   mariadb -h 127.0.0.1 -u gestlab_app -p gestlab < gestlab_backup.sql
+2. **Copiare il dump sull'istanza** (dal PC Windows, non dalla shell AWS):
+
+   ```powershell
+   scp -i C:\percorso\lightsail-key.pem gestlab_backup.sql ubuntu@<IP_STATICO>:/tmp/
    ```
 
-3. **Eseguire il bootstrap per aggiungere le tabelle SaaS:**
+3. **Importare sul server** (dopo la sezione 7, database `gestlab` già creato):
+
    ```bash
-   cd /opt/gestlab/app
-   . .venv/bin/activate
-   python -m saas.bootstrap
+   mariadb -h 127.0.0.1 -u gestlab_app -p gestlab < /tmp/gestlab_backup.sql
    ```
 
-4. **Mappare i dati migrati a un tenant:**
-   - Il bootstrap crea un tenant con ID = 2 per i dati nuovi
-   - I dati importati dal vecchio database potrebbero avere `tenant_id = NULL`
-   - Eseguire un UPDATE per associarli al tenant corretto:
+4. **Eseguire il bootstrap** come in sezione 12 (schema SaaS, migration, admin).
+
+5. **Mappare i dati migrati a un tenant:**
+   - Il bootstrap crea il **primo** tenant (di solito `id = 1`); annotare
+     l'ID da output del comando o con
+     `SELECT id, nome FROM tenant;`
+   - I dati importati dal vecchio schema possono avere `tenant_id` assente o
+     `NULL`; assegnarli al tenant scelto (sostituire `<TENANT_ID>`):
 
    ```bash
    mariadb -h 127.0.0.1 -u gestlab_app -p gestlab << 'EOF'
-   UPDATE dipendenti SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE fornitori SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE prodotti SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE reparti SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE merceologie SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE tagli SET tenant_id = 2 WHERE tenant_id IS NULL;
-   UPDATE progressivi SET tenant_id = 2 WHERE tenant_id IS NULL;
+   UPDATE dipendenti SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE fornitori SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE reparti SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE merceologie SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE articoli SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE articoli_bilancia SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE progressivi SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE soggetti SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE soggetti_ruoli SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE documenti_ingresso SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE lavorazioni SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE lotti SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE movimenti_lotto SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE ricette SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE ricetta_ingredienti SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE ricetta_allergeni SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE vendite SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE righe_vendita SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE lavorazione_scarto SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE righe_ingresso_tracciato SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE lavorazione_input SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
+   UPDATE lavorazione_output SET tenant_id = <TENANT_ID> WHERE tenant_id IS NULL;
    EOF
    ```
-   - La tabella `ingresso_merce` viene archiviata dal bootstrap; non
-     assegnarle tenant o modificarne i record senza una riconciliazione
-     esplicita dell'archivio.
 
-5. **Verificare l'isolamento multi-tenant:**
-   - Creare un secondo tenant dall'API
-   - Creare un secondo utente in quel tenant
-   - Verificare che i dati restino isolati per tenant
-   - Non esporre i dati di un tenant all'altro
+   Ripetere per ogni altra tabella con `tenant_id` se il bootstrap segnala righe
+   ancora senza tenant. La tabella legacy `ingresso_merce`, se presente, viene
+   rinominata in `ingresso_merce_legacy_archive` dal bootstrap: non assegnarle
+   `tenant_id` senza una riconciliazione esplicita.
+
+6. **Verificare l'isolamento multi-tenant** (secondo tenant da API/console, dati
+   non condivisi tra tenant).
 
 ## 9. Copiare il codice sul server
 
@@ -358,9 +362,11 @@ sudo install -d -m 750 /etc/gestlab &&
 sudo nano /etc/gestlab/gestlab.env
 ```
 
-Inserire, usando valori nuovi e reali soltanto sul server:
+Inserire, usando valori nuovi e reali soltanto sul server (allineato a
+`deploy/gestlab.env.example`):
 
 ```text
+GESTLAB_ENV=production
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=gestlab
@@ -393,21 +399,33 @@ sudo chmod 640 /opt/gestlab/app/.env
 
 ## 12. Eseguire il bootstrap SaaS
 
-Dalla root del progetto:
+Dopo codice (sezione 9), venv (10) e variabili (11), dalla root del progetto:
 
 ```bash
 sudo bash -c "cd /opt/gestlab/app && set -a && . /etc/gestlab/gestlab.env && set +a && . .venv/bin/activate && python -m saas.bootstrap"
 ```
 
-Il comando crea, se mancanti, le tabelle SaaS e l'utente admin iniziale. È
-idempotente, ma non usare la password di esempio della documentazione locale.
+Equivalente senza `sudo` se l'utente `ubuntu` ha già caricato env e venv:
 
-Controllare che il database risponda:
+```bash
+cd /opt/gestlab/app
+set -a && . /etc/gestlab/gestlab.env && set +a
+. .venv/bin/activate
+python -m saas.bootstrap
+```
+
+Il bootstrap applica `saas/init_database.sql`, le migration in `saas/migrations/`,
+crea tenant e admin dalle variabili `GESTLAB_*` ed è idempotente. Non usare le
+password di default del modulo (`Admin1234!` ecc.) sul server.
+
+Controllare schema e admin (conteggio tabelle vedi sezione 8.1):
 
 ```bash
 mariadb -h 127.0.0.1 -u gestlab_app -p gestlab \
-  -e "SHOW TABLES; SELECT email, ruolo FROM utenti;"
+  -e "SHOW TABLES; SELECT id, nome FROM tenant; SELECT id, email, ruolo FROM utenti;"
 ```
+
+Annotare `tenant.id` se in seguito si migrano dati legacy (sezione 8.2).
 
 ## 13. Creare il servizio systemd
 

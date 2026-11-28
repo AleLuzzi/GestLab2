@@ -396,7 +396,8 @@ function azzeraIngresso() {
 export function openIngressoMerce() {
   document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
   $("view-ingresso-merce").classList.add("active");
-  document.querySelectorAll(".nav-item").forEach((button) => button.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach((button) =>
+    button.classList.toggle("active", button.dataset.view === "ingresso-merce"));
   if (!$("ingress-data").value) $("ingress-data").value = dataLocaleISO();
   aggiornaRiepilogo();
   caricaDatiIngresso();
